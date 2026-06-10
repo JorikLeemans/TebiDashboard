@@ -15,6 +15,77 @@ public sealed class MockNetSuiteService : INetSuiteService
     public Task<IReadOnlyList<CustomerDto>> GetCustomersAsync(CancellationToken cancellationToken = default)
         => Task.FromResult<IReadOnlyList<CustomerDto>>(GetMockCustomers());
 
+    public Task<IReadOnlyList<CustomerOverviewDto>> GetCustomersOverviewAsync(
+        DateRangeFilter filter,
+        CancellationToken cancellationToken = default)
+    {
+        var revenue = GetMockRevenue().Where(r => r.Date >= filter.From && r.Date <= filter.To).ToList();
+        var salesOrders = GetMockTransactions()
+            .Where(t => t.Type == "Sales Order"
+                && !string.IsNullOrWhiteSpace(t.CustomerId)
+                && t.TransactionDate >= filter.From
+                && t.TransactionDate <= filter.To)
+            .ToList();
+
+        var overview = GetMockCustomers()
+            .Select(customer =>
+            {
+                var customerRevenue = revenue.Where(r => r.CustomerId == customer.CustomerId).ToList();
+                var customerOrders = salesOrders.Where(t => t.CustomerId == customer.CustomerId).ToList();
+
+                return new CustomerOverviewDto
+                {
+                    CustomerId = customer.CustomerId,
+                    Name = customer.Name,
+                    City = customer.City,
+                    ContactEmail = customer.ContactEmail,
+                    TotalSpent = customerRevenue.Sum(r => r.Amount),
+                    RevenueEntryCount = customerRevenue.Count,
+                    SalesOrderCount = customerOrders.Count
+                };
+            })
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<CustomerOverviewDto>>(overview);
+    }
+
+    public Task<CustomerDetailDto?> GetCustomerDetailAsync(
+        string customerId,
+        DateRangeFilter filter,
+        CancellationToken cancellationToken = default)
+    {
+        var customer = GetMockCustomers().FirstOrDefault(c => c.CustomerId == customerId);
+        if (customer is null)
+        {
+            return Task.FromResult<CustomerDetailDto?>(null);
+        }
+
+        var revenue = GetMockRevenue()
+            .Where(r => r.CustomerId == customerId && r.Date >= filter.From && r.Date <= filter.To)
+            .OrderByDescending(r => r.Date)
+            .ToList();
+
+        var salesOrders = GetMockTransactions()
+            .Where(t => t.Type == "Sales Order"
+                && t.CustomerId == customerId
+                && t.TransactionDate >= filter.From
+                && t.TransactionDate <= filter.To)
+            .OrderByDescending(t => t.TransactionDate)
+            .ToList();
+
+        var detail = new CustomerDetailDto
+        {
+            Customer = customer,
+            PeriodFrom = filter.From,
+            PeriodTo = filter.To,
+            TotalSpent = revenue.Sum(r => r.Amount),
+            Revenue = revenue,
+            SalesOrders = salesOrders
+        };
+
+        return Task.FromResult<CustomerDetailDto?>(detail);
+    }
+
     public Task<DashboardSummaryDto> GetDashboardSummaryAsync(DateRangeFilter filter, CancellationToken cancellationToken = default)
     {
         var revenue = GetMockRevenue().Where(r => r.Date >= filter.From && r.Date <= filter.To).ToList();

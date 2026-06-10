@@ -21,6 +21,111 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
         return rows.Select(MapCustomer).ToList();
     }
 
+    public async Task<IReadOnlyList<CustomerOverviewDto>> GetCustomersOverviewAsync(
+        DateRangeFilter filter,
+        CancellationToken cancellationToken = default)
+    {
+        var customers = await dbContext.Customers
+            .AsNoTracking()
+            .OrderBy(c => c.Name)
+            .ToListAsync(cancellationToken);
+
+        var revenueByCustomer = await dbContext.RevenueRecords
+            .AsNoTracking()
+            .Where(r => r.Date >= filter.From && r.Date <= filter.To)
+            .GroupBy(r => r.CustomerId)
+            .Select(g => new { CustomerId = g.Key, Total = g.Sum(r => r.Amount), Count = g.Count() })
+            .ToDictionaryAsync(x => x.CustomerId, cancellationToken);
+
+        var salesOrdersByCustomer = await dbContext.OpenTransactions
+            .AsNoTracking()
+            .Where(t => t.Type == "Sales Order"
+                && t.CustomerId != null
+                && t.TransactionDate >= filter.From
+                && t.TransactionDate <= filter.To)
+            .GroupBy(t => t.CustomerId!)
+            .Select(g => new { CustomerId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.CustomerId, cancellationToken);
+
+        return customers.Select(customer =>
+        {
+            var revenue = revenueByCustomer.GetValueOrDefault(customer.CustomerId);
+            var salesOrders = salesOrdersByCustomer.GetValueOrDefault(customer.CustomerId);
+
+            return new CustomerOverviewDto
+            {
+                CustomerId = customer.CustomerId,
+                Name = customer.Name,
+                City = customer.City,
+                ContactEmail = customer.ContactEmail,
+                TotalSpent = revenue?.Total ?? 0m,
+                RevenueEntryCount = revenue?.Count ?? 0,
+                SalesOrderCount = salesOrders?.Count ?? 0
+            };
+        }).ToList();
+    }
+
+    public async Task<CustomerDetailDto?> GetCustomerDetailAsync(
+        string customerId,
+        DateRangeFilter filter,
+        CancellationToken cancellationToken = default)
+    {
+        var customer = await dbContext.Customers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.CustomerId == customerId, cancellationToken);
+
+        if (customer is null)
+        {
+            return null;
+        }
+
+        var revenue = await dbContext.RevenueRecords
+            .AsNoTracking()
+            .Where(r => r.CustomerId == customerId && r.Date >= filter.From && r.Date <= filter.To)
+            .OrderByDescending(r => r.Date)
+            .ToListAsync(cancellationToken);
+
+        var salesOrderRows = await dbContext.OpenTransactions
+            .AsNoTracking()
+            .Where(t => t.Type == "Sales Order"
+                && t.CustomerId == customerId
+                && t.TransactionDate >= filter.From
+                && t.TransactionDate <= filter.To)
+            .OrderByDescending(t => t.TransactionDate)
+            .ThenBy(t => t.TransactionId)
+            .ToListAsync(cancellationToken);
+
+        var itemIds = salesOrderRows.Select(r => r.ItemId).Distinct().ToList();
+        var itemNames = itemIds.Count == 0
+            ? new Dictionary<string, string>()
+            : await dbContext.InventoryItems
+                .AsNoTracking()
+                .Where(i => itemIds.Contains(i.ItemId))
+                .ToDictionaryAsync(i => i.ItemId, i => i.ItemName, cancellationToken);
+
+        var customerNames = new Dictionary<string, string> { [customer.CustomerId] = customer.Name };
+
+        return new CustomerDetailDto
+        {
+            Customer = MapCustomer(customer),
+            PeriodFrom = filter.From,
+            PeriodTo = filter.To,
+            TotalSpent = revenue.Sum(r => r.Amount),
+            Revenue = revenue.Select(r => new RevenueDto
+            {
+                Id = r.Id,
+                Date = r.Date,
+                Amount = r.Amount,
+                CustomerId = r.CustomerId,
+                CustomerName = r.CustomerName,
+                ProductGroupId = r.ProductGroupId
+            }).ToList(),
+            SalesOrders = salesOrderRows
+                .Select(t => MapOpenTransaction(t, itemNames.GetValueOrDefault(t.ItemId, t.ItemId), customerNames))
+                .ToList()
+        };
+    }
+
     public async Task<DashboardSummaryDto> GetDashboardSummaryAsync(DateRangeFilter filter, CancellationToken cancellationToken = default)
     {
         var revenueRows = await dbContext.RevenueRecords

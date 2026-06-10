@@ -1,0 +1,65 @@
+.customers-page {
+  padding: 1rem;
+  font-family: Segoe UI, sans-serif;
+}
+
+.customers-page__header h1 {
+  margin: 0 0 0.25rem;
+}
+
+.customers-page__subtitle {
+  margin: 0 0 1.25rem;
+  color: #555;
+}
+
+.customers-page__status {
+  color: #555;
+}
+
+.customers-table-wrap {
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid #dde3ea;
+  border-radius: 8px;
+}
+
+.customers-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+.customers-table th,
+.customers-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.customers-table th {
+  background: #f7faf8;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #445;
+}
+
+.customers-table__row {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.customers-table__row:hover,
+.customers-table__row:focus {
+  background: #f0f7f2;
+  outline: none;
+}
+
+.customers-table__name {
+  font-weight: 600;
+  color: #1a3d2b;
+}
+
+.error {
+  color: #b00020;
+}

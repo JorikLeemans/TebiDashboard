@@ -1,7 +1,13 @@
+using System.Globalization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using TebiDashboard.UI.Services;
 using TebiDashboard.Web.Components;
+
+// Default to Dutch locale so currency and dates render with € instead of ¤.
+var dutchCulture = CultureInfo.GetCultureInfo("nl-NL");
+CultureInfo.DefaultThreadCurrentCulture = dutchCulture;
+CultureInfo.DefaultThreadCurrentUICulture = dutchCulture;
 
 var builder = WebApplication.CreateBuilder(args);
 

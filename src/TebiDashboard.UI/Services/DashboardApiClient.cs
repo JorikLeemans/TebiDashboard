@@ -22,6 +22,39 @@ public sealed class DashboardApiClient(HttpClient httpClient)
     public async Task<IReadOnlyList<CustomerDto>> GetCustomersAsync(CancellationToken cancellationToken = default)
         => await httpClient.GetFromJsonAsync<IReadOnlyList<CustomerDto>>("api/customers", cancellationToken) ?? [];
 
+    public async Task<IReadOnlyList<CustomerOverviewDto>> GetCustomersOverviewAsync(
+        DateOnly from,
+        DateOnly to,
+        CancellationToken cancellationToken = default)
+        => await httpClient.GetFromJsonAsync<IReadOnlyList<CustomerOverviewDto>>(
+            $"api/customers/overview?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
+            cancellationToken) ?? [];
+
+    public Task<CustomerDetailDto?> GetCustomerDetailAsync(
+        string customerId,
+        DateOnly from,
+        DateOnly to,
+        CancellationToken cancellationToken = default)
+    {
+        var response = httpClient.GetAsync(
+            $"api/customers/{Uri.EscapeDataString(customerId)}?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
+            cancellationToken);
+
+        return HandleCustomerDetailResponseAsync(response);
+    }
+
+    private static async Task<CustomerDetailDto?> HandleCustomerDetailResponseAsync(Task<HttpResponseMessage> responseTask)
+    {
+        var response = await responseTask;
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<CustomerDetailDto>();
+    }
+
     public async Task<IReadOnlyList<RevenueDto>> GetRevenueAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
         => await httpClient.GetFromJsonAsync<IReadOnlyList<RevenueDto>>(
             $"api/revenue?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",

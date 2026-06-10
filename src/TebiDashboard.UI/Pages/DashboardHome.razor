@@ -25,7 +25,7 @@
         <div class="kpi-grid">
             <div class="kpi-card">
                 <h3>Revenue</h3>
-                <p class="kpi-value">@_overview.Summary.Revenue.ToString("C0")</p>
+                <p class="kpi-value">@EuroFormatting.FormatWhole(_overview.Summary.Revenue)</p>
                 <span class="trend">@_overview.Summary.RevenueTrend</span>
             </div>
             <div class="kpi-card">
@@ -65,7 +65,7 @@
                             <tr>
                                 <td>@row.Date.ToString("d")</td>
                                 <td>@row.CustomerName</td>
-                                <td>@row.Amount.ToString("C0")</td>
+                                <td>@EuroFormatting.FormatWhole(row.Amount)</td>
                             </tr>
                         }
                     </tbody>
@@ -163,7 +163,7 @@
                                 <td>@row.Date.ToString("d")</td>
                                 <td>@row.Category</td>
                                 <td>@row.VendorName</td>
-                                <td>@row.Amount.ToString("C0")</td>
+                                <td>@EuroFormatting.FormatWhole(row.Amount)</td>
                             </tr>
                         }
                     </tbody>
