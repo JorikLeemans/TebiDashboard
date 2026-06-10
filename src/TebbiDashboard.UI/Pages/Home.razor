@@ -1,0 +1,15 @@
+@page "/"
+@inject IAuthStateService AuthState
+@inject NavigationManager Navigation
+
+<PageTitle>TEBI Dashboard</PageTitle>
+
+<p class="home-redirect">Loading...</p>
+
+@code {
+  protected override async Task OnInitializedAsync()
+  {
+    await AuthState.InitializeAsync();
+    Navigation.NavigateTo(AuthState.IsAuthenticated ? "/dashboard" : "/login");
+  }
+}

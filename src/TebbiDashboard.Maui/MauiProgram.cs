@@ -20,6 +20,7 @@ public static class MauiProgram
 
         builder.Services.AddMauiBlazorWebView();
         builder.Services.AddSingleton<IBarcodeScannerService, BarcodeScannerService>();
+        builder.Services.AddScoped<IAuthStateService, AuthStateService>();
 
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
@@ -31,6 +32,7 @@ public static class MauiProgram
         apiBaseUrl = "https://localhost:7119/";
 #endif
         builder.Services.AddSingleton(_ => new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
+        builder.Services.AddSingleton<AuthApiClient>();
         builder.Services.AddSingleton<DashboardApiClient>();
 
         return builder.Build();

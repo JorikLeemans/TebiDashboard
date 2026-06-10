@@ -1,0 +1,66 @@
+.dashboard-layout {
+  min-height: 100vh;
+  background: #f4f7f5;
+}
+
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(90deg, #1f6b3a 0%, #2a8a4a 55%, #f4c430 100%);
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(31, 107, 58, 0.25);
+}
+
+.dashboard-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.dashboard-header__logo {
+  height: 2.25rem;
+  width: auto;
+  background: #fff;
+  border-radius: 6px;
+  padding: 0.2rem 0.45rem;
+}
+
+.dashboard-header__title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.dashboard-header__user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.dashboard-header__username {
+  font-size: 0.9rem;
+  opacity: 0.95;
+}
+
+.btn-logout {
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.btn-logout:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: #fff;
+}
+
+.dashboard-main {
+  padding: 0.5rem 0 2rem;
+}

@@ -1,0 +1,32 @@
+@inherits LayoutComponentBase
+@inject IAuthStateService AuthState
+@inject NavigationManager Navigation
+
+<div class="dashboard-layout">
+    <header class="dashboard-header">
+        <div class="dashboard-header__brand">
+            <img src="_content/TebbiDashboard.UI/images/tebi-logo.png" alt="TEBI" class="dashboard-header__logo" />
+            <span class="dashboard-header__title">Dashboard</span>
+        </div>
+
+        @if (AuthState.IsAuthenticated)
+        {
+            <div class="dashboard-header__user">
+                <span class="dashboard-header__username">@AuthState.Username</span>
+                <button type="button" class="btn-logout" @onclick="SignOutAsync">Sign out</button>
+            </div>
+        }
+    </header>
+
+    <main class="dashboard-main">
+        @Body
+    </main>
+</div>
+
+@code {
+  private async Task SignOutAsync()
+  {
+    await AuthState.SignOutAsync();
+    Navigation.NavigateTo("/login");
+  }
+}
