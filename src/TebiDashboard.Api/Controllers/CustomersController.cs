@@ -29,7 +29,8 @@ public class CustomersController(INetSuiteService netSuiteService) : ControllerB
         return Ok(overview);
     }
 
-    [HttpGet("{customerId}")]
+    // Exclude the overview route segment so it is not treated as a customer id.
+    [HttpGet("{customerId:regex(^(?!overview$).+)}")]
     public async Task<IActionResult> GetById(
         string customerId,
         [FromQuery] DateOnly? from,
