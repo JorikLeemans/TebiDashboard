@@ -20,6 +20,12 @@ builder.Services.AddHttpClient<DashboardApiClient>(client =>
     client.BaseAddress = new Uri(baseUrl);
 });
 
+builder.Services.AddHttpClient<AdminApiClient>(client =>
+{
+    var baseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7119/";
+    client.BaseAddress = new Uri(baseUrl);
+});
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())

@@ -1,0 +1,157 @@
+.admin-dashboard {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem 2rem;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.admin-dashboard__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.admin-dashboard__header h1 {
+  margin: 0;
+  color: #145c32;
+  font-size: 1.75rem;
+}
+
+.admin-dashboard__subtitle {
+  margin: 0.35rem 0 0;
+  color: #5a6b62;
+}
+
+.admin-dashboard__back {
+  color: #1f6b3a;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.admin-dashboard__back:hover {
+  text-decoration: underline;
+}
+
+.admin-dashboard__alert {
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.admin-dashboard__alert--error {
+  background: #fff5f5;
+  border: 1px solid #f0b4b4;
+  color: #9b1c1c;
+}
+
+.admin-dashboard__alert--success {
+  background: #f2fbf5;
+  border: 1px solid #b8e0c5;
+  color: #145c32;
+}
+
+.admin-dashboard__empty,
+.admin-dashboard__hint {
+  color: #5a6b62;
+}
+
+.admin-dashboard__hint {
+  margin-top: 1rem;
+  font-size: 0.85rem;
+}
+
+.admin-table-wrapper {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid #dde3ea;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(20, 92, 50, 0.08);
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 820px;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #e6ece8;
+  vertical-align: middle;
+}
+
+.admin-table th {
+  background: #f4f7f5;
+  color: #2f4f3d;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.admin-table__email {
+  font-weight: 600;
+  color: #145c32;
+}
+
+.admin-table__input {
+  width: 100%;
+  min-width: 120px;
+  border: 1px solid #c9d8cf;
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.9rem;
+}
+
+.admin-table__input:focus {
+  outline: none;
+  border-color: #2a8a4a;
+  box-shadow: 0 0 0 2px rgba(42, 138, 74, 0.15);
+}
+
+.admin-table__actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.admin-table__error-row td {
+  background: #fff5f5;
+  color: #9b1c1c;
+  font-size: 0.85rem;
+}
+
+.btn-admin {
+  border: none;
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-admin:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.btn-admin--primary {
+  background: linear-gradient(90deg, #f4c430 0%, #ffd95a 100%);
+  color: #1a3d24;
+}
+
+.btn-admin--danger {
+  background: #fff5f5;
+  border: 1px solid #f0b4b4;
+  color: #9b1c1c;
+}
+
+@media (max-width: 768px) {
+  .admin-dashboard__header {
+    flex-direction: column;
+  }
+}

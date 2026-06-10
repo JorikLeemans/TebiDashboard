@@ -31,9 +31,11 @@ public static class MauiProgram
 #if WINDOWS
         apiBaseUrl = "https://localhost:7119/";
 #endif
+
         builder.Services.AddSingleton(_ => new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
         builder.Services.AddSingleton<AuthApiClient>();
         builder.Services.AddSingleton<DashboardApiClient>();
+        builder.Services.AddScoped<AdminApiClient>();
 
         return builder.Build();
     }

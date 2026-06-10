@@ -1,3 +1,4 @@
+using TebbiDashboard.Shared.Constants;
 using TebbiDashboard.Shared.Dtos;
 
 namespace TebbiDashboard.UI.Services;
@@ -16,6 +17,8 @@ public interface IAuthStateService
     string? Role { get; }
 
     event Action? OnChange;
+
+    bool CanAccessAdminDashboard();
 
     Task InitializeAsync();
 

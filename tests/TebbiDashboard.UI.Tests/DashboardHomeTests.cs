@@ -4,6 +4,7 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using RichardSzalay.MockHttp;
 using TebbiDashboard.Shared.Dtos;
+using TebbiDashboard.Shared.Constants;
 using TebbiDashboard.UI.Pages;
 using TebbiDashboard.UI.Services;
 
@@ -52,11 +53,11 @@ public class DashboardHomeTests
     public void DashboardHome_ShowsError_WhenApiFails()
     {
         using var ctx = CreateAuthenticatedContext(out var mockHttp);
-        mockHttp.When("https://localhost/api/dashboard/summary")
+        mockHttp.When(HttpMethod.Get, "*/api/dashboard/summary*")
             .Respond(HttpStatusCode.InternalServerError);
 
         var cut = ctx.Render<DashboardHome>();
-        cut.WaitForAssertion(() => cut.Markup.Contains("Failed to load dashboard"), TimeSpan.FromSeconds(3));
+        cut.WaitForElement(".error", TimeSpan.FromSeconds(5));
 
         Assert.Contains("Failed to load dashboard", cut.Markup);
     }
@@ -96,6 +97,8 @@ public class DashboardHomeTests
         public string? Role => isAuthenticated ? "Management" : null;
 
         public event Action? OnChange;
+
+        public bool CanAccessAdminDashboard() => isAuthenticated && Role == Roles.Admin;
 
         public Task InitializeAsync() => Task.CompletedTask;
 

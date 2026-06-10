@@ -91,6 +91,8 @@ public class LoginPageTests
 
         public event Action? OnChange;
 
+        public bool CanAccessAdminDashboard() => false;
+
         public Task InitializeAsync() => Task.CompletedTask;
 
         public Task SignInAsync(LoginResponseDto response)
