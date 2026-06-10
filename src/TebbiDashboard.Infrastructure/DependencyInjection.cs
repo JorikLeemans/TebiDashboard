@@ -19,7 +19,9 @@ public static class DependencyInjection
         services.Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SectionName));
 
         var databaseOptions = configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>() ?? new DatabaseOptions();
-        var provider = databaseOptions.Provider ?? "Sqlite";
+        var provider = ConnectionStringResolver.UsesPostgres(configuration)
+            ? "PostgreSql"
+            : databaseOptions.Provider ?? "Sqlite";
 
         if (string.Equals(provider, "InMemory", StringComparison.OrdinalIgnoreCase))
         {
@@ -30,8 +32,7 @@ public static class DependencyInjection
             return services;
         }
 
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? "Data Source=tebbi.db";
+        var connectionString = ConnectionStringResolver.Resolve(configuration);
 
         services.AddDbContext<TebbiDashboardDbContext>(options =>
         {

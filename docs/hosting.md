@@ -101,15 +101,106 @@ This clears revenue, goals, inventory, expenses and reloads the seed datasets. *
 
 ### Option A — Railway (recommended for quick setup)
 
-1. Create a [Railway](https://railway.app) project.
-2. Add a **PostgreSQL** plugin.
-3. Deploy the **API** from this repo:
-   - Root directory: repository root
-   - Dockerfile: `Dockerfile.api`
-   - Set env vars from the PostgreSQL plugin + `Database__Provider=PostgreSql`
-4. Deploy the **Web** host:
-   - Dockerfile: `Dockerfile.web`
-   - Set `ApiBaseUrl` to the public API URL (with trailing `/`)
+See the full Dutch walkthrough below: [Railway deployment](#railway-deployment-stap-voor-stap).
+
+Quick summary:
+
+1. Create a [Railway](https://railway.app) project from GitHub.
+2. Add **PostgreSQL**.
+3. Deploy **API** service (`Dockerfile.api`) and link the database.
+4. Generate a public domain for the API.
+5. Deploy **Web** service (`Dockerfile.web`) with `ApiBaseUrl` pointing to the API domain.
+
+---
+
+## Railway deployment (stap voor stap)
+
+Deploy **3 onderdelen** op Railway: PostgreSQL, API en Web UI. De MAUI-app blijft lokaal; alleen API + Web gaan naar de cloud.
+
+### Vereisten
+
+- GitHub-repo: [TebiDashboard](https://github.com/JorikLeemans/TebiDashboard.git) (push je laatste wijzigingen)
+- [Railway-account](https://railway.app) (gratis trial / hobby plan)
+
+### Stap 1 — Nieuw project
+
+1. Ga naar [railway.app/new](https://railway.app/new)
+2. Kies **Deploy from GitHub repo**
+3. Selecteer `TebiDashboard`
+4. Railway maakt een eerste service aan (die hernoemen we zo)
+
+### Stap 2 — PostgreSQL toevoegen
+
+1. In je project: **+ New** → **Database** → **PostgreSQL**
+2. Wacht tot de database **Active** is
+3. Railway maakt automatisch een `DATABASE_URL` variabele aan
+
+> De API leest `DATABASE_URL` automatisch en schakelt over naar PostgreSQL. Je hoeft geen connection string handmatig te bouwen.
+
+### Stap 3 — API deployen
+
+1. **+ New** → **GitHub Repo** → kies opnieuw `TebiDashboard` (tweede service)
+2. Hernoem de service naar `tebbi-api`
+3. Open **Settings**:
+   - **Build** → **Dockerfile Path**: `Dockerfile.api`
+   - **Deploy** → **Start Command**: leeg laten (Dockerfile regelt dit)
+4. Open **Variables** → **Add Reference**:
+   - Koppel `DATABASE_URL` van de PostgreSQL-service
+5. Voeg deze variabelen toe:
+
+| Variable | Value |
+|----------|-------|
+| `ASPNETCORE_ENVIRONMENT` | `Production` |
+| `Database__ApplyMigrationsOnStartup` | `true` |
+| `Database__SeedDemoData` | `true` |
+
+6. **Settings** → **Networking** → **Generate Domain**
+   - Noteer de URL, bijv. `https://tebbi-api-production.up.railway.app`
+
+7. Controleer de deploy logs. Je zou moeten zien:
+   - `Database migrations applied (PostgreSql).`
+   - `Demo data seed completed.`
+   - `Now listening on: http://0.0.0.0:...`
+
+8. Test in de browser: `https://jouw-api-url/health` → moet `{"status":"healthy",...}` tonen
+
+### Stap 4 — Web UI deployen
+
+1. **+ New** → **GitHub Repo** → `TebiDashboard` (derde service)
+2. Hernoem naar `tebbi-web`
+3. **Settings** → **Dockerfile Path**: `Dockerfile.web`
+4. **Variables**:
+
+| Variable | Value |
+|----------|-------|
+| `ASPNETCORE_ENVIRONMENT` | `Production` |
+| `ApiBaseUrl` | `https://jouw-api-url/` ← **met trailing slash!** |
+
+5. **Networking** → **Generate Domain**
+6. Open de Web-URL in je browser → loginpagina TEBI Dashboard
+
+### Stap 5 — Inloggen
+
+| Account | Wachtwoord | Rol |
+|---------|------------|-----|
+| `admin@tebi.nl` | `admin1234` | Admin |
+| `demo` | `demo` | Management (hardcoded, geen DB) |
+
+### Kosten & tips
+
+- **Hobby plan**: ~$5/maand credits; PostgreSQL + 2 services verbruiken credits
+- **Slaapstand**: gratis tier laat services soms slapen → eerste request duurt langer
+- **Logs**: per service → **Deployments** → **View logs** bij problemen
+- **Redeploy**: push naar GitHub → Railway bouwt automatisch opnieuw
+
+### Problemen oplossen
+
+| Probleem | Oplossing |
+|----------|-----------|
+| API start niet | Check deploy logs; controleer of `DATABASE_URL` gekoppeld is |
+| Web toont login maar data laadt niet | `ApiBaseUrl` moet exact de **publieke HTTPS API-URL** zijn met `/` aan het eind |
+| Database leeg na deploy | Zet `Database__SeedDemoData=true`; herstart API |
+| Build faalt op .NET 10 | Railway ondersteunt Docker — onze Dockerfiles gebruiken `mcr.microsoft.com/dotnet/sdk:10.0` |
 
 ### Option B — Render
 

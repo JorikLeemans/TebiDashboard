@@ -1,8 +1,16 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using TebbiDashboard.Application;
 using TebbiDashboard.Infrastructure;
 using TebbiDashboard.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Railway and other PaaS hosts assign a dynamic PORT at runtime.
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(port))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+}
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
@@ -21,6 +29,14 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseForwardedHeaders(new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+    });
+}
 
 // Apply migrations and seed demo data when a persistent provider is configured.
 await app.InitializeAsync();
