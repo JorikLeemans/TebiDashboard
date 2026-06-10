@@ -9,19 +9,19 @@ Visueel overzicht van de solution-structuur, lagen en datastroom.
 ```mermaid
 flowchart TB
     subgraph clients [Clients]
-        Maui["TebbiDashboard.Maui\n.NET MAUI Blazor Hybrid"]
-        Web["TebbiDashboard.Web\nBlazor Web App"]
+        Maui["TebiDashboard.Maui\n.NET MAUI Blazor Hybrid"]
+        Web["TebiDashboard.Web\nBlazor Web App"]
     end
 
     subgraph shared [Gedeelde laag]
-        UI["TebbiDashboard.UI\nRazor Class Library"]
-        Shared["TebbiDashboard.Shared\nDTOs en contracts"]
+        UI["TebiDashboard.UI\nRazor Class Library"]
+        Shared["TebiDashboard.Shared\nDTOs en contracts"]
     end
 
     subgraph backend [Back-end]
-        Api["TebbiDashboard.Api\nASP.NET Core Web API"]
-        App["TebbiDashboard.Application\nServices en use cases"]
-        Infra["TebbiDashboard.Infrastructure\nNetSuite, cache, opslag"]
+        Api["TebiDashboard.Api\nASP.NET Core Web API"]
+        App["TebiDashboard.Application\nServices en use cases"]
+        Infra["TebiDashboard.Infrastructure\nNetSuite, cache, opslag"]
     end
 
     NetSuite["Oracle NetSuite\nREST API"]
@@ -42,45 +42,45 @@ flowchart TB
 
 ## Laagverantwoordelijkheden
 
-### TebbiDashboard.Maui
+### TebiDashboard.Maui
 
 - .NET MAUI host met `BlazorWebView`
 - Platform-specifieke configuratie (Windows, Android, iOS)
 - API-base-URL via app settings
 - **Geen** businesslogica of NetSuite-koppeling
 
-### TebbiDashboard.Web
+### TebiDashboard.Web
 
 - Blazor Web App (Server of WebAssembly — keuze bij implementatie)
 - Zelfde UI-componenten als MAUI via gedeelde library
 - Browser-toegang (Must have: web-based)
 
-### TebbiDashboard.UI
+### TebiDashboard.UI
 
 - Razor-components: dashboards, grafieken, filters, layout
 - HttpClient-services voor API-aanroepen
 - MudBlazor (of vergelijkbaar) voor UI-componenten
 
-### TebbiDashboard.Shared
+### TebiDashboard.Shared
 
 - DTO's: `OmzetDto`, `AfzetDto`, `DoelDto`, `DashboardSummaryDto`
 - Filter-modellen en API-contract interfaces
 - Geen framework-afhankelijkheden
 
-### TebbiDashboard.Api
+### TebiDashboard.Api
 
 - REST-controllers
 - JWT-authenticatie en autorisatie
 - Middleware: CORS, rate limiting, exception handling
 - Swagger/OpenAPI
 
-### TebbiDashboard.Application
+### TebiDashboard.Application
 
 - Use cases: `GetOmzetQuery`, `GetDashboardSummaryQuery`
 - Interfaces: `INetSuiteService`, `IDashboardService`
 - Validatie en mapping-logica
 
-### TebbiDashboard.Infrastructure
+### TebiDashboard.Infrastructure
 
 - `NetSuiteHttpClient` — OAuth-signed requests naar NetSuite
 - `IMemoryCache` implementatie
@@ -119,28 +119,28 @@ sequenceDiagram
 ## Projectreferenties
 
 ```
-TebbiDashboard.Api
-  → TebbiDashboard.Application
-  → TebbiDashboard.Infrastructure
-  → TebbiDashboard.Shared
+TebiDashboard.Api
+  → TebiDashboard.Application
+  → TebiDashboard.Infrastructure
+  → TebiDashboard.Shared
 
-TebbiDashboard.Application
-  → TebbiDashboard.Shared
+TebiDashboard.Application
+  → TebiDashboard.Shared
 
-TebbiDashboard.Infrastructure
-  → TebbiDashboard.Application
-  → TebbiDashboard.Shared
+TebiDashboard.Infrastructure
+  → TebiDashboard.Application
+  → TebiDashboard.Shared
 
-TebbiDashboard.UI
-  → TebbiDashboard.Shared
+TebiDashboard.UI
+  → TebiDashboard.Shared
 
-TebbiDashboard.Maui
-  → TebbiDashboard.UI
-  → TebbiDashboard.Shared
+TebiDashboard.Maui
+  → TebiDashboard.UI
+  → TebiDashboard.Shared
 
-TebbiDashboard.Web
-  → TebbiDashboard.UI
-  → TebbiDashboard.Shared
+TebiDashboard.Web
+  → TebiDashboard.UI
+  → TebiDashboard.Shared
 ```
 
 ---

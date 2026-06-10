@@ -1,6 +1,6 @@
 # MAUI workload setup
 
-The **TebbiDashboard.Maui** project is included in the solution but requires the .NET MAUI workload to build.
+The **TebiDashboard.Maui** project is included in the solution but requires the .NET MAUI workload to build.
 
 ## Error during install
 
@@ -24,7 +24,7 @@ dotnet workload list
 4. Build MAUI (Windows first):
 
 ```bash
-cd src/TebbiDashboard.Maui
+cd src/TebiDashboard.Maui
 dotnet build -f net10.0-windows10.0.19041.0
 ```
 
@@ -37,6 +37,6 @@ dotnet build -f net10.0-windows10.0.19041.0
 
 ## Until MAUI builds
 
-- Run **Web API**: `dotnet run --project src/TebbiDashboard.Api`
-- Run **Blazor Web**: `dotnet run --project src/TebbiDashboard.Web`
-- UI tests: `dotnet test tests/TebbiDashboard.UI.Tests`
+- Run **Web API**: `dotnet run --project src/TebiDashboard.Api`
+- Run **Blazor Web**: `dotnet run --project src/TebiDashboard.Web`
+- UI tests: `dotnet test tests/TebiDashboard.UI.Tests`

@@ -6,21 +6,54 @@ This guide explains how to run the dashboard with **persistent storage** so user
 
 | Before | After |
 |--------|-------|
-| Users in memory (`InMemoryUserStore`) | Users in SQLite or PostgreSQL |
+| Users in memory (`InMemoryUserStore`) | Users in PostgreSQL (local + hosted) |
 | Hard-coded mock KPI data | Database-backed dashboard data with rich seed datasets |
 | Data lost on API restart | Data persists across restarts and deployments |
 
-## Local development (SQLite — easiest)
+## Local development (PostgreSQL — same as Railway)
 
-1. Start the app as usual:
+Local and hosted environments both use **PostgreSQL** with the same EF Core migrations and seed data.
+
+### Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (runs PostgreSQL locally)
+
+### Quick start
 
 ```powershell
 .\start.cmd
 ```
 
-2. On first run the API creates `data/tebbi-local.db` and seeds demo data automatically.
+This script:
 
-3. Demo accounts (persisted):
+1. Starts PostgreSQL in Docker (`docker compose up postgres`)
+2. Launches the API (`https://localhost:7119`) — applies migrations and seeds demo data
+3. Launches the Web UI (`https://localhost:7274`)
+
+Database credentials (local Docker):
+
+| Setting | Value |
+|---------|-------|
+| Host | `localhost:5432` |
+| Database | `TebiDashboard` |
+| User | `Tebi` |
+| Password | `Tebi_dev_password` |
+
+Data persists in the Docker volume `Tebi_pg_data`.
+
+Stop the apps by closing the API/Web terminal windows. Stop PostgreSQL with:
+
+```powershell
+docker compose stop postgres
+```
+
+Remove all local database data:
+
+```powershell
+docker compose down -v
+```
+
+### Demo accounts (persisted)
 
 | Email | Password | Role |
 |-------|----------|------|
@@ -31,9 +64,9 @@ This guide explains how to run the dashboard with **persistent storage** so user
 
 The built-in `demo` / `demo` login still works for quick demos (not stored in the database).
 
-## Docker Compose (PostgreSQL — closest to production)
+## Docker Compose (full stack in containers)
 
-Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+Run API + Web + PostgreSQL entirely in Docker (closest to production deployment):
 
 ```powershell
 docker compose up --build
@@ -43,9 +76,9 @@ docker compose up --build
 |---------|-----|
 | Web UI | http://localhost:7274 |
 | API | http://localhost:7119 |
-| PostgreSQL | localhost:5432 (`tebbi` / `tebbi_dev_password`) |
+| PostgreSQL | localhost:5432 (`Tebi` / `Tebi_dev_password`) |
 
-Data is stored in the Docker volume `tebbi_pg_data`.
+Data is stored in the Docker volume `Tebi_pg_data`.
 
 Stop:
 
@@ -61,20 +94,20 @@ docker compose down -v
 
 ## Configuration
 
-`src/TebbiDashboard.Api/appsettings.json`:
+`src/TebiDashboard.Api/appsettings.json`:
 
 ```json
 "ConnectionStrings": {
-  "DefaultConnection": "Data Source=tebbi.db"
+  "DefaultConnection": "Host=localhost;Port=5432;Database=TebiDashboard;Username=Tebi;Password=Tebi_dev_password"
 },
 "Database": {
-  "Provider": "Sqlite",
+  "Provider": "PostgreSql",
   "ApplyMigrationsOnStartup": true,
   "SeedDemoData": true
 }
 ```
 
-For PostgreSQL set `"Provider": "PostgreSql"` and a PostgreSQL connection string.
+On Railway, set `DATABASE_URL` from the PostgreSQL service — the API detects it automatically.
 
 Environment variable examples (Docker / cloud):
 
@@ -140,7 +173,7 @@ Deploy **3 onderdelen** op Railway: PostgreSQL, API en Web UI. De MAUI-app blijf
 ### Stap 3 — API deployen
 
 1. **+ New** → **GitHub Repo** → kies opnieuw `TebiDashboard` (tweede service)
-2. Hernoem de service naar `tebbi-api`
+2. Hernoem de service naar `Tebi-api`
 3. Open **Settings** → **Build**:
    - **Builder**: `Dockerfile` (niet Railpack/Nixpacks!)
    - **Dockerfile Path**: `Dockerfile.api`
@@ -156,7 +189,7 @@ Deploy **3 onderdelen** op Railway: PostgreSQL, API en Web UI. De MAUI-app blijf
 | `Database__SeedDemoData` | `true` |
 
 6. **Settings** → **Networking** → **Generate Domain**
-   - Noteer de URL, bijv. `https://tebbi-api-production.up.railway.app`
+   - Noteer de URL, bijv. `https://Tebi-api-production.up.railway.app`
 
 7. Controleer de deploy logs. Je zou moeten zien:
    - `Database migrations applied (PostgreSql).`
@@ -168,7 +201,7 @@ Deploy **3 onderdelen** op Railway: PostgreSQL, API en Web UI. De MAUI-app blijf
 ### Stap 4 — Web UI deployen
 
 1. **+ New** → **GitHub Repo** → `TebiDashboard` (derde service)
-2. Hernoem naar `tebbi-web`
+2. Hernoem naar `Tebi-web`
 3. **Settings** → **Build**:
    - **Builder**: `Dockerfile`
    - **Dockerfile Path**: `Dockerfile.web`
@@ -178,7 +211,7 @@ Deploy **3 onderdelen** op Railway: PostgreSQL, API en Web UI. De MAUI-app blijf
 | Variable | Value |
 |----------|-------|
 | `ASPNETCORE_ENVIRONMENT` | `Production` |
-| `ApiBaseUrl` | `https://jouw-api-url/` ← HTTPS + trailing slash (host-only zoals `tebbi-api-production.up.railway.app` werkt ook) |
+| `ApiBaseUrl` | `https://jouw-api-url/` ← HTTPS + trailing slash (host-only zoals `Tebi-api-production.up.railway.app` werkt ook) |
 
 5. **Networking** → **Generate Domain**
 6. Open de Web-URL in je browser → loginpagina TEBI Dashboard
@@ -205,7 +238,7 @@ Deploy **3 onderdelen** op Railway: PostgreSQL, API en Web UI. De MAUI-app blijf
 | **Healthcheck blijft falen** | Controleer deploy **runtime logs** (niet alleen build). Zorg dat `DATABASE_URL` gekoppeld is. HTTPS-redirect is uitgeschakeld in Production. |
 | API start niet | Check deploy logs; controleer of `DATABASE_URL` gekoppeld is |
 | Web toont login maar data laadt niet | `ApiBaseUrl` moet exact de **publieke HTTPS API-URL** zijn met `/` aan het eind |
-| **Error.** pagina op Web-URL | Open **tebbi-web** logs in Railway. Controleer `ApiBaseUrl` (publieke API-URL + `/`). Test `https://jouw-web-url/health` en `https://jouw-api-url/health`. Open niet per ongeluk de API-URL in de browser. |
+| **Error.** pagina op Web-URL | Open **Tebi-web** logs in Railway. Controleer `ApiBaseUrl` (publieke API-URL + `/`). Test `https://jouw-web-url/health` en `https://jouw-api-url/health`. Open niet per ongeluk de API-URL in de browser. |
 | Database leeg na deploy | Zet `Database__SeedDemoData=true`; herstart API |
 | Build faalt op .NET 10 | Railway ondersteunt Docker — onze Dockerfiles gebruiken `mcr.microsoft.com/dotnet/sdk:10.0` |
 
@@ -228,8 +261,8 @@ Create a new migration after entity changes:
 
 ```powershell
 dotnet ef migrations add MigrationName `
-  --project src/TebbiDashboard.Infrastructure/TebbiDashboard.Infrastructure.csproj `
-  --startup-project src/TebbiDashboard.Api/TebbiDashboard.Api.csproj
+  --project src/TebiDashboard.Infrastructure/TebiDashboard.Infrastructure.csproj `
+  --startup-project src/TebiDashboard.Api/TebiDashboard.Api.csproj
 ```
 
 Migrations run automatically on API startup when `ApplyMigrationsOnStartup` is `true`.

@@ -15,7 +15,10 @@ How to install, configure, and run the TEBI Dashboard application.
 |------|---------|----------|
 | .NET SDK | 10.x | https://dotnet.microsoft.com/download |
 | Git | Latest | https://git-scm.com |
+| Docker Desktop | Latest | https://www.docker.com/products/docker-desktop/ |
 | IDE | VS 2022 17.12+ or VS Code + C# Dev Kit | — |
+
+> Docker runs the local **PostgreSQL** database — the same engine used on Railway.
 
 ### .NET MAUI workload
 
@@ -46,12 +49,12 @@ cd TebiDashboard
 
 ## Configuration
 
-### Web API (`src/TebbiDashboard.Api`)
+### Web API (`src/TebiDashboard.Api`)
 
 1. Copy User Secrets template (development):
 
 ```bash
-cd src/TebbiDashboard.Api
+cd src/TebiDashboard.Api
 dotnet user-secrets init
 dotnet user-secrets set "NetSuite:UseMock" "true"
 ```
@@ -73,7 +76,7 @@ dotnet user-secrets set "NetSuite:UseMock" "true"
 
 > Never commit secrets. Use User Secrets locally or environment variables in production.
 
-### MAUI app (`src/TebbiDashboard.Maui`)
+### MAUI app (`src/TebiDashboard.Maui`)
 
 Set API base URL in `appsettings.json` or `MauiProgram.cs`:
 
@@ -89,7 +92,7 @@ For Android emulator, use `https://10.0.2.2:7001` to reach host machine localhos
 
 ## Run locally
 
-### Quick start (API + Blazor Web)
+### Quick start (API + Blazor Web + PostgreSQL)
 
 From the repository root:
 
@@ -97,14 +100,16 @@ From the repository root:
 .\start.cmd
 ```
 
+Requirements: **Docker Desktop** must be running.
+
 `start.cmd` runs `start.ps1` with `-ExecutionPolicy Bypass`, so you do not need to change Windows execution policy.
 
-This opens two terminal windows (API on `https://localhost:7119`, Web on `https://localhost:7274`), trusts the HTTPS dev certificate, and waits for the API health check before starting the web app.
+This starts PostgreSQL in Docker, then opens two terminal windows (API on `https://localhost:7119`, Web on `https://localhost:7274`), trusts the HTTPS dev certificate, and waits for the API health check before starting the web app.
 
 ### 1. Start Web API
 
 ```bash
-cd src/TebbiDashboard.Api
+cd src/TebiDashboard.Api
 dotnet run
 ```
 
@@ -113,12 +118,12 @@ Swagger UI: `https://localhost:7119/swagger`
 ### 2. Start MAUI app — Windows
 
 ```bash
-cd src/TebbiDashboard.Maui
+cd src/TebiDashboard.Maui
 dotnet build -f net10.0-windows10.0.19041.0
 dotnet run -f net10.0-windows10.0.19041.0
 ```
 
-Or: Visual Studio → set `TebbiDashboard.Maui` as startup → target **Windows Machine**.
+Or: Visual Studio → set `TebiDashboard.Maui` as startup → target **Windows Machine**.
 
 ### 3. Start MAUI app — Android
 
@@ -135,7 +140,7 @@ Or: Visual Studio → target **Android Emulators**.
 ### 4. Blazor Web (optional)
 
 ```bash
-cd src/TebbiDashboard.Web
+cd src/TebiDashboard.Web
 dotnet run
 ```
 
@@ -145,7 +150,7 @@ Or: Visual Studio → target **Android Emulators**.
 ### 4. Blazor Web (optional)
 
 ```bash
-cd src/TebbiDashboard.Web
+cd src/TebiDashboard.Web
 dotnet run
 ```
 
@@ -169,11 +174,11 @@ Browser: URL shown in console (e.g. `https://localhost:5001`).
 
 ```bash
 # All unit tests
-dotnet test tests/TebbiDashboard.Application.Tests
-dotnet test tests/TebbiDashboard.Api.Tests
+dotnet test tests/TebiDashboard.Application.Tests
+dotnet test tests/TebiDashboard.Api.Tests
 
 # UI / device tests (when configured)
-dotnet test tests/TebbiDashboard.Maui.Tests
+dotnet test tests/TebiDashboard.Maui.Tests
 ```
 
 ---
@@ -198,7 +203,7 @@ Visual Studio → Publish → Windows → Create package.
 ### Android (APK)
 
 ```bash
-cd src/TebbiDashboard.Maui
+cd src/TebiDashboard.Maui
 dotnet publish -f net10.0-android -c Release
 ```
 
@@ -211,6 +216,8 @@ APK location: `bin/Release/net10.0-android/publish/`
 
 | Problem | Solution |
 |---------|----------|
+| `Docker is required for local PostgreSQL` | Install and start [Docker Desktop](https://www.docker.com/products/docker-desktop/), then run `.\start.cmd` again |
+| API cannot connect to database | Run `docker compose ps` — PostgreSQL should be healthy on port 5432 |
 | MAUI workload missing | `dotnet workload install maui` |
 | Android cannot reach API | Use `10.0.2.2` instead of `localhost` |
 APK location: `bin/Release/net10.0-android/publish/`
@@ -221,6 +228,8 @@ APK location: `bin/Release/net10.0-android/publish/`
 
 | Problem | Solution |
 |---------|----------|
+| `Docker is required for local PostgreSQL` | Install and start [Docker Desktop](https://www.docker.com/products/docker-desktop/), then run `.\start.cmd` again |
+| API cannot connect to database | Run `docker compose ps` — PostgreSQL should be healthy on port 5432 |
 | MAUI workload missing | `dotnet workload install maui` |
 | Android cannot reach API | Use `10.0.2.2` instead of `localhost` |
 | HTTPS certificate error | `dotnet dev-certs https --trust` |

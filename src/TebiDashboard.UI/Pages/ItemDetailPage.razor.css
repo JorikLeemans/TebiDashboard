@@ -1,0 +1,123 @@
+.item-detail {
+  padding: 1rem;
+  font-family: Segoe UI, sans-serif;
+}
+
+.item-detail__nav {
+  margin-bottom: 1rem;
+}
+
+.item-detail__back {
+  color: #2a8a4a;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.item-detail__back:hover {
+  text-decoration: underline;
+}
+
+.item-detail__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.item-detail__header h1 {
+  margin: 0 0 0.35rem;
+}
+
+.item-detail__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 0;
+  color: #555;
+  font-size: 0.95rem;
+}
+
+.item-detail__badge {
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.item-detail__badge--alert {
+  background: #fff0f0;
+  color: #a32020;
+  border: 1px solid #e8b4b4;
+}
+
+.item-detail__kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.item-detail__kpi {
+  background: #fff;
+  border: 1px solid #dde3ea;
+  border-left: 4px solid #2a8a4a;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.item-detail__kpi h2 {
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #556;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.item-detail__kpi p {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.item-detail__section {
+  background: #fff;
+  border: 1px solid #dde3ea;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.item-detail__section h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+.item-detail__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.item-detail__table th,
+.item-detail__table td {
+  padding: 0.65rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.item-detail__table th {
+  font-size: 0.85rem;
+  color: #445;
+  background: #f7faf8;
+}
+
+.item-detail__empty,
+.item-detail__status {
+  color: #555;
+}
+
+.error {
+  color: #b00020;
+}

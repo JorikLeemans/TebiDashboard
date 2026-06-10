@@ -54,7 +54,7 @@ Afvinklijst gekoppeld aan het [adviesrapport](./LU2%20AdviesRapportage.docx) en 
 - [x] `CHECKLIST.md` en `README.md` aangemaakt
 - [x] Git-repository geïnitialiseerd (branch `main`, `.gitignore`)
 - [x] Eerste commit en push naar GitHub
-- [x] Solution-structuur aanmaken (`src/TebbiDashboard.slnx`)
+- [x] Solution-structuur aanmaken (`src/TebiDashboard.slnx`)
 - [x] 5 unit tests + 3 API tests + 3 UI tests (groen)
 - [ ] MAUI workload installeren (zie [maui-setup.md](./docs/maui-setup.md))
 
@@ -69,7 +69,7 @@ Afvinklijst gekoppeld aan het [adviesrapport](./LU2%20AdviesRapportage.docx) en 
 
 ## Fase 3 — Dashboard (Must have)
 
-- [ ] Gedeelde Blazor UI-bibliotheek (`TebbiDashboard.UI`)
+- [ ] Gedeelde Blazor UI-bibliotheek (`TebiDashboard.UI`)
 - [ ] MAUI Blazor Hybrid app (Windows als eerste target)
 - [ ] Blazor Web App voor browser
 - [ ] KPI-kaarten op dashboard home

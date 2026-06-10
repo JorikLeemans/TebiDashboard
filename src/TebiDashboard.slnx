@@ -1,0 +1,12 @@
+<Solution>
+  <Project Path="../tests/TebiDashboard.Api.Tests/TebiDashboard.Api.Tests.csproj" />
+  <Project Path="../tests/TebiDashboard.Application.Tests/TebiDashboard.Application.Tests.csproj" />
+  <Project Path="../tests/TebiDashboard.UI.Tests/TebiDashboard.UI.Tests.csproj" />
+  <Project Path="TebiDashboard.Api/TebiDashboard.Api.csproj" />
+  <Project Path="TebiDashboard.Application/TebiDashboard.Application.csproj" />
+  <Project Path="TebiDashboard.Infrastructure/TebiDashboard.Infrastructure.csproj" />
+  <Project Path="TebiDashboard.Maui/TebiDashboard.Maui.csproj" />
+  <Project Path="TebiDashboard.Shared/TebiDashboard.Shared.csproj" />
+  <Project Path="TebiDashboard.UI/TebiDashboard.UI.csproj" />
+  <Project Path="TebiDashboard.Web/TebiDashboard.Web.csproj" />
+</Solution>

@@ -1,4 +1,4 @@
-# Default Railway config for the API service (tebbi-api).
+# Default Railway config for the API service (Tebi-api).
 # In Railway: link this file or leave as the repo config file path.
 # For the Web UI service, use railway.web.toml instead (see docs/hosting.md).
 

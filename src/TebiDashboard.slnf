@@ -1,0 +1,16 @@
+{
+  "solution": {
+    "path": "TebiDashboard.slnx",
+    "projects": [
+      "TebiDashboard.Shared\\TebiDashboard.Shared.csproj",
+      "TebiDashboard.Application\\TebiDashboard.Application.csproj",
+      "TebiDashboard.Infrastructure\\TebiDashboard.Infrastructure.csproj",
+      "TebiDashboard.Api\\TebiDashboard.Api.csproj",
+      "TebiDashboard.UI\\TebiDashboard.UI.csproj",
+      "TebiDashboard.Web\\TebiDashboard.Web.csproj",
+      "..\\tests\\TebiDashboard.Application.Tests\\TebiDashboard.Application.Tests.csproj",
+      "..\\tests\\TebiDashboard.Api.Tests\\TebiDashboard.Api.Tests.csproj",
+      "..\\tests\\TebiDashboard.UI.Tests\\TebiDashboard.UI.Tests.csproj"
+    ]
+  }
+}
