@@ -1,5 +1,6 @@
 using TebbiDashboard.Application;
 using TebbiDashboard.Infrastructure;
+using TebbiDashboard.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +21,9 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Apply migrations and seed demo data when a persistent provider is configured.
+await app.InitializeAsync();
 
 if (app.Environment.IsDevelopment())
 {

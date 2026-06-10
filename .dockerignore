@@ -1,0 +1,11 @@
+bin/
+obj/
+.git/
+.vs/
+.idea/
+*.user
+*.db
+data/
+.logs/
+tests/
+**/.dockerignore

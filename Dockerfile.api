@@ -1,0 +1,21 @@
+# Build stage for the API
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+COPY src/TebbiDashboard.Shared/TebbiDashboard.Shared.csproj src/TebbiDashboard.Shared/
+COPY src/TebbiDashboard.Application/TebbiDashboard.Application.csproj src/TebbiDashboard.Application/
+COPY src/TebbiDashboard.Infrastructure/TebbiDashboard.Infrastructure.csproj src/TebbiDashboard.Infrastructure/
+COPY src/TebbiDashboard.Api/TebbiDashboard.Api.csproj src/TebbiDashboard.Api/
+
+RUN dotnet restore src/TebbiDashboard.Api/TebbiDashboard.Api.csproj
+
+COPY src/ src/
+RUN dotnet publish src/TebbiDashboard.Api/TebbiDashboard.Api.csproj -c Release -o /app/publish /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+WORKDIR /app
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
+
+COPY --from=build /app/publish .
+ENTRYPOINT ["dotnet", "TebbiDashboard.Api.dll"]

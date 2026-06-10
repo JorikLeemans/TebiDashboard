@@ -1,7 +1,9 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using TebbiDashboard.Application.Interfaces;
 using TebbiDashboard.Application.Options;
+using TebbiDashboard.Infrastructure.Data;
 using TebbiDashboard.Infrastructure.Services;
 
 namespace TebbiDashboard.Infrastructure;
@@ -14,21 +16,38 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<NetSuiteOptions>(configuration.GetSection(NetSuiteOptions.SectionName));
+        services.Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SectionName));
 
-        var useMock = configuration.GetValue<bool>($"{NetSuiteOptions.SectionName}:UseMock", true);
+        var databaseOptions = configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>() ?? new DatabaseOptions();
+        var provider = databaseOptions.Provider ?? "Sqlite";
 
-        if (useMock)
+        if (string.Equals(provider, "InMemory", StringComparison.OrdinalIgnoreCase))
         {
+            // Fast in-memory mode for automated tests.
             services.AddScoped<INetSuiteService, MockNetSuiteService>();
-        }
-        else
-        {
-            // Placeholder for live NetSuite integration (NetSuiteService).
-            services.AddScoped<INetSuiteService, MockNetSuiteService>();
+            services.AddSingleton<IUserStore, InMemoryUserStore>();
+            services.AddSingleton<IDemoDataAdminService, NullDemoDataAdminService>();
+            return services;
         }
 
-        // Singleton so registered users persist while the API is running.
-        services.AddSingleton<IUserStore, InMemoryUserStore>();
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? "Data Source=tebbi.db";
+
+        services.AddDbContext<TebbiDashboardDbContext>(options =>
+        {
+            if (string.Equals(provider, "PostgreSql", StringComparison.OrdinalIgnoreCase))
+            {
+                options.UseNpgsql(connectionString);
+            }
+            else
+            {
+                options.UseSqlite(connectionString);
+            }
+        });
+
+        services.AddScoped<INetSuiteService, DatabaseNetSuiteService>();
+        services.AddScoped<IUserStore, EfUserStore>();
+        services.AddScoped<IDemoDataAdminService, DatabaseDemoDataAdminService>();
 
         return services;
     }

@@ -7,11 +7,11 @@ using TebbiDashboard.Shared.Dtos;
 
 namespace TebbiDashboard.Api.Tests;
 
-public class AdminUsersEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class AdminUsersEndpointTests : IClassFixture<TebbiWebApplicationFactory>
 {
     private readonly HttpClient _client;
 
-    public AdminUsersEndpointTests(WebApplicationFactory<Program> factory)
+    public AdminUsersEndpointTests(TebbiWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }

@@ -1,0 +1,20 @@
+# Build stage for the Blazor Web host
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+COPY src/TebbiDashboard.Shared/TebbiDashboard.Shared.csproj src/TebbiDashboard.Shared/
+COPY src/TebbiDashboard.UI/TebbiDashboard.UI.csproj src/TebbiDashboard.UI/
+COPY src/TebbiDashboard.Web/TebbiDashboard.Web.csproj src/TebbiDashboard.Web/
+
+RUN dotnet restore src/TebbiDashboard.Web/TebbiDashboard.Web.csproj
+
+COPY src/ src/
+RUN dotnet publish src/TebbiDashboard.Web/TebbiDashboard.Web.csproj -c Release -o /app/publish /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+WORKDIR /app
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
+
+COPY --from=build /app/publish .
+ENTRYPOINT ["dotnet", "TebbiDashboard.Web.dll"]

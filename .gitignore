@@ -73,3 +73,9 @@ Desktop.ini
 *.tmp
 *.temp
 ~$*
+
+# Local SQLite database files (repo root only)
+/data/
+*.db
+*.db-shm
+*.db-wal

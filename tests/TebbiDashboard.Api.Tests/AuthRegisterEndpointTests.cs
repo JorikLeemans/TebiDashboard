@@ -5,11 +5,11 @@ using TebbiDashboard.Shared.Dtos;
 
 namespace TebbiDashboard.Api.Tests;
 
-public class AuthRegisterEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class AuthRegisterEndpointTests : IClassFixture<TebbiWebApplicationFactory>
 {
     private readonly HttpClient _client;
 
-    public AuthRegisterEndpointTests(WebApplicationFactory<Program> factory)
+    public AuthRegisterEndpointTests(TebbiWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }
