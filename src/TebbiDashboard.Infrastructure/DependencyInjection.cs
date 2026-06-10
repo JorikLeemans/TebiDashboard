@@ -27,6 +27,9 @@ public static class DependencyInjection
             services.AddScoped<INetSuiteService, MockNetSuiteService>();
         }
 
+        // Singleton so registered users persist while the API is running.
+        services.AddSingleton<IUserStore, InMemoryUserStore>();
+
         return services;
     }
 }
