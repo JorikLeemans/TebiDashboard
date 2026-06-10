@@ -27,15 +27,20 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Trust reverse-proxy headers from Railway (required when TLS terminates at the edge).
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor
+        | ForwardedHeaders.XForwardedProto
+        | ForwardedHeaders.XForwardedHost;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 var app = builder.Build();
 
-if (!app.Environment.IsDevelopment())
-{
-    app.UseForwardedHeaders(new ForwardedHeadersOptions
-    {
-        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-    });
-}
+// Forwarded headers must run before other middleware.
+app.UseForwardedHeaders();
 
 if (app.Environment.IsDevelopment())
 {

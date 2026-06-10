@@ -205,6 +205,7 @@ Deploy **3 onderdelen** op Railway: PostgreSQL, API en Web UI. De MAUI-app blijf
 | **Healthcheck blijft falen** | Controleer deploy **runtime logs** (niet alleen build). Zorg dat `DATABASE_URL` gekoppeld is. HTTPS-redirect is uitgeschakeld in Production. |
 | API start niet | Check deploy logs; controleer of `DATABASE_URL` gekoppeld is |
 | Web toont login maar data laadt niet | `ApiBaseUrl` moet exact de **publieke HTTPS API-URL** zijn met `/` aan het eind |
+| **Error.** pagina op Web-URL | Open **tebbi-web** logs in Railway. Controleer `ApiBaseUrl` (publieke API-URL + `/`). Test `https://jouw-web-url/health` en `https://jouw-api-url/health`. Open niet per ongeluk de API-URL in de browser. |
 | Database leeg na deploy | Zet `Database__SeedDemoData=true`; herstart API |
 | Build faalt op .NET 10 | Railway ondersteunt Docker — onze Dockerfiles gebruiken `mcr.microsoft.com/dotnet/sdk:10.0` |
 
