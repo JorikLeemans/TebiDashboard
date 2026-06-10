@@ -50,6 +50,7 @@ Afvinklijst gekoppeld aan het [adviesrapport](./LU2%20AdviesRapportage.docx) en 
 - [x] `docs/netsuite-data-mapping.md` opgesteld
 - [x] `docs/fases.md` opgesteld
 - [x] LU-3 portfolio-docs (`lu3-assessment`, user stories, DoD, OO/patterns, installation)
+- [x] Voorstelformulier verwerkt ([proposal-form.md](./docs/proposal-form.md))
 - [x] `CHECKLIST.md` en `README.md` aangemaakt
 - [x] Git-repository geïnitialiseerd (branch `main`, `.gitignore`)
 - [x] Eerste commit en push naar GitHub
@@ -118,7 +119,8 @@ Zie [docs/lu3-assessment.md](./docs/lu3-assessment.md) voor volledige mapping.
 
 - [x] User stories opgesteld ([user-stories.md](./docs/user-stories.md))
 - [x] Definition of Done opgesteld ([definition-of-done.md](./docs/definition-of-done.md))
-- [ ] US-01 t/m US-08 geïmplementeerd en Done
+- [ ] US-01 t/m US-11 geïmplementeerd en Done (voorstelformulier)
+- [ ] US-12 t/m US-14 (login, platform, dashboard home)
 
 ---
 

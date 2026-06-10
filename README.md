@@ -2,7 +2,7 @@
 
 Dashboard-applicatie voor **TE-BI Bestratingsmaterialen (TEBI)** — een aanvulling op NetSuite voor het overzichtelijk visualiseren van omzet, afzet, trends en doelstellingen.
 
-> Gebaseerd op [LU2 AdviesRapportage.docx](./LU2%20AdviesRapportage.docx)
+> Gebaseerd op [LU2 AdviesRapportage.docx](./LU2%20AdviesRapportage.docx) en [Voorstelformulier .NET MAUI app](./Jorik%20Leemans%20Voorstelformulier%20.NET%20MAUI%20app.docx)
 
 ## Stack
 
@@ -13,7 +13,8 @@ Dashboard-applicatie voor **TE-BI Bestratingsmaterialen (TEBI)** — een aanvull
 | Gedeelde UI | Razor Class Library |
 | Back-end | ASP.NET Core Web API (C# 14 / .NET 10) |
 | ERP-bron | Oracle NetSuite (via beveiligde API-laag) |
-| Demo-platformen | Windows + Android |
+| Demo-platformen | Windows (kantoor) + Android (terrein) |
+| Device features | Barcode/camera scan (artikel op terrein) |
 | Broncode | Engels |
 
 ## Documentatie
@@ -22,8 +23,9 @@ Dashboard-applicatie voor **TE-BI Bestratingsmaterialen (TEBI)** — een aanvull
 - [Architectuur](./docs/architectuur.md) — diagrammen en lagen
 - [NetSuite data-mapping](./docs/netsuite-data-mapping.md) — velden en DTO's
 - [Implementatiefases](./docs/fases.md) — 6 fases uit het adviesrapport
+- [Voorstelformulier](./docs/proposal-form.md) — gebruikers, barcode, live NetSuite API
 - [LU-3 Assessment](./docs/lu3-assessment.md) — portfolio-eisen (.NET 10, tests, platforms)
-- [User stories](./docs/user-stories.md) — functionele eisen
+- [User stories](./docs/user-stories.md) — 11 stories uit voorstelformulier
 - [Definition of Done](./docs/definition-of-done.md)
 - [OO & design patterns](./docs/oo-and-patterns.md)
 - [Installatie & gebruik](./docs/installation.md)

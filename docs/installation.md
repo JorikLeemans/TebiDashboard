@@ -131,7 +131,19 @@ Browser: URL shown in console (e.g. `https://localhost:5001`).
 
 ---
 
-## Run tests
+### Barcode scannen (Android)
+
+1. Open app → **Scan** tab
+2. Richt camera op artikelbarcode op terrein
+3. App toont artikel, voorraadlocaties en open transacties
+
+### Barcode scannen (Windows)
+
+1. Open artikel-zoeken
+2. Scan met USB-barcode scanner (keyboard wedge) of typ barcode handmatig
+3. Zelfde detailweergave als Android
+
+---
 
 ```bash
 # All unit tests

@@ -14,7 +14,8 @@ Mapping van de **Individueel portfolio .NET MAUI**-eisen naar dit project (TEBI 
 | Actuele .NET MAUI-richtlijnen | Blazor Hybrid, platform targets Windows + Android | [architectuur.md](./architectuur.md) |
 | Broncode in het **Engels** | Classes, methods, variables, comments in code = English | `.editorconfig`, code review |
 | Consistente codestijl | `.editorconfig` + `dotnet format` | Repository root |
-| Demonstratie op **2 platformen** | **Windows + Android** (primair); iOS optioneel | [installation.md](./installation.md) |
+| Demonstratie op **2 platformen** | **Windows + Android** (kantoor + terrein) | [installation.md](./installation.md) |
+| **Device feature (barcode)** | Camera/USB scan → artikel lookup (US-11) | [proposal-form.md](./proposal-form.md) |
 | Min. **3 zinnige unit tests** | Application + API services | `tests/` |
 | Min. **3 zinnige UI/device tests** | MAUI / Blazor UI flows | `tests/` |
 | Gemotiveerd **OO-principes & design patterns** | Clean Architecture, Repository, DI, MVVM-achtige scheiding | [oo-and-patterns.md](./oo-and-patterns.md) |

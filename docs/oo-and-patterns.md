@@ -123,6 +123,22 @@ builder.Services.AddScoped<INetSuiteService, MockNetSuiteService>(); // dev
 
 ---
 
+### 7. Strategy / device abstraction pattern
+
+**Where:** `IBarcodeScannerService` with `AndroidBarcodeScannerService` / `WindowsBarcodeScannerService`  
+**Why:** Voorstelformulier — scan artikel on terrein; hides platform camera/USB differences from UI pages.
+
+```csharp
+public interface IBarcodeScannerService
+{
+    Task<string?> ScanAsync(CancellationToken cancellationToken = default);
+}
+```
+
+UI (`BarcodeScanPage.razor`) calls service → API lookup → show `ItemDetailDto`.
+
+---
+
 ## What we deliberately avoid
 
 | Pattern | Reason |
