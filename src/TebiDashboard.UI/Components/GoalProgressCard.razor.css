@@ -1,0 +1,78 @@
+.goal-card {
+  background: #fff;
+  border: 1px solid #dde3ea;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.goal-card--on-track,
+.goal-card--ahead {
+  border-left: 4px solid #2a8a4a;
+}
+
+.goal-card--at-risk {
+  border-left: 4px solid #d98a00;
+}
+
+.goal-card--off-track,
+.goal-card--behind {
+  border-left: 4px solid #c62828;
+}
+
+.goal-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.goal-card__title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.goal-card__status {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #556;
+}
+
+.goal-card__metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.9rem;
+  color: #445;
+  margin-bottom: 0.75rem;
+}
+
+.goal-card__progress {
+  height: 10px;
+  background: #eef2f6;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.goal-card__progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2a8a4a 0%, #3cb371 100%);
+  border-radius: 999px;
+}
+
+.goal-card--at-risk .goal-card__progress-fill {
+  background: linear-gradient(90deg, #d98a00 0%, #f0a500 100%);
+}
+
+.goal-card--off-track .goal-card__progress-fill,
+.goal-card--behind .goal-card__progress-fill {
+  background: linear-gradient(90deg, #c62828 0%, #e53935 100%);
+}
+
+.goal-card__percentage {
+  margin: 0.5rem 0 0;
+  font-weight: 700;
+  color: #1a3d2b;
+}

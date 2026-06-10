@@ -32,16 +32,24 @@
                 <h3>Sales volume</h3>
                 <p class="kpi-value">@_overview.Summary.SalesVolume.ToString("N0")</p>
             </div>
-            <div class="kpi-card">
-                <h3>Goal progress</h3>
-                <p class="kpi-value">@_overview.Summary.GoalPercentage.ToString("F1")%</p>
-            </div>
+            <a href="/goals" class="kpi-card kpi-card--link">
+                <h3>Goal progress (@_goalPeriodLabel)</h3>
+                <p class="kpi-value">@_quarterGoalPercentage.ToString("F1")%</p>
+                <span class="kpi-card__hint">View goals →</span>
+            </a>
             <a href="/inventory" class="kpi-card alert kpi-card--link">
                 <h3>Low stock alerts</h3>
                 <p class="kpi-value">@_overview.Summary.LowStockAlertCount</p>
                 <span class="kpi-card__hint">View inventory →</span>
             </a>
         </div>
+
+        <section class="dashboard-section">
+            <h2>Revenue chart (@_overview.Revenue.Count)</h2>
+            <BarChart Items="_revenueChartItems"
+                      AriaLabel="Revenue per day in selected period"
+                      EmptyMessage="No revenue records in this period to chart." />
+        </section>
 
         <section class="dashboard-section">
             <h2>Sales in period (@_overview.Revenue.Count)</h2>
@@ -205,6 +213,9 @@
 
 @code {
     private PeriodOverviewDto? _overview;
+    private IReadOnlyList<ChartBarItem> _revenueChartItems = [];
+    private decimal _quarterGoalPercentage;
+    private string _goalPeriodLabel = string.Empty;
     private bool _isLoading = true;
     private string? _error;
 
@@ -244,7 +255,19 @@
             if (_overview is null)
             {
                 _error = "No overview data returned from the API.";
+                return;
             }
+
+            _revenueChartItems = _overview.Revenue
+                .OrderBy(row => row.Date)
+                .Select(row => new ChartBarItem
+                {
+                    Label = row.Date.ToString("d"),
+                    Value = row.Amount
+                })
+                .ToList();
+
+            await LoadQuarterGoalAsync();
         }
         catch (Exception ex)
         {
@@ -254,6 +277,18 @@
         {
             _isLoading = false;
         }
+    }
+
+    private async Task LoadQuarterGoalAsync()
+    {
+        var periodEnd = PeriodFilter.To;
+        var quarter = PeriodHelper.GetQuarter(periodEnd);
+        _goalPeriodLabel = $"{quarter} {periodEnd.Year}";
+
+        var goals = await ApiClient.GetGoalsAsync(periodEnd.Year, quarter);
+        var companyGoal = goals.FirstOrDefault(goal => string.IsNullOrWhiteSpace(goal.ItemId));
+
+        _quarterGoalPercentage = companyGoal?.Percentage ?? _overview?.Summary.GoalPercentage ?? 0m;
     }
 
     private void OpenItem(string itemId) => Navigation.NavigateTo($"/inventory/{Uri.EscapeDataString(itemId)}");

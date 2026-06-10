@@ -1,0 +1,48 @@
+@using TebiDashboard.Shared.Dtos
+@using TebiDashboard.Shared.Formatting
+
+<article class="goal-card goal-card--@Goal.Status">
+    <header class="goal-card__header">
+        <h3 class="goal-card__title">@Title</h3>
+        <span class="goal-card__status">@FormatStatus(Goal.Status)</span>
+    </header>
+
+    <div class="goal-card__metrics">
+        <span>Target: @FormatAmount(Goal.TargetValue)</span>
+        <span>Actual: @FormatAmount(Goal.ActualValue)</span>
+    </div>
+
+    <div class="goal-card__progress" role="progressbar"
+         aria-valuenow="@Goal.Percentage.ToString("F0")"
+         aria-valuemin="0"
+         aria-valuemax="100"
+         aria-label="@($"{Title} progress")">
+        <div class="goal-card__progress-fill" style="width: @($"{Math.Min(Goal.Percentage, 100m):F1}%")"></div>
+    </div>
+
+    <p class="goal-card__percentage">@Goal.Percentage.ToString("F1")%</p>
+</article>
+
+@code {
+    [Parameter, EditorRequired]
+    public GoalDto Goal { get; set; } = new();
+
+    [Parameter]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool UseCurrency { get; set; }
+
+    private string FormatAmount(decimal value) =>
+        UseCurrency ? EuroFormatting.FormatWhole(value) : value.ToString("N0");
+
+    private static string FormatStatus(string status) => status switch
+    {
+        "on-track" => "On track",
+        "at-risk" => "At risk",
+        "off-track" => "Off track",
+        "ahead" => "Ahead",
+        "behind" => "Behind",
+        _ => status
+    };
+}

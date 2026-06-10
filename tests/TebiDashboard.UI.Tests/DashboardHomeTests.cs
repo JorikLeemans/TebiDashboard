@@ -17,6 +17,7 @@ public class DashboardHomeTests
     {
         using var ctx = CreateAuthenticatedContext(out var mockHttp);
         SetupPeriodOverview(mockHttp, CreateSampleOverview());
+        SetupGoals(mockHttp);
 
         var cut = ctx.Render<DashboardHome>();
 
@@ -59,12 +60,14 @@ public class DashboardHomeTests
                 }
             ]
         });
+        SetupGoals(mockHttp);
 
         var cut = ctx.Render<DashboardHome>();
         cut.WaitForElement(".kpi-card", TimeSpan.FromSeconds(5));
 
         Assert.Contains("Revenue", cut.Markup);
         Assert.Contains("Sales volume", cut.Markup);
+        Assert.Contains("Revenue chart", cut.Markup);
         Assert.Contains("Sales in period", cut.Markup);
         Assert.Contains("Transactions in period", cut.Markup);
     }
@@ -86,6 +89,24 @@ public class DashboardHomeTests
     {
         mockHttp.When(HttpMethod.Get, "*/api/dashboard/period-overview*")
             .Respond(HttpStatusCode.OK, _ => JsonContent.Create(overview));
+    }
+
+    private static void SetupGoals(MockHttpMessageHandler mockHttp)
+    {
+        mockHttp.When(HttpMethod.Get, "*/api/goals*")
+            .Respond(HttpStatusCode.OK, _ => JsonContent.Create<IReadOnlyList<GoalDto>>(
+            [
+                new GoalDto
+                {
+                    Id = "g-q2",
+                    Year = 2026,
+                    Period = "Q2",
+                    TargetValue = 500_000m,
+                    ActualValue = 437_500m,
+                    Percentage = 87.5m,
+                    Status = "on-track"
+                }
+            ]));
     }
 
     private static BunitContext CreateAuthenticatedContext(out MockHttpMessageHandler mockHttp)

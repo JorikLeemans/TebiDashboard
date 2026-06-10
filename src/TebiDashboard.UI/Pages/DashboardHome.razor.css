@@ -35,6 +35,10 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
+.kpi-card--link .kpi-card__hint {
+  color: #2a8a4a;
+}
+
 .kpi-card__hint {
   font-size: 0.85rem;
   color: #a32020;
