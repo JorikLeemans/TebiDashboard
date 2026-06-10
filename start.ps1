@@ -12,9 +12,28 @@ $webUrl = "https://localhost:7274"
 Write-Host "TEBI Dashboard - starting..." -ForegroundColor Cyan
 Write-Host "Project root: $root" -ForegroundColor DarkGray
 
-# Ensure the local SQLite folder exists (see appsettings.json connection string).
-$dataDir = Join-Path $root "data"
-New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
+# Local development uses the same PostgreSQL stack as Railway (database in Docker).
+if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
+    Write-Host ""
+    Write-Host "Docker is required for local PostgreSQL." -ForegroundColor Red
+    Write-Host "Install Docker Desktop: https://www.docker.com/products/docker-desktop/" -ForegroundColor Yellow
+    Write-Host "Then run .\start.cmd again." -ForegroundColor Yellow
+    exit 1
+}
+
+Write-Host "Starting PostgreSQL (Docker)..." -ForegroundColor Green
+Push-Location $root
+try {
+    docker compose up postgres -d --wait
+    if ($LASTEXITCODE -ne 0) {
+        throw "docker compose could not start PostgreSQL."
+    }
+}
+finally {
+    Pop-Location
+}
+
+Write-Host "PostgreSQL is ready on localhost:5432 (tebbi / tebbi_dev_password)." -ForegroundColor Green
 
 # Trust HTTPS dev certificate (safe to run multiple times).
 Write-Host "Checking HTTPS dev certificate..." -ForegroundColor DarkGray
@@ -28,9 +47,9 @@ Start-Process powershell -ArgumentList @(
     "Set-Location '$root'; Write-Host '=== TebbiDashboard.Api ===' -ForegroundColor Cyan; dotnet run --project '$apiProject'"
 )
 
-# Wait until the API health endpoint responds.
+# Wait until the API health endpoint responds (migrations may take longer on first run).
 Write-Host "Waiting for API to be ready..." -ForegroundColor DarkGray
-$maxAttempts = 30
+$maxAttempts = 60
 $ready = $false
 
 for ($i = 1; $i -le $maxAttempts; $i++) {
@@ -45,6 +64,7 @@ for ($i = 1; $i -le $maxAttempts; $i++) {
 
 if (-not $ready) {
     Write-Host "API did not respond in time. Check the API window for errors." -ForegroundColor Yellow
+    Write-Host "Tip: ensure PostgreSQL is running with 'docker compose ps'." -ForegroundColor Yellow
 }
 else {
     Write-Host "API is ready." -ForegroundColor Green
@@ -60,7 +80,9 @@ Start-Process powershell -ArgumentList @(
 
 Write-Host ""
 Write-Host "Done. Two terminal windows should be open:" -ForegroundColor Cyan
-Write-Host "  API:  https://localhost:7119" -ForegroundColor White
-Write-Host "  Web:  $webUrl" -ForegroundColor White
+Write-Host "  PostgreSQL: localhost:5432 (Docker volume tebbi_pg_data)" -ForegroundColor White
+Write-Host "  API:        https://localhost:7119" -ForegroundColor White
+Write-Host "  Web:        $webUrl" -ForegroundColor White
 Write-Host ""
-Write-Host "Close those windows to stop the applications." -ForegroundColor DarkGray
+Write-Host "Close the API/Web windows to stop the apps. PostgreSQL keeps running in Docker." -ForegroundColor DarkGray
+Write-Host "Stop PostgreSQL with: docker compose stop postgres" -ForegroundColor DarkGray

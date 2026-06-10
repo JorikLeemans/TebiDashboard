@@ -22,7 +22,7 @@ public static class DependencyInjection
         var databaseOptions = configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>() ?? new DatabaseOptions();
         var provider = ConnectionStringResolver.UsesPostgres(configuration)
             ? "PostgreSql"
-            : databaseOptions.Provider ?? "Sqlite";
+            : databaseOptions.Provider ?? "PostgreSql";
 
         if (string.Equals(provider, "InMemory", StringComparison.OrdinalIgnoreCase))
         {
@@ -37,7 +37,7 @@ public static class DependencyInjection
 
         services.AddDbContext<TebbiDashboardDbContext>(options =>
         {
-            // SQLite (local) and PostgreSQL (hosted) share one migration set; provider-specific column types differ in the snapshot.
+            // PostgreSQL is used locally and on Railway; SQLite remains available for legacy setups.
             options.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
 
             if (string.Equals(provider, "PostgreSql", StringComparison.OrdinalIgnoreCase))

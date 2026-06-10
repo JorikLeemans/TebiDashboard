@@ -17,11 +17,10 @@ public sealed class TebbiDashboardDbContextFactory : IDesignTimeDbContextFactory
             .AddJsonFile("appsettings.Development.json", optional: true)
             .Build();
 
-        var connectionString = configuration.GetConnectionString("DefaultConnection") ?? "Data Source=tebbi.db";
-        // Allow CLI overrides: Database__Provider=PostgreSql dotnet ef migrations add ...
+        var connectionString = ConnectionStringResolver.Resolve(configuration);
         var provider = Environment.GetEnvironmentVariable("Database__Provider")
             ?? configuration.GetSection("Database")["Provider"]
-            ?? "Sqlite";
+            ?? "PostgreSql";
 
         var optionsBuilder = new DbContextOptionsBuilder<TebbiDashboardDbContext>();
 

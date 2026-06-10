@@ -8,9 +8,9 @@ public sealed class DatabaseOptions
     public const string SectionName = "Database";
 
     /// <summary>
-    /// Sqlite (local file), PostgreSql (hosted), or InMemory (tests only).
+    /// Sqlite (legacy), PostgreSql (local + hosted), or InMemory (tests only).
     /// </summary>
-    public string Provider { get; set; } = "Sqlite";
+    public string Provider { get; set; } = "PostgreSql";
 
     /// <summary>
     /// Applies pending EF Core migrations when the API starts.

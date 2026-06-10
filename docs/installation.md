@@ -15,7 +15,10 @@ How to install, configure, and run the TEBI Dashboard application.
 |------|---------|----------|
 | .NET SDK | 10.x | https://dotnet.microsoft.com/download |
 | Git | Latest | https://git-scm.com |
+| Docker Desktop | Latest | https://www.docker.com/products/docker-desktop/ |
 | IDE | VS 2022 17.12+ or VS Code + C# Dev Kit | — |
+
+> Docker runs the local **PostgreSQL** database — the same engine used on Railway.
 
 ### .NET MAUI workload
 
@@ -89,7 +92,7 @@ For Android emulator, use `https://10.0.2.2:7001` to reach host machine localhos
 
 ## Run locally
 
-### Quick start (API + Blazor Web)
+### Quick start (API + Blazor Web + PostgreSQL)
 
 From the repository root:
 
@@ -97,9 +100,11 @@ From the repository root:
 .\start.cmd
 ```
 
+Requirements: **Docker Desktop** must be running.
+
 `start.cmd` runs `start.ps1` with `-ExecutionPolicy Bypass`, so you do not need to change Windows execution policy.
 
-This opens two terminal windows (API on `https://localhost:7119`, Web on `https://localhost:7274`), trusts the HTTPS dev certificate, and waits for the API health check before starting the web app.
+This starts PostgreSQL in Docker, then opens two terminal windows (API on `https://localhost:7119`, Web on `https://localhost:7274`), trusts the HTTPS dev certificate, and waits for the API health check before starting the web app.
 
 ### 1. Start Web API
 
@@ -211,6 +216,8 @@ APK location: `bin/Release/net10.0-android/publish/`
 
 | Problem | Solution |
 |---------|----------|
+| `Docker is required for local PostgreSQL` | Install and start [Docker Desktop](https://www.docker.com/products/docker-desktop/), then run `.\start.cmd` again |
+| API cannot connect to database | Run `docker compose ps` — PostgreSQL should be healthy on port 5432 |
 | MAUI workload missing | `dotnet workload install maui` |
 | Android cannot reach API | Use `10.0.2.2` instead of `localhost` |
 APK location: `bin/Release/net10.0-android/publish/`
@@ -221,6 +228,8 @@ APK location: `bin/Release/net10.0-android/publish/`
 
 | Problem | Solution |
 |---------|----------|
+| `Docker is required for local PostgreSQL` | Install and start [Docker Desktop](https://www.docker.com/products/docker-desktop/), then run `.\start.cmd` again |
+| API cannot connect to database | Run `docker compose ps` — PostgreSQL should be healthy on port 5432 |
 | MAUI workload missing | `dotnet workload install maui` |
 | Android cannot reach API | Use `10.0.2.2` instead of `localhost` |
 | HTTPS certificate error | `dotnet dev-certs https --trust` |

@@ -6,21 +6,54 @@ This guide explains how to run the dashboard with **persistent storage** so user
 
 | Before | After |
 |--------|-------|
-| Users in memory (`InMemoryUserStore`) | Users in SQLite or PostgreSQL |
+| Users in memory (`InMemoryUserStore`) | Users in PostgreSQL (local + hosted) |
 | Hard-coded mock KPI data | Database-backed dashboard data with rich seed datasets |
 | Data lost on API restart | Data persists across restarts and deployments |
 
-## Local development (SQLite — easiest)
+## Local development (PostgreSQL — same as Railway)
 
-1. Start the app as usual:
+Local and hosted environments both use **PostgreSQL** with the same EF Core migrations and seed data.
+
+### Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (runs PostgreSQL locally)
+
+### Quick start
 
 ```powershell
 .\start.cmd
 ```
 
-2. On first run the API creates `data/tebbi-local.db` and seeds demo data automatically.
+This script:
 
-3. Demo accounts (persisted):
+1. Starts PostgreSQL in Docker (`docker compose up postgres`)
+2. Launches the API (`https://localhost:7119`) — applies migrations and seeds demo data
+3. Launches the Web UI (`https://localhost:7274`)
+
+Database credentials (local Docker):
+
+| Setting | Value |
+|---------|-------|
+| Host | `localhost:5432` |
+| Database | `tebbidashboard` |
+| User | `tebbi` |
+| Password | `tebbi_dev_password` |
+
+Data persists in the Docker volume `tebbi_pg_data`.
+
+Stop the apps by closing the API/Web terminal windows. Stop PostgreSQL with:
+
+```powershell
+docker compose stop postgres
+```
+
+Remove all local database data:
+
+```powershell
+docker compose down -v
+```
+
+### Demo accounts (persisted)
 
 | Email | Password | Role |
 |-------|----------|------|
@@ -31,9 +64,9 @@ This guide explains how to run the dashboard with **persistent storage** so user
 
 The built-in `demo` / `demo` login still works for quick demos (not stored in the database).
 
-## Docker Compose (PostgreSQL — closest to production)
+## Docker Compose (full stack in containers)
 
-Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+Run API + Web + PostgreSQL entirely in Docker (closest to production deployment):
 
 ```powershell
 docker compose up --build
@@ -65,16 +98,16 @@ docker compose down -v
 
 ```json
 "ConnectionStrings": {
-  "DefaultConnection": "Data Source=tebbi.db"
+  "DefaultConnection": "Host=localhost;Port=5432;Database=tebbidashboard;Username=tebbi;Password=tebbi_dev_password"
 },
 "Database": {
-  "Provider": "Sqlite",
+  "Provider": "PostgreSql",
   "ApplyMigrationsOnStartup": true,
   "SeedDemoData": true
 }
 ```
 
-For PostgreSQL set `"Provider": "PostgreSql"` and a PostgreSQL connection string.
+On Railway, set `DATABASE_URL` from the PostgreSQL service — the API detects it automatically.
 
 Environment variable examples (Docker / cloud):
 

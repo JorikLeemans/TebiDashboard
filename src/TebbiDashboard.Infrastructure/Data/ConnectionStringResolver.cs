@@ -3,7 +3,7 @@ using Microsoft.Extensions.Configuration;
 namespace TebbiDashboard.Infrastructure.Data;
 
 /// <summary>
-/// Builds Npgsql connection strings from Railway/Heroku-style DATABASE_URL values.
+/// Builds Npgsql connection strings from Railway/Heroku-style DATABASE_URL values and local config.
 /// </summary>
 internal static class ConnectionStringResolver
 {
@@ -21,7 +21,8 @@ internal static class ConnectionStringResolver
             return fromEnv;
         }
 
-        return configuration.GetConnectionString("DefaultConnection") ?? "Data Source=tebbi.db";
+        return configuration.GetConnectionString("DefaultConnection")
+            ?? "Host=localhost;Port=5432;Database=tebbidashboard;Username=tebbi;Password=tebbi_dev_password";
     }
 
     public static bool UsesPostgres(IConfiguration configuration) =>
@@ -51,7 +52,10 @@ internal static class ConnectionStringResolver
         var username = Environment.GetEnvironmentVariable("PGUSER") ?? "postgres";
         var password = Environment.GetEnvironmentVariable("PGPASSWORD") ?? string.Empty;
 
-        return $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+        var connectionString =
+            $"Host={host};Port={port};Database={database};Username={username};Password={password}";
+
+        return AppendSslIfRemote(connectionString, host);
     }
 
     private static string ToNpgsqlConnectionString(string databaseUrl)
@@ -68,6 +72,27 @@ internal static class ConnectionStringResolver
         var database = uri.AbsolutePath.TrimStart('/');
         var port = uri.Port > 0 ? uri.Port : 5432;
 
-        return $"Host={uri.Host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+        var connectionString =
+            $"Host={uri.Host};Port={port};Database={database};Username={username};Password={password}";
+
+        return AppendSslIfRemote(connectionString, uri.Host);
     }
+
+    /// <summary>
+    /// Railway requires TLS; local Docker PostgreSQL does not.
+    /// </summary>
+    private static string AppendSslIfRemote(string connectionString, string host)
+    {
+        if (IsLocalHost(host))
+        {
+            return connectionString;
+        }
+
+        return $"{connectionString};SSL Mode=Require;Trust Server Certificate=true";
+    }
+
+    private static bool IsLocalHost(string host) =>
+        host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+        || host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)
+        || host.Equals("postgres", StringComparison.OrdinalIgnoreCase);
 }
