@@ -12,6 +12,10 @@ $webUrl = "https://localhost:7274"
 Write-Host "TEBI Dashboard - starting..." -ForegroundColor Cyan
 Write-Host "Project root: $root" -ForegroundColor DarkGray
 
+# Ensure the local SQLite folder exists (see appsettings.json connection string).
+$dataDir = Join-Path $root "data"
+New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
+
 # Trust HTTPS dev certificate (safe to run multiple times).
 Write-Host "Checking HTTPS dev certificate..." -ForegroundColor DarkGray
 dotnet dev-certs https --trust 2>$null | Out-Null

@@ -44,7 +44,8 @@ public sealed class DatabaseMigrationHostedService(
             {
                 if (IsSqlite(dbContext))
                 {
-                    await ClearStaleSqliteMigrationLockAsync(dbContext, dbLogger, cancellationToken);
+                    await SqliteMigrationHelper.ClearStaleMigrationLockAsync(dbContext, dbLogger, cancellationToken);
+                    await SqliteMigrationHelper.BaselineExistingSchemaIfNeededAsync(dbContext, dbLogger, cancellationToken);
                 }
 
                 await dbContext.Database.MigrateAsync(cancellationToken);
@@ -61,28 +62,6 @@ public sealed class DatabaseMigrationHostedService(
         {
             logger.LogCritical(ex, "Database initialization failed during startup.");
             lifetime.StopApplication();
-        }
-    }
-
-    private static async Task ClearStaleSqliteMigrationLockAsync(
-        TebbiDashboardDbContext dbContext,
-        ILogger logger,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var deleted = await dbContext.Database.ExecuteSqlRawAsync(
-                "DELETE FROM \"__EFMigrationsLock\" WHERE \"Id\" = 1;",
-                cancellationToken);
-
-            if (deleted > 0)
-            {
-                logger.LogWarning("Removed stale EF Core migration lock from SQLite.");
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogDebug(ex, "SQLite migration lock table not present yet.");
         }
     }
 
