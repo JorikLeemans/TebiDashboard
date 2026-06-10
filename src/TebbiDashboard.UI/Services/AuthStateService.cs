@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.JSInterop;
+using TebbiDashboard.Shared.Constants;
 using TebbiDashboard.Shared.Dtos;
 
 namespace TebbiDashboard.UI.Services;
@@ -20,6 +21,8 @@ public sealed class AuthStateService(IJSRuntime jsRuntime) : IAuthStateService
     public string? Role { get; private set; }
 
     public event Action? OnChange;
+
+    public bool CanAccessAdminDashboard() => RoleAuthorization.CanAccessAdminDashboard(Role);
 
     public async Task InitializeAsync()
     {
