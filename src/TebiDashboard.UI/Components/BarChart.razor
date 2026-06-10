@@ -1,0 +1,52 @@
+@using TebiDashboard.Shared.Formatting
+
+<div class="bar-chart" role="img" aria-label="@AriaLabel">
+    @if (Items.Count == 0)
+    {
+        <p class="bar-chart__empty">@EmptyMessage</p>
+    }
+    else
+    {
+        <div class="bar-chart__plot" style="height: @($"{HeightPx}px")">
+            @foreach (var item in Items)
+            {
+                var heightPercent = _maxValue > 0 ? item.Value / _maxValue * 100m : 0m;
+
+                <div class="bar-chart__column" title="@($"{item.Label}: {FormatValue(item.Value)}")">
+                    <span class="bar-chart__value">@FormatValue(item.Value)</span>
+                    <div class="bar-chart__bar-wrap">
+                        <div class="bar-chart__bar" style="height: @($"{heightPercent:F1}%")"></div>
+                    </div>
+                    <span class="bar-chart__label">@item.Label</span>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<ChartBarItem> Items { get; set; } = [];
+
+    [Parameter]
+    public string AriaLabel { get; set; } = "Bar chart";
+
+    [Parameter]
+    public string EmptyMessage { get; set; } = "No data to display.";
+
+    [Parameter]
+    public int HeightPx { get; set; } = 220;
+
+    [Parameter]
+    public bool UseCompactCurrency { get; set; } = true;
+
+    private decimal _maxValue;
+
+    protected override void OnParametersSet()
+    {
+        _maxValue = Items.Count == 0 ? 0m : Items.Max(item => item.Value);
+    }
+
+    private string FormatValue(decimal value) =>
+        UseCompactCurrency ? EuroFormatting.FormatWhole(value) : value.ToString("N0");
+}

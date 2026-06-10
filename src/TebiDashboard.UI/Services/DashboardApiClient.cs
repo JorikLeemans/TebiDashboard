@@ -60,8 +60,17 @@ public sealed class DashboardApiClient(HttpClient httpClient)
             $"api/revenue?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
             cancellationToken) ?? [];
 
-    public async Task<IReadOnlyList<GoalDto>> GetGoalsAsync(int year, CancellationToken cancellationToken = default)
-        => await httpClient.GetFromJsonAsync<IReadOnlyList<GoalDto>>($"api/goals?year={year}", cancellationToken) ?? [];
+    public async Task<IReadOnlyList<GoalDto>> GetGoalsAsync(
+        int year,
+        string? period = null,
+        CancellationToken cancellationToken = default)
+    {
+        var url = string.IsNullOrWhiteSpace(period)
+            ? $"api/goals?year={year}"
+            : $"api/goals?year={year}&period={Uri.EscapeDataString(period)}";
+
+        return await httpClient.GetFromJsonAsync<IReadOnlyList<GoalDto>>(url, cancellationToken) ?? [];
+    }
 
     public async Task<IReadOnlyList<InventoryItemDto>> GetLowStockAsync(CancellationToken cancellationToken = default)
         => await httpClient.GetFromJsonAsync<IReadOnlyList<InventoryItemDto>>("api/inventory/low-stock", cancellationToken) ?? [];

@@ -1,0 +1,73 @@
+.goals-page {
+  padding: 1rem;
+  font-family: Segoe UI, sans-serif;
+}
+
+.goals-page__header h1 {
+  margin: 0 0 0.25rem;
+}
+
+.goals-page__subtitle {
+  margin: 0 0 1rem;
+  color: #555;
+}
+
+.goals-page__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  background: #fff;
+  border: 1px solid #dde3ea;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.goals-page__filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: #445;
+}
+
+.goals-page__filter select {
+  min-width: 8rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #ccd5df;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.goals-page__status,
+.goals-page__empty {
+  color: #555;
+}
+
+.goals-page__section {
+  background: #fff;
+  border: 1px solid #dde3ea;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.goals-page__section h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+.goals-page__chart-wrap {
+  margin-bottom: 1rem;
+  padding: 0.5rem 0;
+}
+
+.goals-page__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.error {
+  color: #b00020;
+}
