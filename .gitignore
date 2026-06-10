@@ -1,0 +1,75 @@
+# .NET build output
+bin/
+obj/
+out/
+publish/
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+*.DotSettings.user
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Ll]og/
+[Ll]ogs/
+
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# MAUI / Xamarin
+*.apk
+*.aab
+*.ipa
+*.app
+*.dSYM.zip
+*.dSYM
+
+# Test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.trx
+*.coverage
+*.coveragexml
+coverage*.json
+coverage*.xml
+
+# User secrets (never commit credentials)
+**/secrets.json
+appsettings.Development.json
+appsettings.Local.json
+
+# NetSuite / API credentials
+*.pfx
+*.pem
+.env
+.env.*
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Cursor / VS Code (keep shared settings optional)
+.cursor/
+
+# Temporary files
+*.tmp
+*.temp
+~$*
