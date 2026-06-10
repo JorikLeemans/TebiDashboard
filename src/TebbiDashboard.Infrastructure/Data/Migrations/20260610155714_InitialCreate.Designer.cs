@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TebbiDashboard.Infrastructure.Data;
 
 #nullable disable
@@ -11,36 +12,40 @@ using TebbiDashboard.Infrastructure.Data;
 namespace TebbiDashboard.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(TebbiDashboardDbContext))]
-    [Migration("20260610145958_InitialCreate")]
+    [Migration("20260610155714_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.9");
+            modelBuilder
+                .HasAnnotation("ProductVersion", "10.0.9")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
+
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("TebbiDashboard.Infrastructure.Data.Entities.ExpenseRecord", b =>
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(64)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(64)");
 
                     b.Property<decimal>("Amount")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("numeric");
 
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(128)");
 
                     b.Property<DateOnly>("Date")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("date");
 
                     b.Property<string>("VendorName")
                         .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(256)");
 
                     b.HasKey("Id");
 
@@ -51,39 +56,39 @@ namespace TebbiDashboard.Infrastructure.Data.Migrations
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(64)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(64)");
 
                     b.Property<decimal>("ActualValue")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("numeric");
 
                     b.Property<string>("ItemId")
                         .HasMaxLength(64)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("ItemName")
                         .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("Period")
                         .IsRequired()
                         .HasMaxLength(16)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(16)");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(32)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(32)");
 
                     b.Property<decimal>("TargetValue")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("numeric");
 
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(64)");
 
                     b.Property<int>("Year")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -94,29 +99,29 @@ namespace TebbiDashboard.Infrastructure.Data.Migrations
                 {
                     b.Property<string>("ItemId")
                         .HasMaxLength(64)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("Barcode")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(64)");
 
                     b.Property<bool>("IsLowStock")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("ItemName")
                         .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(256)");
 
                     b.Property<decimal>("QuantityOnHand")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("numeric");
 
                     b.Property<decimal>("RecentSalesVolume")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("numeric");
 
                     b.Property<decimal>("ReorderPoint")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("numeric");
 
                     b.HasKey("ItemId");
 
@@ -127,25 +132,25 @@ namespace TebbiDashboard.Infrastructure.Data.Migrations
                 {
                     b.Property<string>("TransactionId")
                         .HasMaxLength(64)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("ItemId")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(64)");
 
                     b.Property<decimal>("QuantityOpen")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("numeric");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(64)");
 
                     b.HasKey("TransactionId");
 
@@ -158,28 +163,28 @@ namespace TebbiDashboard.Infrastructure.Data.Migrations
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(64)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(64)");
 
                     b.Property<decimal>("Amount")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("numeric");
 
                     b.Property<string>("CustomerId")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("CustomerName")
                         .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(256)");
 
                     b.Property<DateOnly>("Date")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("date");
 
                     b.Property<string>("ProductGroupId")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(64)");
 
                     b.HasKey("Id");
 
@@ -190,25 +195,27 @@ namespace TebbiDashboard.Infrastructure.Data.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ItemId")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("LocationId")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("LocationName")
                         .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(256)");
 
                     b.Property<decimal>("QuantityOnHand")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("numeric");
 
                     b.HasKey("Id");
 
@@ -221,17 +228,17 @@ namespace TebbiDashboard.Infrastructure.Data.Migrations
                 {
                     b.Property<string>("Email")
                         .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("Password")
                         .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(64)");
 
                     b.HasKey("Email");
 

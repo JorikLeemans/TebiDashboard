@@ -8,19 +8,9 @@ $apiProject = Join-Path $root "src\TebbiDashboard.Api"
 $webProject = Join-Path $root "src\TebbiDashboard.Web"
 $apiHealthUrl = "https://localhost:7119/health"
 $webUrl = "https://localhost:7274"
-$dbDir = Join-Path $root "data"
-$dbFile = Join-Path $dbDir "tebbi-local.db"
-$dbConnection = "Data Source=$dbFile"
 
 Write-Host "TEBI Dashboard - starting..." -ForegroundColor Cyan
 Write-Host "Project root: $root" -ForegroundColor DarkGray
-
-# Stop orphaned API/Web processes so SQLite migration locks are not held.
-& (Join-Path $root "stop.ps1")
-
-# Ensure the SQLite data folder exists before the API starts.
-New-Item -ItemType Directory -Force -Path $dbDir | Out-Null
-Write-Host "Database file: $dbFile" -ForegroundColor DarkGray
 
 # Trust HTTPS dev certificate (safe to run multiple times).
 Write-Host "Checking HTTPS dev certificate..." -ForegroundColor DarkGray
@@ -31,7 +21,7 @@ Write-Host "Starting Web API (https://localhost:7119)..." -ForegroundColor Green
 Start-Process powershell -ArgumentList @(
     "-NoExit",
     "-Command",
-    "Set-Location '$root'; `$env:ConnectionStrings__DefaultConnection='$dbConnection'; Write-Host '=== TebbiDashboard.Api ===' -ForegroundColor Cyan; dotnet run --project '$apiProject'"
+    "Set-Location '$root'; Write-Host '=== TebbiDashboard.Api ===' -ForegroundColor Cyan; dotnet run --project '$apiProject'"
 )
 
 # Wait until the API health endpoint responds.

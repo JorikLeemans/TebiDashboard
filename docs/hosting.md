@@ -155,8 +155,6 @@ Deploy **3 onderdelen** op Railway: PostgreSQL, API en Web UI. De MAUI-app blijf
 | `Database__ApplyMigrationsOnStartup` | `true` |
 | `Database__SeedDemoData` | `true` |
 
-> **Belangrijk:** Zet **geen** `ConnectionStrings__DefaultConnection` handmatig op Railway. Dat overschrijft PostgreSQL en veroorzaakt SQLite-fouten. Alleen `DATABASE_URL` via Reference gebruiken.
-
 6. **Settings** → **Networking** → **Generate Domain**
    - Noteer de URL, bijv. `https://tebbi-api-production.up.railway.app`
 
@@ -204,7 +202,7 @@ Deploy **3 onderdelen** op Railway: PostgreSQL, API en Web UI. De MAUI-app blijf
 | Probleem | Oplossing |
 |----------|-----------|
 | **Railpack could not determine how to build** | Zet **Builder** op `Dockerfile` (Settings → Build). Railpack herkent onze monorepo niet; gebruik `Dockerfile.api` of `Dockerfile.web`. |
-| **SQLite / tebbi-local.db error** | Verwijder `ConnectionStrings__DefaultConnection` uit Railway Variables. Koppel `DATABASE_URL` via Reference naar PostgreSQL. Zet `ASPNETCORE_ENVIRONMENT=Production`. Redeploy na push naar `main`. |
+| **Healthcheck blijft falen** | Controleer deploy **runtime logs** (niet alleen build). Zorg dat `DATABASE_URL` gekoppeld is. HTTPS-redirect is uitgeschakeld in Production. |
 | API start niet | Check deploy logs; controleer of `DATABASE_URL` gekoppeld is |
 | Web toont login maar data laadt niet | `ApiBaseUrl` moet exact de **publieke HTTPS API-URL** zijn met `/` aan het eind |
 | Database leeg na deploy | Zet `Database__SeedDemoData=true`; herstart API |

@@ -14,6 +14,12 @@ RUN dotnet publish src/TebbiDashboard.Api/TebbiDashboard.Api.csproj -c Release -
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
+
+# Npgsql may load Kerberos/GSSAPI on Linux; install the library to avoid connection warnings.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgssapi-krb5-2 \
+    && rm -rf /var/lib/apt/lists/*
+
 EXPOSE 8080
 
 COPY --from=build /app/publish .

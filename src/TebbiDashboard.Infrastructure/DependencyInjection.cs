@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using TebbiDashboard.Application.Interfaces;
@@ -36,6 +37,9 @@ public static class DependencyInjection
 
         services.AddDbContext<TebbiDashboardDbContext>(options =>
         {
+            // SQLite (local) and PostgreSQL (hosted) share one migration set; provider-specific column types differ in the snapshot.
+            options.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
+
             if (string.Equals(provider, "PostgreSql", StringComparison.OrdinalIgnoreCase))
             {
                 options.UseNpgsql(connectionString);

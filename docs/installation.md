@@ -213,6 +213,16 @@ APK location: `bin/Release/net10.0-android/publish/`
 |---------|----------|
 | MAUI workload missing | `dotnet workload install maui` |
 | Android cannot reach API | Use `10.0.2.2` instead of `localhost` |
+APK location: `bin/Release/net10.0-android/publish/`
+
+---
+
+## Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| MAUI workload missing | `dotnet workload install maui` |
+| Android cannot reach API | Use `10.0.2.2` instead of `localhost` |
 | HTTPS certificate error | `dotnet dev-certs https --trust` |
 | Empty dashboard | Ensure API running; check `NetSuite:UseMock` = true for demo data |
 

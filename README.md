@@ -72,6 +72,18 @@ dotnet run --project src/TebbiDashboard.Web
 ```
 
 ```bash
+```bash
+dotnet run --project src/TebbiDashboard.Api
+dotnet run --project src/TebbiDashboard.Web
+```
+
+```bash
+```bash
+dotnet run --project src/TebbiDashboard.Api
+dotnet run --project src/TebbiDashboard.Web
+```
+
+```bash
 # Tests (zonder MAUI)
 dotnet test src/TebbiDashboard.slnf
 ```

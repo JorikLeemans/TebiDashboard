@@ -7,38 +7,7 @@ namespace TebbiDashboard.Infrastructure.Data;
 /// </summary>
 internal static class ConnectionStringResolver
 {
-    /// <summary>
-    /// True when running on Railway, Render, etc. (they set PORT).
-    /// </summary>
-    public static bool IsCloudHost() =>
-        !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("PORT"));
-
     public static string Resolve(IConfiguration configuration)
-    {
-        var postgresConnection = TryGetPostgresConnectionString(configuration);
-        if (!string.IsNullOrWhiteSpace(postgresConnection))
-        {
-            return postgresConnection;
-        }
-
-        if (UsesPostgres(configuration) || IsCloudHost())
-        {
-            throw new InvalidOperationException(
-                "PostgreSQL is required but DATABASE_URL (or PGHOST) is not configured. " +
-                "In Railway: open tebbi-api → Variables → Add Reference → select PostgreSQL → DATABASE_URL.");
-        }
-
-        return configuration.GetConnectionString("DefaultConnection") ?? "Data Source=tebbi.db";
-    }
-
-    public static bool UsesPostgres(IConfiguration configuration) =>
-        !string.IsNullOrWhiteSpace(TryGetPostgresConnectionString(configuration))
-        || string.Equals(
-            configuration.GetSection("Database")["Provider"],
-            "PostgreSql",
-            StringComparison.OrdinalIgnoreCase);
-
-    private static string? TryGetPostgresConnectionString(IConfiguration configuration)
     {
         var postgresUrl = GetDatabaseUrl(configuration);
         if (!string.IsNullOrWhiteSpace(postgresUrl))
@@ -46,17 +15,28 @@ internal static class ConnectionStringResolver
             return ToNpgsqlConnectionString(postgresUrl);
         }
 
-        return BuildFromPostgresEnvironmentVariables();
+        var fromEnv = BuildFromPostgresEnvironmentVariables();
+        if (!string.IsNullOrWhiteSpace(fromEnv))
+        {
+            return fromEnv;
+        }
+
+        return configuration.GetConnectionString("DefaultConnection") ?? "Data Source=tebbi.db";
     }
+
+    public static bool UsesPostgres(IConfiguration configuration) =>
+        !string.IsNullOrWhiteSpace(GetDatabaseUrl(configuration))
+        || HasPostgresEnvironmentVariables()
+        || string.Equals(
+            configuration.GetSection("Database")["Provider"],
+            "PostgreSql",
+            StringComparison.OrdinalIgnoreCase);
 
     private static bool HasPostgresEnvironmentVariables() =>
         !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("PGHOST"));
 
     private static string? GetDatabaseUrl(IConfiguration configuration) =>
-        configuration["DATABASE_PRIVATE_URL"]
-        ?? configuration["DATABASE_URL"]
-        ?? Environment.GetEnvironmentVariable("DATABASE_PRIVATE_URL")
-        ?? Environment.GetEnvironmentVariable("DATABASE_URL");
+        configuration["DATABASE_URL"] ?? Environment.GetEnvironmentVariable("DATABASE_URL");
 
     private static string? BuildFromPostgresEnvironmentVariables()
     {
