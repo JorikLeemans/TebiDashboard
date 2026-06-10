@@ -1,0 +1,272 @@
+@page "/admin"
+@layout DashboardLayout
+@using TebiDashboard.Shared.Constants
+@using TebiDashboard.Shared.Dtos
+@inject AdminApiClient AdminApi
+@inject IAuthStateService AuthState
+@inject NavigationManager Navigation
+
+<PageTitle>Administration — TEBI Dashboard</PageTitle>
+
+<div class="admin-dashboard">
+    <header class="admin-dashboard__header">
+        <div>
+            <h1>Administrator dashboard</h1>
+            <p class="admin-dashboard__subtitle">Manage registered accounts, roles and passwords.</p>
+        </div>
+        <a href="/dashboard" class="admin-dashboard__back">← Back to dashboard</a>
+    </header>
+
+    @if (_accessDenied)
+    {
+        <div class="admin-dashboard__alert admin-dashboard__alert--error" role="alert">
+            You do not have permission to view this page. Administrator access is required.
+        </div>
+    }
+    else if (_isLoading)
+    {
+        <p>Loading accounts...</p>
+    }
+    else if (!string.IsNullOrWhiteSpace(_pageError))
+    {
+        <div class="admin-dashboard__alert admin-dashboard__alert--error" role="alert">@_pageError</div>
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(_statusMessage))
+        {
+            <div class="admin-dashboard__alert admin-dashboard__alert--success" role="status">@_statusMessage</div>
+        }
+
+        @if (_users.Count == 0)
+        {
+            <p class="admin-dashboard__empty">No registered accounts yet.</p>
+        }
+        else
+        {
+            <div class="admin-table-wrapper">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>New password</th>
+                            <th>Confirm password</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in _users)
+                        {
+                            var edit = GetEditState(user.Email);
+                            <tr>
+                                <td class="admin-table__email">@user.Email</td>
+                                <td>
+                                    <select class="admin-table__input"
+                                            @bind="edit.Role"
+                                            disabled="@edit.IsBusy">
+                                        @foreach (var role in RoleAuthorization.AssignableRoles)
+                                        {
+                                            <option value="@role">@role</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="password"
+                                           class="admin-table__input"
+                                           placeholder="Leave blank to keep"
+                                           @bind="edit.Password"
+                                           disabled="@edit.IsBusy" />
+                                </td>
+                                <td>
+                                    <input type="password"
+                                           class="admin-table__input"
+                                           placeholder="Repeat new password"
+                                           @bind="edit.ConfirmPassword"
+                                           disabled="@edit.IsBusy" />
+                                </td>
+                                <td class="admin-table__actions">
+                                    <button type="button"
+                                            class="btn-admin btn-admin--primary"
+                                            disabled="@edit.IsBusy"
+                                            @onclick="() => SaveUserAsync(user.Email)">
+                                        Save
+                                    </button>
+                                    <button type="button"
+                                            class="btn-admin btn-admin--danger"
+                                            disabled="@edit.IsBusy"
+                                            @onclick="() => DeleteUserAsync(user.Email)">
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                            @if (!string.IsNullOrWhiteSpace(edit.Error))
+                            {
+                                <tr class="admin-table__error-row">
+                                    <td colspan="5">@edit.Error</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <p class="admin-dashboard__hint">
+            Demo admin: <strong>admin@tebi.nl</strong> / <strong>admin1234</strong>
+        </p>
+    }
+</div>
+
+@code {
+  private readonly List<UserAccountDto> _users = [];
+  private readonly Dictionary<string, UserEditState> _editStates = new(StringComparer.OrdinalIgnoreCase);
+  private bool _isLoading = true;
+  private bool _accessDenied;
+  private string? _pageError;
+  private string? _statusMessage;
+
+  protected override async Task OnInitializedAsync()
+  {
+    await AuthState.InitializeAsync();
+
+    if (!AuthState.IsAuthenticated)
+    {
+      Navigation.NavigateTo("/login");
+      return;
+    }
+
+    if (!AuthState.CanAccessAdminDashboard())
+    {
+      _accessDenied = true;
+      _isLoading = false;
+      return;
+    }
+
+    await LoadUsersAsync();
+  }
+
+  private UserEditState GetEditState(string email)
+  {
+    if (!_editStates.TryGetValue(email, out var state))
+    {
+      var user = _users.FirstOrDefault(u => string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase));
+      state = new UserEditState { Role = user?.Role ?? Roles.Sales };
+      _editStates[email] = state;
+    }
+
+    return state;
+  }
+
+  private async Task LoadUsersAsync()
+  {
+    _isLoading = true;
+    _pageError = null;
+
+    try
+    {
+      var users = await AdminApi.GetUsersAsync();
+      _users.Clear();
+      _users.AddRange(users);
+      _editStates.Clear();
+
+      foreach (var user in _users)
+      {
+        _editStates[user.Email] = new UserEditState { Role = user.Role };
+      }
+    }
+    catch (Exception ex)
+    {
+      _pageError = ex.Message;
+    }
+    finally
+    {
+      _isLoading = false;
+    }
+  }
+
+  private async Task SaveUserAsync(string email)
+  {
+    var edit = GetEditState(email);
+    edit.Error = null;
+    edit.IsBusy = true;
+    _statusMessage = null;
+
+    try
+    {
+      var user = _users.First(u => string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase));
+
+      if (!string.Equals(user.Role, edit.Role, StringComparison.OrdinalIgnoreCase))
+      {
+        var (roleOk, roleError) = await AdminApi.UpdateRoleAsync(email, edit.Role);
+        if (!roleOk)
+        {
+          edit.Error = roleError;
+          return;
+        }
+      }
+
+      if (!string.IsNullOrWhiteSpace(edit.Password) || !string.IsNullOrWhiteSpace(edit.ConfirmPassword))
+      {
+        var (passwordOk, passwordError) = await AdminApi.UpdatePasswordAsync(
+          email,
+          edit.Password,
+          edit.ConfirmPassword);
+
+        if (!passwordOk)
+        {
+          edit.Error = passwordError;
+          return;
+        }
+
+        edit.Password = string.Empty;
+        edit.ConfirmPassword = string.Empty;
+      }
+
+      _statusMessage = $"Saved changes for {email}.";
+      await LoadUsersAsync();
+    }
+    finally
+    {
+      edit.IsBusy = false;
+    }
+  }
+
+  private async Task DeleteUserAsync(string email)
+  {
+    var edit = GetEditState(email);
+    edit.Error = null;
+    edit.IsBusy = true;
+    _statusMessage = null;
+
+    try
+    {
+      var (success, error) = await AdminApi.DeleteUserAsync(email);
+      if (!success)
+      {
+        edit.Error = error;
+        return;
+      }
+
+      _statusMessage = $"Deleted account {email}.";
+      await LoadUsersAsync();
+    }
+    finally
+    {
+      edit.IsBusy = false;
+    }
+  }
+
+  private sealed class UserEditState
+  {
+    public string Role { get; set; } = Roles.Sales;
+
+    public string Password { get; set; } = string.Empty;
+
+    public string ConfirmPassword { get; set; } = string.Empty;
+
+    public string? Error { get; set; }
+
+    public bool IsBusy { get; set; }
+  }
+}

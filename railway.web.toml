@@ -1,4 +1,4 @@
-# Railway config for the Blazor Web service (tebbi-web).
+# Railway config for the Blazor Web service (Tebi-web).
 # In Railway service settings, set "Config file path" to: /railway.web.toml
 
 [build]

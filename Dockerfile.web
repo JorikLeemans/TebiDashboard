@@ -2,18 +2,18 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-COPY src/TebbiDashboard.Shared/TebbiDashboard.Shared.csproj src/TebbiDashboard.Shared/
-COPY src/TebbiDashboard.UI/TebbiDashboard.UI.csproj src/TebbiDashboard.UI/
-COPY src/TebbiDashboard.Web/TebbiDashboard.Web.csproj src/TebbiDashboard.Web/
+COPY src/TebiDashboard.Shared/TebiDashboard.Shared.csproj src/TebiDashboard.Shared/
+COPY src/TebiDashboard.UI/TebiDashboard.UI.csproj src/TebiDashboard.UI/
+COPY src/TebiDashboard.Web/TebiDashboard.Web.csproj src/TebiDashboard.Web/
 
-RUN dotnet restore src/TebbiDashboard.Web/TebbiDashboard.Web.csproj
+RUN dotnet restore src/TebiDashboard.Web/TebiDashboard.Web.csproj
 
 COPY src/ src/
-RUN dotnet publish src/TebbiDashboard.Web/TebbiDashboard.Web.csproj -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish src/TebiDashboard.Web/TebiDashboard.Web.csproj -c Release -o /app/publish /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 EXPOSE 8080
 
 COPY --from=build /app/publish .
-ENTRYPOINT ["dotnet", "TebbiDashboard.Web.dll"]
+ENTRYPOINT ["dotnet", "TebiDashboard.Web.dll"]

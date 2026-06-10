@@ -36,15 +36,15 @@ Dashboard-applicatie voor **TE-BI Bestratingsmaterialen (TEBI)** — een aanvull
 ```
 F:\School\Full-Stack .NET MAUI\
 ├── src/
-│   ├── TebbiDashboard.slnx          ← solution (incl. MAUI)
-│   ├── TebbiDashboard.slnf          ← build zonder MAUI (CI/lokaal)
-│   ├── TebbiDashboard.Api/          ← Web API
-│   ├── TebbiDashboard.Application/
-│   ├── TebbiDashboard.Infrastructure/
-│   ├── TebbiDashboard.Shared/
-│   ├── TebbiDashboard.UI/           ← gedeelde Blazor components
-│   ├── TebbiDashboard.Web/          ← Blazor Web App
-│   └── TebbiDashboard.Maui/         ← MAUI Blazor Hybrid (workload vereist)
+│   ├── TebiDashboard.slnx          ← solution (incl. MAUI)
+│   ├── TebiDashboard.slnf          ← build zonder MAUI (CI/lokaal)
+│   ├── TebiDashboard.Api/          ← Web API
+│   ├── TebiDashboard.Application/
+│   ├── TebiDashboard.Infrastructure/
+│   ├── TebiDashboard.Shared/
+│   ├── TebiDashboard.UI/           ← gedeelde Blazor components
+│   ├── TebiDashboard.Web/          ← Blazor Web App
+│   └── TebiDashboard.Maui/         ← MAUI Blazor Hybrid (workload vereist)
 └── tests/
 ```
 
@@ -61,31 +61,31 @@ F:\School\Full-Stack .NET MAUI\
 Handmatig (twee terminals):
 
 ```bash
-dotnet run --project src/TebbiDashboard.Api
-dotnet run --project src/TebbiDashboard.Web
+dotnet run --project src/TebiDashboard.Api
+dotnet run --project src/TebiDashboard.Web
 ```
 
 ```bash
 ```bash
-dotnet run --project src/TebbiDashboard.Api
-dotnet run --project src/TebbiDashboard.Web
+dotnet run --project src/TebiDashboard.Api
+dotnet run --project src/TebiDashboard.Web
 ```
 
 ```bash
 ```bash
-dotnet run --project src/TebbiDashboard.Api
-dotnet run --project src/TebbiDashboard.Web
+dotnet run --project src/TebiDashboard.Api
+dotnet run --project src/TebiDashboard.Web
 ```
 
 ```bash
 ```bash
-dotnet run --project src/TebbiDashboard.Api
-dotnet run --project src/TebbiDashboard.Web
+dotnet run --project src/TebiDashboard.Api
+dotnet run --project src/TebiDashboard.Web
 ```
 
 ```bash
 # Tests (zonder MAUI)
-dotnet test src/TebbiDashboard.slnf
+dotnet test src/TebiDashboard.slnf
 ```
 
 Demo login API: `demo` / `demo`

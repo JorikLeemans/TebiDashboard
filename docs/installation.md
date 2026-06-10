@@ -49,12 +49,12 @@ cd TebiDashboard
 
 ## Configuration
 
-### Web API (`src/TebbiDashboard.Api`)
+### Web API (`src/TebiDashboard.Api`)
 
 1. Copy User Secrets template (development):
 
 ```bash
-cd src/TebbiDashboard.Api
+cd src/TebiDashboard.Api
 dotnet user-secrets init
 dotnet user-secrets set "NetSuite:UseMock" "true"
 ```
@@ -76,7 +76,7 @@ dotnet user-secrets set "NetSuite:UseMock" "true"
 
 > Never commit secrets. Use User Secrets locally or environment variables in production.
 
-### MAUI app (`src/TebbiDashboard.Maui`)
+### MAUI app (`src/TebiDashboard.Maui`)
 
 Set API base URL in `appsettings.json` or `MauiProgram.cs`:
 
@@ -109,7 +109,7 @@ This starts PostgreSQL in Docker, then opens two terminal windows (API on `https
 ### 1. Start Web API
 
 ```bash
-cd src/TebbiDashboard.Api
+cd src/TebiDashboard.Api
 dotnet run
 ```
 
@@ -118,12 +118,12 @@ Swagger UI: `https://localhost:7119/swagger`
 ### 2. Start MAUI app — Windows
 
 ```bash
-cd src/TebbiDashboard.Maui
+cd src/TebiDashboard.Maui
 dotnet build -f net10.0-windows10.0.19041.0
 dotnet run -f net10.0-windows10.0.19041.0
 ```
 
-Or: Visual Studio → set `TebbiDashboard.Maui` as startup → target **Windows Machine**.
+Or: Visual Studio → set `TebiDashboard.Maui` as startup → target **Windows Machine**.
 
 ### 3. Start MAUI app — Android
 
@@ -140,7 +140,7 @@ Or: Visual Studio → target **Android Emulators**.
 ### 4. Blazor Web (optional)
 
 ```bash
-cd src/TebbiDashboard.Web
+cd src/TebiDashboard.Web
 dotnet run
 ```
 
@@ -150,7 +150,7 @@ Or: Visual Studio → target **Android Emulators**.
 ### 4. Blazor Web (optional)
 
 ```bash
-cd src/TebbiDashboard.Web
+cd src/TebiDashboard.Web
 dotnet run
 ```
 
@@ -174,11 +174,11 @@ Browser: URL shown in console (e.g. `https://localhost:5001`).
 
 ```bash
 # All unit tests
-dotnet test tests/TebbiDashboard.Application.Tests
-dotnet test tests/TebbiDashboard.Api.Tests
+dotnet test tests/TebiDashboard.Application.Tests
+dotnet test tests/TebiDashboard.Api.Tests
 
 # UI / device tests (when configured)
-dotnet test tests/TebbiDashboard.Maui.Tests
+dotnet test tests/TebiDashboard.Maui.Tests
 ```
 
 ---
@@ -203,7 +203,7 @@ Visual Studio → Publish → Windows → Create package.
 ### Android (APK)
 
 ```bash
-cd src/TebbiDashboard.Maui
+cd src/TebiDashboard.Maui
 dotnet publish -f net10.0-android -c Release
 ```
 

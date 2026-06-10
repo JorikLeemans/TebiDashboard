@@ -19,7 +19,7 @@ Uitwerking van de 6 fases uit [LU2 AdviesRapportage.docx](../LU2%20AdviesRapport
 | Checklist | `CHECKLIST.md` | ✅ |
 | Data-inventarisatie TEBI | Workshop met opdrachtgever | ⬜ |
 | Rollen/rechtenmatrix | Toevoegen aan `ONTWERP.md` sectie 4 | ⬜ |
-| Solution-structuur | `src/TebbiDashboard.sln` | ⬜ |
+| Solution-structuur | `src/TebiDashboard.sln` | ⬜ |
 
 ### Exit-criteria
 
@@ -58,7 +58,7 @@ Uitwerking van de 6 fases uit [LU2 AdviesRapportage.docx](../LU2%20AdviesRapport
 
 ### Taken
 
-1. Razor Class Library (`TebbiDashboard.UI`) met MudBlazor
+1. Razor Class Library (`TebiDashboard.UI`) met MudBlazor
 2. Pagina's: Home (KPI), Omzet, Afzet, Trends, Doelen
 3. Gedeelde filter-component (periode, klant, artikelgroep)
 4. .NET MAUI Blazor Hybrid app (Windows eerst)

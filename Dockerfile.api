@@ -2,15 +2,15 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-COPY src/TebbiDashboard.Shared/TebbiDashboard.Shared.csproj src/TebbiDashboard.Shared/
-COPY src/TebbiDashboard.Application/TebbiDashboard.Application.csproj src/TebbiDashboard.Application/
-COPY src/TebbiDashboard.Infrastructure/TebbiDashboard.Infrastructure.csproj src/TebbiDashboard.Infrastructure/
-COPY src/TebbiDashboard.Api/TebbiDashboard.Api.csproj src/TebbiDashboard.Api/
+COPY src/TebiDashboard.Shared/TebiDashboard.Shared.csproj src/TebiDashboard.Shared/
+COPY src/TebiDashboard.Application/TebiDashboard.Application.csproj src/TebiDashboard.Application/
+COPY src/TebiDashboard.Infrastructure/TebiDashboard.Infrastructure.csproj src/TebiDashboard.Infrastructure/
+COPY src/TebiDashboard.Api/TebiDashboard.Api.csproj src/TebiDashboard.Api/
 
-RUN dotnet restore src/TebbiDashboard.Api/TebbiDashboard.Api.csproj
+RUN dotnet restore src/TebiDashboard.Api/TebiDashboard.Api.csproj
 
 COPY src/ src/
-RUN dotnet publish src/TebbiDashboard.Api/TebbiDashboard.Api.csproj -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish src/TebiDashboard.Api/TebiDashboard.Api.csproj -c Release -o /app/publish /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
@@ -23,4 +23,4 @@ RUN apt-get update \
 EXPOSE 8080
 
 COPY --from=build /app/publish .
-ENTRYPOINT ["dotnet", "TebbiDashboard.Api.dll"]
+ENTRYPOINT ["dotnet", "TebiDashboard.Api.dll"]

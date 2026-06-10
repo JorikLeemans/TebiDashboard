@@ -21,13 +21,13 @@ Motivation document for the LU-3 portfolio assessment.
 ┌─────────────────────────────────────┐
 │  Presentation (MAUI, Blazor Web)    │
 ├─────────────────────────────────────┤
-│  TebbiDashboard.UI (components)     │
+│  TebiDashboard.UI (components)     │
 ├─────────────────────────────────────┤
-│  TebbiDashboard.Api (HTTP)          │
+│  TebiDashboard.Api (HTTP)          │
 ├─────────────────────────────────────┤
-│  TebbiDashboard.Application         │  ← business rules, interfaces
+│  TebiDashboard.Application         │  ← business rules, interfaces
 ├─────────────────────────────────────┤
-│  TebbiDashboard.Infrastructure      │  ← NetSuite, cache, persistence
+│  TebiDashboard.Infrastructure      │  ← NetSuite, cache, persistence
 └─────────────────────────────────────┘
 ```
 
@@ -103,7 +103,7 @@ builder.Services.AddScoped<INetSuiteService, MockNetSuiteService>(); // dev
 
 ### 3. DTO (Data Transfer Object)
 
-**Where:** `TebbiDashboard.Shared` — `RevenueDto`, `GoalDto`, etc.  
+**Where:** `TebiDashboard.Shared` — `RevenueDto`, `GoalDto`, etc.  
 **Why:** Stable contract between API, UI, and external system; no NetSuite types leak upward.
 
 ### 4. Mapper pattern

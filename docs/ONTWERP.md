@@ -49,13 +49,13 @@ Een **dashboard-applicatie als aanvulling** op NetSuite — geen vervanging. Liv
 
 ### ADR-002: Gedeelde UI-bibliotheek
 
-**Besluit:** Razor Class Library (`TebbiDashboard.UI`) gedeeld door MAUI-app en Blazor Web App.
+**Besluit:** Razor Class Library (`TebiDashboard.UI`) gedeeld door MAUI-app en Blazor Web App.
 
 **Reden:** DRY-principe; wijzigingen in dashboards hoeven maar op één plek.
 
 ### ADR-003: Web API als enige NetSuite-toegang
 
-**Besluit:** Clients praten uitsluitend met `TebbiDashboard.Api`. Geen NetSuite-credentials in front-end.
+**Besluit:** Clients praten uitsluitend met `TebiDashboard.Api`. Geen NetSuite-credentials in front-end.
 
 **Reden:** Beveiliging, controle over data-uitwisseling, voorkomen van directe toegang tot gevoelige ERP-data.
 

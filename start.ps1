@@ -1,11 +1,11 @@
-# Starts Tebbi Dashboard API + Blazor Web in separate terminal windows.
+# Starts Tebi Dashboard API + Blazor Web in separate terminal windows.
 # Usage: .\start.cmd          (recommended — works when script execution is disabled)
 #        .\start.ps1          (requires RemoteSigned or Bypass for CurrentUser)
 
 $ErrorActionPreference = "Stop"
 $root = $PSScriptRoot
-$apiProject = Join-Path $root "src\TebbiDashboard.Api"
-$webProject = Join-Path $root "src\TebbiDashboard.Web"
+$apiProject = Join-Path $root "src\TebiDashboard.Api"
+$webProject = Join-Path $root "src\TebiDashboard.Web"
 $apiHealthUrl = "https://localhost:7119/health"
 $webUrl = "https://localhost:7274"
 
@@ -33,7 +33,7 @@ finally {
     Pop-Location
 }
 
-Write-Host "PostgreSQL is ready on localhost:5432 (tebbi / tebbi_dev_password)." -ForegroundColor Green
+Write-Host "PostgreSQL is ready on localhost:5432 (Tebi / Tebi_dev_password)." -ForegroundColor Green
 
 # Trust HTTPS dev certificate (safe to run multiple times).
 Write-Host "Checking HTTPS dev certificate..." -ForegroundColor DarkGray
@@ -44,7 +44,7 @@ Write-Host "Starting Web API (https://localhost:7119)..." -ForegroundColor Green
 Start-Process powershell -ArgumentList @(
     "-NoExit",
     "-Command",
-    "Set-Location '$root'; Write-Host '=== TebbiDashboard.Api ===' -ForegroundColor Cyan; dotnet run --project '$apiProject'"
+    "Set-Location '$root'; Write-Host '=== TebiDashboard.Api ===' -ForegroundColor Cyan; dotnet run --project '$apiProject'"
 )
 
 # Wait until the API health endpoint responds (migrations may take longer on first run).
@@ -75,12 +75,12 @@ Write-Host "Starting Blazor Web ($webUrl)..." -ForegroundColor Green
 Start-Process powershell -ArgumentList @(
     "-NoExit",
     "-Command",
-    "Set-Location '$root'; Write-Host '=== TebbiDashboard.Web ===' -ForegroundColor Cyan; dotnet run --project '$webProject'"
+    "Set-Location '$root'; Write-Host '=== TebiDashboard.Web ===' -ForegroundColor Cyan; dotnet run --project '$webProject'"
 )
 
 Write-Host ""
 Write-Host "Done. Two terminal windows should be open:" -ForegroundColor Cyan
-Write-Host "  PostgreSQL: localhost:5432 (Docker volume tebbi_pg_data)" -ForegroundColor White
+Write-Host "  PostgreSQL: localhost:5432 (Docker volume Tebi_pg_data)" -ForegroundColor White
 Write-Host "  API:        https://localhost:7119" -ForegroundColor White
 Write-Host "  Web:        $webUrl" -ForegroundColor White
 Write-Host ""

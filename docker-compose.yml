@@ -2,15 +2,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: tebbi
-      POSTGRES_PASSWORD: tebbi_dev_password
-      POSTGRES_DB: tebbidashboard
+      POSTGRES_USER: Tebi
+      POSTGRES_PASSWORD: Tebi_dev_password
+      POSTGRES_DB: TebiDashboard
     ports:
       - "5432:5432"
     volumes:
-      - tebbi_pg_data:/var/lib/postgresql/data
+      - Tebi_pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tebbi -d tebbidashboard"]
+      test: ["CMD-SHELL", "pg_isready -U Tebi -d TebiDashboard"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -21,7 +21,7 @@ services:
       dockerfile: Dockerfile.api
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=tebbidashboard;Username=tebbi;Password=tebbi_dev_password
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=TebiDashboard;Username=Tebi;Password=Tebi_dev_password
       Database__Provider: PostgreSql
       Database__ApplyMigrationsOnStartup: "true"
       Database__SeedDemoData: "true"
@@ -44,4 +44,4 @@ services:
       - api
 
 volumes:
-  tebbi_pg_data:
+  Tebi_pg_data:
