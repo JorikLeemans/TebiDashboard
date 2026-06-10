@@ -1,0 +1,137 @@
+@page "/register"
+@layout LoginLayout
+@inject AuthApiClient AuthApi
+@inject IAuthStateService AuthState
+@inject NavigationManager Navigation
+
+<PageTitle>Create account — TEBI Dashboard</PageTitle>
+
+<div class="login-page">
+    <div class="login-page__backdrop" aria-hidden="true"></div>
+
+    <section class="login-card login-card--wide" aria-labelledby="register-title">
+        <div class="login-card__header">
+            <img src="_content/TebbiDashboard.UI/images/tebi-logo.png"
+                 alt="TE-BI Bestratingsmaterialen"
+                 class="login-card__logo" />
+            <h1 id="register-title">Create your account</h1>
+            <p class="login-card__subtitle">Register with your work email and a secure password</p>
+        </div>
+
+        <EditForm Model="_form" OnValidSubmit="HandleRegisterAsync" class="login-form">
+            <DataAnnotationsValidator />
+
+            @if (!string.IsNullOrWhiteSpace(_errorMessage))
+            {
+                <div class="login-form__error" role="alert">@_errorMessage</div>
+            }
+
+            <div class="login-form__field">
+                <label for="email">Email</label>
+                <InputText id="email"
+                           type="email"
+                           class="login-form__input"
+                           @bind-Value="_form.Email"
+                           autocomplete="email"
+                           placeholder="name@company.nl" />
+                <ValidationMessage For="@(() => _form.Email)" />
+            </div>
+
+            <div class="login-form__field">
+                <label for="password">Password</label>
+                <InputText id="password"
+                           type="password"
+                           class="login-form__input"
+                           @bind-Value="_form.Password"
+                           autocomplete="new-password"
+                           placeholder="At least 8 characters" />
+                <ValidationMessage For="@(() => _form.Password)" />
+            </div>
+
+            <div class="login-form__field">
+                <label for="confirm-password">Confirm password</label>
+                <InputText id="confirm-password"
+                           type="password"
+                           class="login-form__input"
+                           @bind-Value="_form.ConfirmPassword"
+                           autocomplete="new-password"
+                           placeholder="Repeat your password" />
+                <ValidationMessage For="@(() => _form.ConfirmPassword)" />
+            </div>
+
+            <button type="submit" class="login-form__submit" disabled="@_isSubmitting">
+                @if (_isSubmitting)
+                {
+                    <span>Creating account...</span>
+                }
+                else
+                {
+                    <span>Create account</span>
+                }
+            </button>
+        </EditForm>
+
+        <p class="auth-form__footer">
+            Already have an account?
+            <a href="/login">Sign in</a>
+        </p>
+
+        <div class="login-card__brands" aria-label="TEBI group brands">
+            <span class="login-card__brands-label">Our brands</span>
+            <div class="login-card__brands-row">
+                <img src="_content/TebbiDashboard.UI/images/gardenlux-logo.png" alt="Gardenlux" />
+                <img src="_content/TebbiDashboard.UI/images/steenplaza-logo.png" alt="Steenplaza" />
+                <img src="_content/TebbiDashboard.UI/images/vankemenade-logo.png" alt="Van Kemenade" />
+            </div>
+        </div>
+    </section>
+</div>
+
+@code {
+  private readonly RegisterFormModel _form = new();
+  private bool _isSubmitting;
+  private string? _errorMessage;
+
+  protected override async Task OnInitializedAsync()
+  {
+    await AuthState.InitializeAsync();
+
+    if (AuthState.IsAuthenticated)
+    {
+      Navigation.NavigateTo("/dashboard");
+    }
+  }
+
+  private async Task HandleRegisterAsync()
+  {
+    _isSubmitting = true;
+    _errorMessage = null;
+
+    try
+    {
+      var result = await AuthApi.RegisterAsync(new RegisterRequestDto
+      {
+        Email = _form.Email.Trim(),
+        Password = _form.Password,
+        ConfirmPassword = _form.ConfirmPassword
+      });
+
+      if (!result.IsSuccess || result.Response is null)
+      {
+        _errorMessage = result.ErrorMessage ?? "Registration failed. Please try again.";
+        return;
+      }
+
+      await AuthState.SignInAsync(result.Response);
+      Navigation.NavigateTo("/dashboard");
+    }
+    catch (Exception)
+    {
+      _errorMessage = "Unable to reach the server. Check that the API is running.";
+    }
+    finally
+    {
+      _isSubmitting = false;
+    }
+  }
+}

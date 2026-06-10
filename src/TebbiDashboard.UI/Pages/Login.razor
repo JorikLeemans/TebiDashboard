@@ -61,6 +61,11 @@
 
         <p class="login-card__hint">Demo: <strong>demo</strong> / <strong>demo</strong></p>
 
+        <p class="auth-form__footer">
+            No account yet?
+            <a href="/register">Create one</a>
+        </p>
+
         <div class="login-card__brands" aria-label="TEBI group brands">
             <span class="login-card__brands-label">Our brands</span>
             <div class="login-card__brands-row">
@@ -94,19 +99,19 @@
 
     try
     {
-      var response = await AuthApi.LoginAsync(new LoginRequestDto
+      var result = await AuthApi.LoginAsync(new LoginRequestDto
       {
         Username = _form.Username.Trim(),
         Password = _form.Password
       });
 
-      if (response is null)
+      if (!result.IsSuccess || result.Response is null)
       {
-        _errorMessage = "Invalid username or password. Please try again.";
+        _errorMessage = result.ErrorMessage ?? "Invalid username or password. Please try again.";
         return;
       }
 
-      await AuthState.SignInAsync(response);
+      await AuthState.SignInAsync(result.Response);
       Navigation.NavigateTo("/dashboard");
     }
     catch (Exception)
