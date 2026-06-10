@@ -12,25 +12,11 @@ namespace TebbiDashboard.UI.Tests;
 public class DashboardHomeTests
 {
     [Fact]
-    public void DashboardHome_ShowsTitle()
+    public void DashboardHome_ShowsTitle_WhenAuthenticated()
     {
-        using var ctx = new BunitContext();
-        var mockHttp = new MockHttpMessageHandler();
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
         mockHttp.When(HttpMethod.Get, "*/api/dashboard/summary*")
-            .Respond(HttpStatusCode.OK, _ => JsonContent.Create(new DashboardSummaryDto
-            {
-                Revenue = 1000m,
-                SalesVolume = 50m,
-                GoalPercentage = 80m,
-                RevenueTrend = "up",
-                LowStockAlertCount = 1,
-                PeriodFrom = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(-1)),
-                PeriodTo = DateOnly.FromDateTime(DateTime.UtcNow)
-            }));
-
-        var client = mockHttp.ToHttpClient();
-        client.BaseAddress = new Uri("https://localhost/");
-        ctx.Services.AddSingleton(new DashboardApiClient(client));
+            .Respond(HttpStatusCode.OK, _ => JsonContent.Create(CreateSampleSummary()));
 
         var cut = ctx.Render<DashboardHome>();
 
@@ -40,8 +26,7 @@ public class DashboardHomeTests
     [Fact]
     public void DashboardHome_ShowsKpiCards_WhenApiReturnsData()
     {
-        using var ctx = new BunitContext();
-        var mockHttp = new MockHttpMessageHandler();
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
         mockHttp.When(HttpMethod.Get, "*/api/dashboard/summary*")
             .Respond(HttpStatusCode.OK, _ => JsonContent.Create(new DashboardSummaryDto
             {
@@ -53,10 +38,6 @@ public class DashboardHomeTests
                 PeriodFrom = new DateOnly(2026, 1, 1),
                 PeriodTo = new DateOnly(2026, 6, 30)
             }));
-
-        var client = mockHttp.ToHttpClient();
-        client.BaseAddress = new Uri("https://localhost/");
-        ctx.Services.AddSingleton(new DashboardApiClient(client));
 
         var cut = ctx.Render<DashboardHome>();
         cut.WaitForElement(".kpi-card", TimeSpan.FromSeconds(5));
@@ -70,18 +51,56 @@ public class DashboardHomeTests
     [Fact]
     public void DashboardHome_ShowsError_WhenApiFails()
     {
-        using var ctx = new BunitContext();
-        var mockHttp = new MockHttpMessageHandler();
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
         mockHttp.When("https://localhost/api/dashboard/summary")
             .Respond(HttpStatusCode.InternalServerError);
-
-        var client = mockHttp.ToHttpClient();
-        client.BaseAddress = new Uri("https://localhost/");
-        ctx.Services.AddSingleton(new DashboardApiClient(client));
 
         var cut = ctx.Render<DashboardHome>();
         cut.WaitForAssertion(() => cut.Markup.Contains("Failed to load dashboard"), TimeSpan.FromSeconds(3));
 
         Assert.Contains("Failed to load dashboard", cut.Markup);
+    }
+
+    private static BunitContext CreateAuthenticatedContext(out MockHttpMessageHandler mockHttp)
+    {
+        var ctx = new BunitContext();
+        mockHttp = new MockHttpMessageHandler();
+
+        var client = mockHttp.ToHttpClient();
+        client.BaseAddress = new Uri("https://localhost/");
+        ctx.Services.AddSingleton(new DashboardApiClient(client));
+        ctx.Services.AddSingleton<IAuthStateService>(new FakeAuthStateService(isAuthenticated: true));
+
+        return ctx;
+    }
+
+    private static DashboardSummaryDto CreateSampleSummary() => new()
+    {
+        Revenue = 1000m,
+        SalesVolume = 50m,
+        GoalPercentage = 80m,
+        RevenueTrend = "up",
+        LowStockAlertCount = 1,
+        PeriodFrom = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(-1)),
+        PeriodTo = DateOnly.FromDateTime(DateTime.UtcNow)
+    };
+
+    private sealed class FakeAuthStateService(bool isAuthenticated) : IAuthStateService
+    {
+        public bool IsAuthenticated { get; } = isAuthenticated;
+
+        public string? Token => isAuthenticated ? "test-token" : null;
+
+        public string? Username => isAuthenticated ? "demo" : null;
+
+        public string? Role => isAuthenticated ? "Management" : null;
+
+        public event Action? OnChange;
+
+        public Task InitializeAsync() => Task.CompletedTask;
+
+        public Task SignInAsync(LoginResponseDto response) => Task.CompletedTask;
+
+        public Task SignOutAsync() => Task.CompletedTask;
     }
 }

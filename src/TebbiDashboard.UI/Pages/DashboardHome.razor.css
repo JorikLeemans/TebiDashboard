@@ -10,10 +10,11 @@
 }
 
 .kpi-card {
-  background:#f4f6f8;
+  background:#fff;
   border-radius:8px;
   padding:1rem;
   border:1px solid #dde3ea;
+  border-left: 4px solid #2a8a4a;
 }
 
 .kpi-card.alert {

@@ -1,6 +1,9 @@
+@page "/dashboard"
+@layout DashboardLayout
 @using TebbiDashboard.Shared.Dtos
-@page "/"
 @inject DashboardApiClient ApiClient
+@inject IAuthStateService AuthState
+@inject NavigationManager Navigation
 
 <PageTitle>TEBI Dashboard</PageTitle>
 
@@ -47,6 +50,14 @@
 
   protected override async Task OnInitializedAsync()
   {
+    await AuthState.InitializeAsync();
+
+    if (!AuthState.IsAuthenticated)
+    {
+      Navigation.NavigateTo("/login");
+      return;
+    }
+
     try
     {
       _summary = await ApiClient.GetSummaryAsync();

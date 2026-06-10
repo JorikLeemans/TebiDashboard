@@ -3,10 +3,20 @@ using TebbiDashboard.Web.Components;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddRazorComponents();
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
+
+builder.Services.AddScoped<IAuthStateService, AuthStateService>();
+
+builder.Services.AddHttpClient<AuthApiClient>(client =>
+{
+    var baseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7119/";
+    client.BaseAddress = new Uri(baseUrl);
+});
+
 builder.Services.AddHttpClient<DashboardApiClient>(client =>
 {
-    var baseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7150/";
+    var baseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7119/";
     client.BaseAddress = new Uri(baseUrl);
 });
 
@@ -23,6 +33,7 @@ app.UseHttpsRedirection();
 app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode()
     .AddAdditionalAssemblies(typeof(DashboardApiClient).Assembly);
 
 app.Run();
