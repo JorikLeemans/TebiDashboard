@@ -33,15 +33,11 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddScoped<IAuthStateService, AuthStateService>();
 
-var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7119/";
-if (!Uri.TryCreate(apiBaseUrl, UriKind.Absolute, out var apiUri))
-{
-    throw new InvalidOperationException($"ApiBaseUrl is not a valid absolute URL: '{apiBaseUrl}'");
-}
+var apiBaseUrl = ResolveApiBaseUrl(builder.Configuration["ApiBaseUrl"]);
 
-builder.Services.AddHttpClient<AuthApiClient>(client => client.BaseAddress = apiUri);
-builder.Services.AddHttpClient<DashboardApiClient>(client => client.BaseAddress = apiUri);
-builder.Services.AddHttpClient<AdminApiClient>(client => client.BaseAddress = apiUri);
+builder.Services.AddHttpClient<AuthApiClient>(client => client.BaseAddress = apiBaseUrl);
+builder.Services.AddHttpClient<DashboardApiClient>(client => client.BaseAddress = apiBaseUrl);
+builder.Services.AddHttpClient<AdminApiClient>(client => client.BaseAddress = apiBaseUrl);
 
 var app = builder.Build();
 
@@ -73,7 +69,7 @@ app.MapGet("/health", () => Results.Ok(new
 {
     status = "healthy",
     service = "TebbiDashboard.Web",
-    apiBaseUrl = apiBaseUrl
+    apiBaseUrl = apiBaseUrl.ToString()
 }));
 
 app.MapRazorComponents<App>()
@@ -83,3 +79,26 @@ app.MapRazorComponents<App>()
 app.Logger.LogInformation("TebbiDashboard.Web started. ApiBaseUrl={ApiBaseUrl}", apiBaseUrl);
 
 app.Run();
+
+// Accepts host-only Railway values like "tebbi-api-production.up.railway.app" and normalizes to https://…/
+static Uri ResolveApiBaseUrl(string? configuredUrl)
+{
+    var value = (configuredUrl ?? "https://localhost:7119/").Trim();
+
+    if (!value.Contains("://", StringComparison.Ordinal))
+    {
+        value = $"https://{value}";
+    }
+
+    if (!value.EndsWith('/'))
+    {
+        value += "/";
+    }
+
+    if (!Uri.TryCreate(value, UriKind.Absolute, out var uri))
+    {
+        throw new InvalidOperationException($"ApiBaseUrl is not a valid absolute URL: '{configuredUrl}'");
+    }
+
+    return uri;
+}

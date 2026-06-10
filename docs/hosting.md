@@ -178,7 +178,7 @@ Deploy **3 onderdelen** op Railway: PostgreSQL, API en Web UI. De MAUI-app blijf
 | Variable | Value |
 |----------|-------|
 | `ASPNETCORE_ENVIRONMENT` | `Production` |
-| `ApiBaseUrl` | `https://jouw-api-url/` ← **met trailing slash!** |
+| `ApiBaseUrl` | `https://jouw-api-url/` ← HTTPS + trailing slash (host-only zoals `tebbi-api-production.up.railway.app` werkt ook) |
 
 5. **Networking** → **Generate Domain**
 6. Open de Web-URL in je browser → loginpagina TEBI Dashboard
