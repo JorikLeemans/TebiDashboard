@@ -108,6 +108,16 @@ public sealed class DatabaseNetSuiteService(TebbiDashboardDbContext dbContext) :
         return rows.Select(MapInventoryItem).ToList();
     }
 
+    public async Task<IReadOnlyList<InventoryItemDto>> GetInventoryItemsAsync(CancellationToken cancellationToken = default)
+    {
+        var rows = await dbContext.InventoryItems
+            .AsNoTracking()
+            .OrderBy(i => i.ItemName)
+            .ToListAsync(cancellationToken);
+
+        return rows.Select(MapInventoryItem).ToList();
+    }
+
     public async Task<IReadOnlyList<InventoryItemDto>> GetTopSellingItemsAsync(DateRangeFilter filter, int limit, CancellationToken cancellationToken = default)
     {
         var rows = await dbContext.InventoryItems
@@ -174,11 +184,17 @@ public sealed class DatabaseNetSuiteService(TebbiDashboardDbContext dbContext) :
     public async Task<ItemDetailDto?> GetItemByBarcodeAsync(string barcode, CancellationToken cancellationToken = default)
     {
         var item = await dbContext.InventoryItems.AsNoTracking().FirstOrDefaultAsync(i => i.Barcode == barcode, cancellationToken);
-        if (item is null)
-        {
-            return null;
-        }
+        return item is null ? null : await BuildItemDetailAsync(item, cancellationToken);
+    }
 
+    public async Task<ItemDetailDto?> GetItemByIdAsync(string itemId, CancellationToken cancellationToken = default)
+    {
+        var item = await dbContext.InventoryItems.AsNoTracking().FirstOrDefaultAsync(i => i.ItemId == itemId, cancellationToken);
+        return item is null ? null : await BuildItemDetailAsync(item, cancellationToken);
+    }
+
+    private async Task<ItemDetailDto> BuildItemDetailAsync(Data.Entities.InventoryItemRecord item, CancellationToken cancellationToken)
+    {
         var locations = await GetItemLocationsAsync(item.ItemId, cancellationToken);
         var transactions = await GetOpenTransactionsAsync(item.ItemId, cancellationToken);
 
@@ -188,6 +204,9 @@ public sealed class DatabaseNetSuiteService(TebbiDashboardDbContext dbContext) :
             ItemName = item.ItemName,
             Barcode = item.Barcode,
             TotalQuantityOnHand = item.QuantityOnHand,
+            ReorderPoint = item.ReorderPoint,
+            RecentSalesVolume = item.RecentSalesVolume,
+            IsLowStock = item.IsLowStock,
             Locations = locations.ToList(),
             OpenTransactionCount = transactions.Count,
             OpenTransactions = transactions.ToList()

@@ -62,6 +62,18 @@ public sealed class MockNetSuiteService : INetSuiteService
         return Task.FromResult(items);
     }
 
+    public Task<IReadOnlyList<InventoryItemDto>> GetInventoryItemsAsync(CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<InventoryItemDto> items =
+        [
+            new() { ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", Barcode = "8712345000011", QuantityOnHand = 450, ReorderPoint = 100, RecentSalesVolume = 980, IsLowStock = false },
+            new() { ItemId = "i2", ItemName = "Klinkers Rood-Bruin", Barcode = "8712345000028", QuantityOnHand = 22, ReorderPoint = 80, RecentSalesVolume = 210, IsLowStock = true },
+            new() { ItemId = "i3", ItemName = "Tegels 60x60 Grijs", Barcode = "8712345000035", QuantityOnHand = 210, ReorderPoint = 50, RecentSalesVolume = 760, IsLowStock = false }
+        ];
+
+        return Task.FromResult(items);
+    }
+
     public Task<IReadOnlyList<InventoryItemDto>> GetTopSellingItemsAsync(DateRangeFilter filter, int limit, CancellationToken cancellationToken = default)
     {
         IReadOnlyList<InventoryItemDto> items =
@@ -120,6 +132,9 @@ public sealed class MockNetSuiteService : INetSuiteService
             ItemName = "Betonstraatstenen Antraciet",
             Barcode = barcode,
             TotalQuantityOnHand = 450,
+            ReorderPoint = 100,
+            RecentSalesVolume = 980,
+            IsLowStock = false,
             Locations =
             [
                 new StockLocationDto { LocationId = "loc1", LocationName = "Hoofdmagazijn", QuantityOnHand = 300 },
@@ -133,5 +148,15 @@ public sealed class MockNetSuiteService : INetSuiteService
         };
 
         return Task.FromResult<ItemDetailDto?>(detail);
+    }
+
+    public Task<ItemDetailDto?> GetItemByIdAsync(string itemId, CancellationToken cancellationToken = default)
+    {
+        if (itemId != "i1")
+        {
+            return Task.FromResult<ItemDetailDto?>(null);
+        }
+
+        return GetItemByBarcodeAsync("8712345000011", cancellationToken);
     }
 }

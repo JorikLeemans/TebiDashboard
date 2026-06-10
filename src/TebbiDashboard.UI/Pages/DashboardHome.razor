@@ -34,10 +34,11 @@
                 <h3>Goal progress</h3>
                 <p class="kpi-value">@_summary.GoalPercentage.ToString("F1")%</p>
             </div>
-            <div class="kpi-card alert">
+            <a href="/inventory" class="kpi-card alert kpi-card--link">
                 <h3>Low stock alerts</h3>
                 <p class="kpi-value">@_summary.LowStockAlertCount</p>
-            </div>
+                <span class="kpi-card__hint">View inventory →</span>
+            </a>
         </div>
         <p class="period">Period: @_summary.PeriodFrom.ToString("d") – @_summary.PeriodTo.ToString("d")</p>
     }

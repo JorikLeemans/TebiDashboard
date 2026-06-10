@@ -1,0 +1,160 @@
+@page "/inventory/{ItemId}"
+@layout DashboardLayout
+@using TebbiDashboard.Shared.Dtos
+@inject DashboardApiClient ApiClient
+@inject IAuthStateService AuthState
+@inject NavigationManager Navigation
+
+<PageTitle>@(_item?.ItemName ?? "Item detail") — TEBI Dashboard</PageTitle>
+
+<div class="item-detail">
+    <nav class="item-detail__nav">
+        <a href="/inventory" class="item-detail__back">← Back to inventory</a>
+    </nav>
+
+    @if (_isLoading)
+    {
+        <p class="item-detail__status">Loading item details...</p>
+    }
+    else if (_error is not null)
+    {
+        <p class="error" role="alert">@_error</p>
+    }
+    else if (_item is null)
+    {
+        <p class="item-detail__status">Item not found.</p>
+    }
+    else
+    {
+        <header class="item-detail__header">
+            <div>
+                <h1>@_item.ItemName</h1>
+                <p class="item-detail__meta">
+                    <span>ID: <code>@_item.ItemId</code></span>
+                    <span>Barcode: <code>@_item.Barcode</code></span>
+                </p>
+            </div>
+            @if (_item.IsLowStock)
+            {
+                <span class="item-detail__badge item-detail__badge--alert">Low stock</span>
+            }
+        </header>
+
+        <section class="item-detail__kpi-grid" aria-label="Stock summary">
+            <article class="item-detail__kpi">
+                <h2>Total on hand</h2>
+                <p>@_item.TotalQuantityOnHand.ToString("N0")</p>
+            </article>
+            <article class="item-detail__kpi">
+                <h2>Reorder point</h2>
+                <p>@(_item.ReorderPoint?.ToString("N0") ?? "—")</p>
+            </article>
+            <article class="item-detail__kpi">
+                <h2>Recent sales volume</h2>
+                <p>@_item.RecentSalesVolume.ToString("N0")</p>
+            </article>
+            <article class="item-detail__kpi">
+                <h2>Open transactions</h2>
+                <p>@_item.OpenTransactionCount</p>
+            </article>
+        </section>
+
+        <section class="item-detail__section">
+            <h2>Stock by location</h2>
+            @if (_item.Locations.Count == 0)
+            {
+                <p class="item-detail__empty">No location breakdown available.</p>
+            }
+            else
+            {
+                <table class="item-detail__table" aria-label="Stock locations">
+                    <thead>
+                        <tr>
+                            <th scope="col">Location</th>
+                            <th scope="col">Quantity on hand</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var location in _item.Locations)
+                        {
+                            <tr>
+                                <td>@location.LocationName</td>
+                                <td>@location.QuantityOnHand.ToString("N0")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+
+        <section class="item-detail__section">
+            <h2>Open transactions</h2>
+            @if (_item.OpenTransactions.Count == 0)
+            {
+                <p class="item-detail__empty">No open sales or transfer orders.</p>
+            }
+            else
+            {
+                <table class="item-detail__table" aria-label="Open transactions">
+                    <thead>
+                        <tr>
+                            <th scope="col">Transaction</th>
+                            <th scope="col">Type</th>
+                            <th scope="col">Quantity open</th>
+                            <th scope="col">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var transaction in _item.OpenTransactions)
+                        {
+                            <tr>
+                                <td><code>@transaction.TransactionId</code></td>
+                                <td>@transaction.Type</td>
+                                <td>@transaction.QuantityOpen.ToString("N0")</td>
+                                <td>@transaction.Status</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string ItemId { get; set; } = string.Empty;
+
+    private ItemDetailDto? _item;
+    private bool _isLoading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthState.InitializeAsync();
+
+        if (!AuthState.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        try
+        {
+            _item = await ApiClient.GetItemByIdAsync(ItemId);
+
+            if (_item is null)
+            {
+                _error = $"No item found with id '{ItemId}'.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load item details: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

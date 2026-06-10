@@ -10,6 +10,13 @@ namespace TebbiDashboard.Api.Controllers;
 [Route("api/inventory")]
 public class InventoryController(INetSuiteService netSuiteService) : ControllerBase
 {
+    [HttpGet("items")]
+    public async Task<IActionResult> GetItems(CancellationToken cancellationToken)
+    {
+        var items = await netSuiteService.GetInventoryItemsAsync(cancellationToken);
+        return Ok(items);
+    }
+
     [HttpGet("low-stock")]
     public async Task<IActionResult> GetLowStock([FromQuery] bool highSales = true, CancellationToken cancellationToken = default)
     {
