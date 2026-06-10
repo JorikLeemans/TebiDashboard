@@ -31,29 +31,47 @@ Dashboard-applicatie voor **TE-BI Bestratingsmaterialen (TEBI)** — een aanvull
 - [Installatie & gebruik](./docs/installation.md)
 - [Voortgang checklist](./CHECKLIST.md) — afvinklijst voor GitHub
 
-## Projectstructuur (gepland)
+## Projectstructuur
 
 ```
 F:\School\Full-Stack .NET MAUI\
-├── docs/
 ├── src/
-│   ├── TebbiDashboard.Api/
+│   ├── TebbiDashboard.slnx          ← solution (incl. MAUI)
+│   ├── TebbiDashboard.slnf          ← build zonder MAUI (CI/lokaal)
+│   ├── TebbiDashboard.Api/          ← Web API
 │   ├── TebbiDashboard.Application/
 │   ├── TebbiDashboard.Infrastructure/
 │   ├── TebbiDashboard.Shared/
-│   ├── TebbiDashboard.UI/
-│   ├── TebbiDashboard.Maui/
-│   └── TebbiDashboard.Web/
+│   ├── TebbiDashboard.UI/           ← gedeelde Blazor components
+│   ├── TebbiDashboard.Web/          ← Blazor Web App
+│   └── TebbiDashboard.Maui/         ← MAUI Blazor Hybrid (workload vereist)
 └── tests/
 ```
+
+### Snel starten
+
+```bash
+# API
+dotnet run --project src/TebbiDashboard.Api
+
+# Blazor Web (andere terminal)
+dotnet run --project src/TebbiDashboard.Web
+
+# Tests (zonder MAUI)
+dotnet test src/TebbiDashboard.slnf
+```
+
+Demo login API: `demo` / `demo`
+
+MAUI: zie [docs/maui-setup.md](./docs/maui-setup.md) (schijfruimte C: voor Android SDK).
 
 ## Status
 
 | Fase | Status |
 |------|--------|
-| Fase 1 — Voorbereiding en ontwerpen | In uitvoering |
-| Fase 2 — Web API | Nog niet gestart |
-| Fase 3 — Dashboard | Nog niet gestart |
+| Fase 1 — Voorbereiding en ontwerpen | Afgerond (docs) |
+| Fase 2 — Web API | Basis gereed (mock NetSuite) |
+| Fase 3 — Dashboard | Basis UI (KPI home) |
 
 Zie [CHECKLIST.md](./CHECKLIST.md) voor de volledige voortgang.
 

@@ -54,8 +54,9 @@ Afvinklijst gekoppeld aan het [adviesrapport](./LU2%20AdviesRapportage.docx) en 
 - [x] `CHECKLIST.md` en `README.md` aangemaakt
 - [x] Git-repository geïnitialiseerd (branch `main`, `.gitignore`)
 - [x] Eerste commit en push naar GitHub
-- [ ] Solution-structuur aanmaken
-- [ ] CI-basis (build + test pipeline)
+- [x] Solution-structuur aanmaken (`src/TebbiDashboard.slnx`)
+- [x] 5 unit tests + 3 API tests + 3 UI tests (groen)
+- [ ] MAUI workload installeren (zie [maui-setup.md](./docs/maui-setup.md))
 
 ## Fase 2 — Web API
 
@@ -109,8 +110,8 @@ Zie [docs/lu3-assessment.md](./docs/lu3-assessment.md) voor volledige mapping.
 - [ ] Broncode volledig in het Engels
 - [ ] `.editorconfig` + consistente codestijl
 - [ ] Demonstratie Windows + Android
-- [ ] Min. 3 zinnige unit tests (groen)
-- [ ] Min. 3 zinnige UI/device running tests
+- [ ] Min. 3 zinnige unit tests (groen) — **8 tests** (5 application + 3 API)
+- [ ] Min. 3 zinnige UI/device running tests — **3 bUnit UI tests** (+ device na MAUI workload)
 - [x] OO-principes & patterns gedocumenteerd ([oo-and-patterns.md](./docs/oo-and-patterns.md))
 - [x] Architectuurstijl gemotiveerd ([ONTWERP.md](./docs/ONTWERP.md) ADR's)
 - [x] Installatie- & gebruikershandleiding ([installation.md](./docs/installation.md))

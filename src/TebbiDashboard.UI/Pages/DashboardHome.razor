@@ -1,0 +1,63 @@
+@using TebbiDashboard.Shared.Dtos
+@page "/"
+@inject DashboardApiClient ApiClient
+
+<PageTitle>TEBI Dashboard</PageTitle>
+
+<div class="dashboard">
+    <h1>TEBI Dashboard</h1>
+
+    @if (_isLoading)
+    {
+        <p>Loading dashboard...</p>
+    }
+    else if (_error is not null)
+    {
+        <p class="error">@_error</p>
+    }
+    else if (_summary is not null)
+    {
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <h3>Revenue</h3>
+                <p class="kpi-value">@_summary.Revenue.ToString("C0")</p>
+                <span class="trend">@_summary.RevenueTrend</span>
+            </div>
+            <div class="kpi-card">
+                <h3>Sales volume</h3>
+                <p class="kpi-value">@_summary.SalesVolume.ToString("N0")</p>
+            </div>
+            <div class="kpi-card">
+                <h3>Goal progress</h3>
+                <p class="kpi-value">@_summary.GoalPercentage.ToString("F1")%</p>
+            </div>
+            <div class="kpi-card alert">
+                <h3>Low stock alerts</h3>
+                <p class="kpi-value">@_summary.LowStockAlertCount</p>
+            </div>
+        </div>
+        <p class="period">Period: @_summary.PeriodFrom.ToString("d") – @_summary.PeriodTo.ToString("d")</p>
+    }
+</div>
+
+@code {
+  private DashboardSummaryDto? _summary;
+  private bool _isLoading = true;
+  private string? _error;
+
+  protected override async Task OnInitializedAsync()
+  {
+    try
+    {
+      _summary = await ApiClient.GetSummaryAsync();
+    }
+    catch (Exception ex)
+    {
+      _error = $"Failed to load dashboard: {ex.Message}";
+    }
+    finally
+    {
+      _isLoading = false;
+    }
+  }
+}

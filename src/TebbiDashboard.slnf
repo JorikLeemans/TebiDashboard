@@ -1,0 +1,16 @@
+{
+  "solution": {
+    "path": "TebbiDashboard.slnx",
+    "projects": [
+      "TebbiDashboard.Shared\\TebbiDashboard.Shared.csproj",
+      "TebbiDashboard.Application\\TebbiDashboard.Application.csproj",
+      "TebbiDashboard.Infrastructure\\TebbiDashboard.Infrastructure.csproj",
+      "TebbiDashboard.Api\\TebbiDashboard.Api.csproj",
+      "TebbiDashboard.UI\\TebbiDashboard.UI.csproj",
+      "TebbiDashboard.Web\\TebbiDashboard.Web.csproj",
+      "..\\tests\\TebbiDashboard.Application.Tests\\TebbiDashboard.Application.Tests.csproj",
+      "..\\tests\\TebbiDashboard.Api.Tests\\TebbiDashboard.Api.Tests.csproj",
+      "..\\tests\\TebbiDashboard.UI.Tests\\TebbiDashboard.UI.Tests.csproj"
+    ]
+  }
+}
