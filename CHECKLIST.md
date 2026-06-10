@@ -51,7 +51,7 @@ Afvinklijst gekoppeld aan het [adviesrapport](./LU2%20AdviesRapportage.docx) en 
 - [x] `docs/fases.md` opgesteld
 - [x] `CHECKLIST.md` en `README.md` aangemaakt
 - [x] Git-repository geïnitialiseerd (branch `main`, `.gitignore`)
-- [ ] Eerste commit en push naar GitHub
+- [x] Eerste commit en push naar GitHub
 - [ ] Solution-structuur aanmaken
 - [ ] CI-basis (build + test pipeline)
 

@@ -50,14 +50,9 @@ Zie [CHECKLIST.md](./CHECKLIST.md) voor de volledige voortgang.
 
 ## Git
 
-Repository is geïnitialiseerd op branch `main`. Eerste commit en koppeling met GitHub:
+Repository: **https://github.com/JorikLeemans/TebiDashboard**
 
 ```bash
 cd "F:\School\Full-Stack .NET MAUI"
-git add .
-git commit -m "Initial commit: projectdocumentatie en ontwerp"
-git remote add origin https://github.com/JOUW-GEBRUIKERSNAAM/tebbi-dashboard.git
-git push -u origin main
+git pull origin main
 ```
-
-> Vervang de remote-URL door je eigen GitHub-repository.
