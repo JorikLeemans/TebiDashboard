@@ -9,11 +9,15 @@ public interface IPeriodFilterService
 
     DateOnly To { get; }
 
+    bool IsExpanded { get; }
+
     event Action? OnChanged;
 
     void ApplyPreset(PeriodFilterPreset preset);
 
     void SetCustomRange(DateOnly from, DateOnly to);
+
+    void SetExpanded(bool expanded);
 }
 
 /// <summary>

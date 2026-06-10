@@ -165,13 +165,34 @@ public sealed class MockNetSuiteService : INetSuiteService
 
     public Task<IReadOnlyList<GoalDto>> GetGoalsAsync(int year, string? period = null, CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<GoalDto> goals =
-        [
-            new() { Id = "g1", Year = year, Period = period ?? "Q2", Type = "Revenue", TargetValue = 500_000m, ActualValue = 437_500m, Percentage = 0, Status = "on-track" },
-            new() { Id = "g2", Year = year, Period = period ?? "Q2", Type = "Revenue", ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", TargetValue = 1200m, ActualValue = 980m, Percentage = 0, Status = "on-track" }
-        ];
+        var query = GetMockGoals().Where(goal => goal.Year == year);
 
-        return Task.FromResult(goals);
+        if (!string.IsNullOrWhiteSpace(period))
+        {
+            query = query.Where(goal => goal.Period == period);
+        }
+
+        return Task.FromResult<IReadOnlyList<GoalDto>>(query.ToList());
+    }
+
+    private static List<GoalDto> GetMockGoals()
+    {
+        var currentYear = Today.Year;
+        var previousYear = currentYear - 1;
+
+        return
+        [
+            new() { Id = $"g-{previousYear}-q1", Year = previousYear, Period = "Q1", Type = "Revenue", TargetValue = 460_000m, ActualValue = 471_000m, Percentage = 0, Status = "on-track" },
+            new() { Id = $"g-{previousYear}-q2", Year = previousYear, Period = "Q2", Type = "Revenue", TargetValue = 480_000m, ActualValue = 462_000m, Percentage = 0, Status = "on-track" },
+            new() { Id = $"g-{previousYear}-q3", Year = previousYear, Period = "Q3", Type = "Revenue", TargetValue = 490_000m, ActualValue = 505_000m, Percentage = 0, Status = "ahead" },
+            new() { Id = $"g-{previousYear}-q4", Year = previousYear, Period = "Q4", Type = "Revenue", TargetValue = 510_000m, ActualValue = 498_000m, Percentage = 0, Status = "on-track" },
+            new() { Id = $"g-{previousYear}-i1-q2", Year = previousYear, Period = "Q2", Type = "Revenue", ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", TargetValue = 1150m, ActualValue = 1050m, Percentage = 0, Status = "on-track" },
+            new() { Id = $"g-{currentYear}-q1", Year = currentYear, Period = "Q1", Type = "Revenue", TargetValue = 480_000m, ActualValue = 452_000m, Percentage = 0, Status = "on-track" },
+            new() { Id = $"g-{currentYear}-q2", Year = currentYear, Period = "Q2", Type = "Revenue", TargetValue = 500_000m, ActualValue = 437_500m, Percentage = 0, Status = "on-track" },
+            new() { Id = $"g-{currentYear}-q3", Year = currentYear, Period = "Q3", Type = "Revenue", TargetValue = 520_000m, ActualValue = 0m, Percentage = 0, Status = "off-track" },
+            new() { Id = $"g-{currentYear}-q4", Year = currentYear, Period = "Q4", Type = "Revenue", TargetValue = 550_000m, ActualValue = 0m, Percentage = 0, Status = "off-track" },
+            new() { Id = $"g-{currentYear}-i1-q2", Year = currentYear, Period = "Q2", Type = "Revenue", ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", TargetValue = 1200m, ActualValue = 980m, Percentage = 0, Status = "on-track" }
+        ];
     }
 
     public Task<IReadOnlyList<InventoryItemDto>> GetLowStockItemsAsync(bool highSalesOnly, CancellationToken cancellationToken = default)

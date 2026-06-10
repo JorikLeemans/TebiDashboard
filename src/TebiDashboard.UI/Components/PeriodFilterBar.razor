@@ -2,28 +2,50 @@
 @implements IDisposable
 
 <section class="period-filter" aria-label="Period filter">
-    <div class="period-filter__presets">
-        <span class="period-filter__label">Period</span>
-        <button type="button" class="period-filter__btn @ActiveClass(PeriodFilterPreset.Last2Days)" @onclick="() => Apply(PeriodFilterPreset.Last2Days)">Last 2 days</button>
-        <button type="button" class="period-filter__btn @ActiveClass(PeriodFilterPreset.Last7Days)" @onclick="() => Apply(PeriodFilterPreset.Last7Days)">Last 7 days</button>
-        <button type="button" class="period-filter__btn @ActiveClass(PeriodFilterPreset.Last30Days)" @onclick="() => Apply(PeriodFilterPreset.Last30Days)">Last 30 days</button>
-        <button type="button" class="period-filter__btn @ActiveClass(PeriodFilterPreset.ThisMonth)" @onclick="() => Apply(PeriodFilterPreset.ThisMonth)">This month</button>
+    <div class="period-filter__header">
+        @if (PeriodFilter.IsExpanded)
+        {
+            <span class="period-filter__label">Period filter</span>
+        }
+        else
+        {
+            <p class="period-filter__summary period-filter__summary--compact">
+                Period: <strong>@PeriodFilter.From.ToString("d")</strong> – <strong>@PeriodFilter.To.ToString("d")</strong>
+            </p>
+        }
+
+        <button type="button"
+                class="period-filter__toggle"
+                @onclick="ToggleExpanded"
+                aria-expanded="@PeriodFilter.IsExpanded">
+            @(PeriodFilter.IsExpanded ? "Hide" : "Show")
+        </button>
     </div>
 
-    <div class="period-filter__custom">
-        <label>
-            From
-            <input type="date" class="period-filter__input" value="@_customFrom" @onchange="OnFromChanged" />
-        </label>
-        <label>
-            To
-            <input type="date" class="period-filter__input" value="@_customTo" @onchange="OnToChanged" />
-        </label>
-    </div>
+    @if (PeriodFilter.IsExpanded)
+    {
+        <div class="period-filter__presets">
+            <button type="button" class="period-filter__btn @ActiveClass(PeriodFilterPreset.Last2Days)" @onclick="() => Apply(PeriodFilterPreset.Last2Days)">Last 2 days</button>
+            <button type="button" class="period-filter__btn @ActiveClass(PeriodFilterPreset.Last7Days)" @onclick="() => Apply(PeriodFilterPreset.Last7Days)">Last 7 days</button>
+            <button type="button" class="period-filter__btn @ActiveClass(PeriodFilterPreset.Last30Days)" @onclick="() => Apply(PeriodFilterPreset.Last30Days)">Last 30 days</button>
+            <button type="button" class="period-filter__btn @ActiveClass(PeriodFilterPreset.ThisMonth)" @onclick="() => Apply(PeriodFilterPreset.ThisMonth)">This month</button>
+        </div>
 
-    <p class="period-filter__summary">
-        Showing <strong>@PeriodFilter.From.ToString("d")</strong> – <strong>@PeriodFilter.To.ToString("d")</strong>
-    </p>
+        <div class="period-filter__custom">
+            <label>
+                From
+                <input type="date" class="period-filter__input" value="@_customFrom" @onchange="OnFromChanged" />
+            </label>
+            <label>
+                To
+                <input type="date" class="period-filter__input" value="@_customTo" @onchange="OnToChanged" />
+            </label>
+        </div>
+
+        <p class="period-filter__summary">
+            Showing <strong>@PeriodFilter.From.ToString("d")</strong> – <strong>@PeriodFilter.To.ToString("d")</strong>
+        </p>
+    }
 </section>
 
 @code {
@@ -48,6 +70,8 @@
         _customFrom = PeriodFilter.From.ToString("yyyy-MM-dd");
         _customTo = PeriodFilter.To.ToString("yyyy-MM-dd");
     }
+
+    private void ToggleExpanded() => PeriodFilter.SetExpanded(!PeriodFilter.IsExpanded);
 
     private void Apply(PeriodFilterPreset preset)
     {

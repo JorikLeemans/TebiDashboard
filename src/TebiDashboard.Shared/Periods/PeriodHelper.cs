@@ -15,4 +15,16 @@ public static class PeriodHelper
         <= 9 => "Q3",
         _ => "Q4"
     };
+
+    /// <summary>
+    /// Maps a quarter label to a sortable index (Q1 = 1, unknown = 0).
+    /// </summary>
+    public static int GetQuarterIndex(string period) => period switch
+    {
+        "Q1" => 1,
+        "Q2" => 2,
+        "Q3" => 3,
+        "Q4" => 4,
+        _ => 0
+    };
 }

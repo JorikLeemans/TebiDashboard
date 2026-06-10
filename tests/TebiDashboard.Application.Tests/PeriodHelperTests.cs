@@ -15,4 +15,13 @@ public class PeriodHelperTests
 
         Assert.Equal(expected, quarter);
     }
+
+    [Theory]
+    [InlineData("Q1", 1)]
+    [InlineData("Q4", 4)]
+    [InlineData("Unknown", 0)]
+    public void GetQuarterIndex_ReturnsExpectedValue(string period, int expected)
+    {
+        Assert.Equal(expected, PeriodHelper.GetQuarterIndex(period));
+    }
 }

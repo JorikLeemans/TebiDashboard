@@ -89,7 +89,7 @@
                     @foreach (var goal in _itemGoals)
                     {
                         <GoalProgressCard Goal="goal"
-                                          Title="@(goal.ItemName ?? goal.ItemId ?? "Item")"
+                                          Title="@FormatItemGoalTitle(goal)"
                                           UseCurrency="false" />
                     }
                 </div>
@@ -115,6 +115,9 @@
 
     private int _selectedYear = Today.Year;
     private string _selectedPeriod = PeriodHelper.GetQuarter(Today);
+
+    // Show quarter on item cards when multiple quarters are listed together.
+    private bool _showQuarterOnItemGoals;
 
     private bool _isLoading = true;
     private string? _error;
@@ -143,6 +146,8 @@
                 _selectedYear,
                 string.IsNullOrWhiteSpace(_selectedPeriod) ? null : _selectedPeriod);
 
+            _showQuarterOnItemGoals = string.IsNullOrWhiteSpace(_selectedPeriod);
+
             _companyGoals = _goals.Where(goal => string.IsNullOrWhiteSpace(goal.ItemId)).ToList();
             _itemGoals = _goals.Where(goal => !string.IsNullOrWhiteSpace(goal.ItemId)).ToList();
 
@@ -163,5 +168,14 @@
         {
             _isLoading = false;
         }
+    }
+
+    private string FormatItemGoalTitle(GoalDto goal)
+    {
+        var itemLabel = goal.ItemName ?? goal.ItemId ?? "Item";
+
+        return _showQuarterOnItemGoals
+            ? $"{itemLabel} ({goal.Period} {goal.Year})"
+            : itemLabel;
     }
 }

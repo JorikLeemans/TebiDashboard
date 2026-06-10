@@ -11,6 +11,8 @@ public sealed class PeriodFilterService : IPeriodFilterService
 
     public DateOnly To { get; private set; } = Today;
 
+    public bool IsExpanded { get; private set; } = true;
+
     public event Action? OnChanged;
 
     public void ApplyPreset(PeriodFilterPreset preset)
@@ -31,6 +33,17 @@ public sealed class PeriodFilterService : IPeriodFilterService
     {
         From = from <= to ? from : to;
         To = from <= to ? to : from;
+        OnChanged?.Invoke();
+    }
+
+    public void SetExpanded(bool expanded)
+    {
+        if (IsExpanded == expanded)
+        {
+            return;
+        }
+
+        IsExpanded = expanded;
         OnChanged?.Invoke();
     }
 }

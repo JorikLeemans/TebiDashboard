@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TebiDashboard.Infrastructure.Data.Entities;
 using TebiDashboard.Shared.Constants;
+using TebiDashboard.Shared.Periods;
 
 namespace TebiDashboard.Infrastructure.Data;
 
@@ -32,13 +33,15 @@ public static class DemoDataSeeder
         await EnsureDemoCustomersAsync(dbContext, cancellationToken);
         await BackfillSalesOrderCustomersAsync(dbContext, cancellationToken);
 
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        await EnsureDemoGoalsForYearAsync(dbContext, today, today.Year - 1, cancellationToken);
+
         if (await dbContext.RevenueRecords.AnyAsync(cancellationToken))
         {
             await dbContext.SaveChangesAsync(cancellationToken);
             return;
         }
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var year = today.Year;
 
         dbContext.RevenueRecords.AddRange(
@@ -58,15 +61,8 @@ public static class DemoDataSeeder
             CreateRevenue("r14", today.AddDays(-7), 46100m, "c4", "Woningbouw De Vliet", "pg-paving"),
             CreateRevenue("r15", today.AddDays(-3), 39500m, "c1", "Bouwbedrijf Jansen", "pg-tiles"));
 
-        dbContext.Goals.AddRange(
-            CreateGoal("g-q1", year, "Q1", 480_000m, 452_000m, "on-track"),
-            CreateGoal("g-q2", year, "Q2", 500_000m, 437_500m, "on-track"),
-            CreateGoal("g-q3", year, "Q3", 520_000m, 318_000m, "behind"),
-            CreateGoal("g-q4", year, "Q4", 550_000m, 125_000m, "behind"),
-            CreateGoal("g-i1", year, "Q2", 1200m, 980m, "on-track", "i1", "Betonstraatstenen Antraciet"),
-            CreateGoal("g-i2", year, "Q2", 900m, 640m, "on-track", "i2", "Klinkers Rood-Bruin"),
-            CreateGoal("g-i3", year, "Q2", 800m, 760m, "ahead", "i3", "Tegels 60x60 Grijs"),
-            CreateGoal("g-i4", year, "Q2", 650m, 410m, "behind", "i4", "Betonblokken 40x20"));
+        dbContext.Goals.AddRange(BuildDemoGoals(today, year));
+        dbContext.Goals.AddRange(BuildDemoGoals(today, year - 1));
 
         dbContext.InventoryItems.AddRange(
             CreateItem("i1", "Betonstraatstenen Antraciet", "8712345000011", 450, 100, 980, false),
@@ -143,12 +139,69 @@ public static class DemoDataSeeder
         ProductGroupId = productGroupId
     };
 
+    /// <summary>
+    /// Inserts prior-year goals when missing so year-over-year comparison works on existing databases.
+    /// </summary>
+    private static async Task EnsureDemoGoalsForYearAsync(
+        TebiDashboardDbContext dbContext,
+        DateOnly today,
+        int year,
+        CancellationToken cancellationToken)
+    {
+        if (await dbContext.Goals.AnyAsync(goal => goal.Year == year, cancellationToken))
+        {
+            return;
+        }
+
+        dbContext.Goals.AddRange(BuildDemoGoals(today, year));
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Demo goals for one calendar year (company + item targets per quarter).
+    /// </summary>
+    private static GoalRecord[] BuildDemoGoals(DateOnly today, int year)
+    {
+        if (year == today.Year - 1)
+        {
+            return
+            [
+                CreateGoal($"g-{year}-q1", today, year, "Q1", 460_000m, 471_000m, "on-track"),
+                CreateGoal($"g-{year}-q2", today, year, "Q2", 480_000m, 462_000m, "on-track"),
+                CreateGoal($"g-{year}-q3", today, year, "Q3", 490_000m, 505_000m, "ahead"),
+                CreateGoal($"g-{year}-q4", today, year, "Q4", 510_000m, 498_000m, "on-track"),
+                CreateGoal($"g-{year}-i1-q2", today, year, "Q2", 1150m, 1050m, "on-track", "i1", "Betonstraatstenen Antraciet"),
+                CreateGoal($"g-{year}-i2-q2", today, year, "Q2", 850m, 720m, "behind", "i2", "Klinkers Rood-Bruin"),
+                CreateGoal($"g-{year}-i3-q2", today, year, "Q2", 780m, 810m, "ahead", "i3", "Tegels 60x60 Grijs"),
+                CreateGoal($"g-{year}-i4-q2", today, year, "Q2", 600m, 580m, "on-track", "i4", "Betonblokken 40x20")
+            ];
+        }
+
+        if (year == today.Year)
+        {
+            return
+            [
+                CreateGoal($"g-{year}-q1", today, year, "Q1", 480_000m, 452_000m, "on-track"),
+                CreateGoal($"g-{year}-q2", today, year, "Q2", 500_000m, 437_500m, "on-track"),
+                CreateGoal($"g-{year}-q3", today, year, "Q3", 520_000m, 318_000m, "behind"),
+                CreateGoal($"g-{year}-q4", today, year, "Q4", 550_000m, 125_000m, "behind"),
+                CreateGoal($"g-{year}-i1-q2", today, year, "Q2", 1200m, 980m, "on-track", "i1", "Betonstraatstenen Antraciet"),
+                CreateGoal($"g-{year}-i2-q2", today, year, "Q2", 900m, 640m, "on-track", "i2", "Klinkers Rood-Bruin"),
+                CreateGoal($"g-{year}-i3-q2", today, year, "Q2", 800m, 760m, "ahead", "i3", "Tegels 60x60 Grijs"),
+                CreateGoal($"g-{year}-i4-q2", today, year, "Q2", 650m, 410m, "behind", "i4", "Betonblokken 40x20")
+            ];
+        }
+
+        return [];
+    }
+
     private static GoalRecord CreateGoal(
         string id,
+        DateOnly today,
         int year,
         string period,
         decimal target,
-        decimal actual,
+        decimal seededActual,
         string status,
         string? itemId = null,
         string? itemName = null) => new()
@@ -158,11 +211,36 @@ public static class DemoDataSeeder
         Period = period,
         Type = "Revenue",
         TargetValue = target,
-        ActualValue = actual,
+        ActualValue = ResolveGoalActual(today, year, period, seededActual),
         Status = status,
         ItemId = itemId,
         ItemName = itemName
     };
+
+    /// <summary>
+    /// Zeroes out actuals for future quarters so demo goals stay realistic.
+    /// </summary>
+    private static decimal ResolveGoalActual(DateOnly today, int year, string period, decimal seededActual)
+    {
+        var periodIndex = PeriodHelper.GetQuarterIndex(period);
+        if (periodIndex == 0)
+        {
+            return seededActual;
+        }
+
+        if (year < today.Year)
+        {
+            return seededActual;
+        }
+
+        if (year > today.Year)
+        {
+            return 0m;
+        }
+
+        var currentIndex = PeriodHelper.GetQuarterIndex(PeriodHelper.GetQuarter(today));
+        return periodIndex > currentIndex ? 0m : seededActual;
+    }
 
     private static InventoryItemRecord CreateItem(
         string itemId,
