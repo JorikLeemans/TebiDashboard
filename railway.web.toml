@@ -1,0 +1,9 @@
+# Railway config for the Blazor Web service (tebbi-web).
+# In Railway service settings, set "Config file path" to: /railway.web.toml
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile.web"
+
+[deploy]
+restartPolicyType = "ON_FAILURE"

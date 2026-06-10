@@ -141,9 +141,10 @@ Deploy **3 onderdelen** op Railway: PostgreSQL, API en Web UI. De MAUI-app blijf
 
 1. **+ New** → **GitHub Repo** → kies opnieuw `TebiDashboard` (tweede service)
 2. Hernoem de service naar `tebbi-api`
-3. Open **Settings**:
-   - **Build** → **Dockerfile Path**: `Dockerfile.api`
-   - **Deploy** → **Start Command**: leeg laten (Dockerfile regelt dit)
+3. Open **Settings** → **Build**:
+   - **Builder**: `Dockerfile` (niet Railpack/Nixpacks!)
+   - **Dockerfile Path**: `Dockerfile.api`
+   - **Config file path**: `/railway.toml` (staat in de repo)
 4. Open **Variables** → **Add Reference**:
    - Koppel `DATABASE_URL` van de PostgreSQL-service
 5. Voeg deze variabelen toe:
@@ -168,7 +169,10 @@ Deploy **3 onderdelen** op Railway: PostgreSQL, API en Web UI. De MAUI-app blijf
 
 1. **+ New** → **GitHub Repo** → `TebiDashboard` (derde service)
 2. Hernoem naar `tebbi-web`
-3. **Settings** → **Dockerfile Path**: `Dockerfile.web`
+3. **Settings** → **Build**:
+   - **Builder**: `Dockerfile`
+   - **Dockerfile Path**: `Dockerfile.web`
+   - **Config file path**: `/railway.web.toml`
 4. **Variables**:
 
 | Variable | Value |
@@ -197,6 +201,7 @@ Deploy **3 onderdelen** op Railway: PostgreSQL, API en Web UI. De MAUI-app blijf
 
 | Probleem | Oplossing |
 |----------|-----------|
+| **Railpack could not determine how to build** | Zet **Builder** op `Dockerfile` (Settings → Build). Railpack herkent onze monorepo niet; gebruik `Dockerfile.api` of `Dockerfile.web`. |
 | API start niet | Check deploy logs; controleer of `DATABASE_URL` gekoppeld is |
 | Web toont login maar data laadt niet | `ApiBaseUrl` moet exact de **publieke HTTPS API-URL** zijn met `/` aan het eind |
 | Database leeg na deploy | Zet `Database__SeedDemoData=true`; herstart API |
