@@ -8,11 +8,13 @@ Dashboard-applicatie voor **TE-BI Bestratingsmaterialen (TEBI)** — een aanvull
 
 | Laag | Technologie |
 |------|-------------|
-| Front-end (native) | .NET MAUI + Blazor Hybrid |
+| Front-end (native) | .NET MAUI + Blazor Hybrid (.NET 10) |
 | Front-end (browser) | Blazor Web App |
 | Gedeelde UI | Razor Class Library |
-| Back-end | ASP.NET Core Web API (C# / .NET) |
+| Back-end | ASP.NET Core Web API (C# 14 / .NET 10) |
 | ERP-bron | Oracle NetSuite (via beveiligde API-laag) |
+| Demo-platformen | Windows + Android |
+| Broncode | Engels |
 
 ## Documentatie
 
@@ -20,6 +22,11 @@ Dashboard-applicatie voor **TE-BI Bestratingsmaterialen (TEBI)** — een aanvull
 - [Architectuur](./docs/architectuur.md) — diagrammen en lagen
 - [NetSuite data-mapping](./docs/netsuite-data-mapping.md) — velden en DTO's
 - [Implementatiefases](./docs/fases.md) — 6 fases uit het adviesrapport
+- [LU-3 Assessment](./docs/lu3-assessment.md) — portfolio-eisen (.NET 10, tests, platforms)
+- [User stories](./docs/user-stories.md) — functionele eisen
+- [Definition of Done](./docs/definition-of-done.md)
+- [OO & design patterns](./docs/oo-and-patterns.md)
+- [Installatie & gebruik](./docs/installation.md)
 - [Voortgang checklist](./CHECKLIST.md) — afvinklijst voor GitHub
 
 ## Projectstructuur (gepland)

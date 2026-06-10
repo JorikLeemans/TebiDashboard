@@ -112,12 +112,16 @@ Een **dashboard-applicatie als aanvulling** op NetSuite — geen vervanging. De 
 
 | Onderdeel | Keuze | Toelichting |
 |-----------|-------|-------------|
-| Runtime | .NET 8 LTS (of .NET 9) | LTS stabiel voor school/productie |
+| Runtime | **.NET 10** / **C# 14** | LU-3 portfolio-eis; volg actuele .NET 10 + MAUI-richtlijnen |
+| Taal broncode | **Engels** | LU-3: identifiers, classes, methods, comments |
+| Codestijl | `.editorconfig` + `dotnet format` | LU-3: consistente stijl |
+| Demo-platformen | **Windows + Android** | LU-3: demonstratie op 2 platformen |
 | Auth | JWT Bearer + rollen | `Admin`, `Management`, `Verkoper`, `Inkoop`, `ReadOnly` |
 | NetSuite | REST / SuiteTalk API | OAuth 1.0 of 2.0 (afhankelijk TEBI-configuratie) |
 | UI-framework | MudBlazor | Gratis, goede Blazor-charts en componenten |
 | Cache | IMemoryCache | Should have: auto-refresh; later Redis mogelijk |
 | Opslag (optioneel) | SQLite / SQL Server | Geaggregeerde snapshots voor snellere dashboards |
+| Tests | xUnit; min. 3 unit + 3 UI/device | LU-3 portfolio; zie [lu3-assessment.md](./lu3-assessment.md) |
 | Secrets | User Secrets (dev) / Key Vault (prod) | Geen credentials in source control |
 
 ---
@@ -199,4 +203,9 @@ Zie [fases.md](./fases.md) voor de volledige uitwerking van de 6 implementatiefa
 - [architectuur.md](./architectuur.md)
 - [netsuite-data-mapping.md](./netsuite-data-mapping.md)
 - [fases.md](./fases.md)
+- [lu3-assessment.md](./lu3-assessment.md) — LU-3 portfolio-eisen
+- [user-stories.md](./user-stories.md)
+- [definition-of-done.md](./definition-of-done.md)
+- [oo-and-patterns.md](./oo-and-patterns.md)
+- [installation.md](./installation.md)
 - [CHECKLIST.md](../CHECKLIST.md)
