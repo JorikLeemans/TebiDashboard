@@ -13,6 +13,10 @@ public sealed class OpenTransactionDto
 
     public string ItemName { get; init; } = string.Empty;
 
+    public string? CustomerId { get; init; }
+
+    public string CustomerName { get; init; } = string.Empty;
+
     public DateOnly TransactionDate { get; init; }
 
     public decimal QuantityOpen { get; init; }

@@ -74,6 +74,36 @@
         </section>
 
         <section class="dashboard-section">
+            <h2>Customers with sales orders (@_overview.Customers.Count)</h2>
+            @if (_overview.Customers.Count == 0)
+            {
+                <p class="dashboard-empty">No customers linked to sales orders in this period.</p>
+            }
+            else
+            {
+                <table class="dashboard-table" aria-label="Customers in period">
+                    <thead>
+                        <tr>
+                            <th>Customer</th>
+                            <th>City</th>
+                            <th>Contact</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var customer in _overview.Customers)
+                        {
+                            <tr>
+                                <td>@customer.Name</td>
+                                <td>@customer.City</td>
+                                <td>@customer.ContactEmail</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+
+        <section class="dashboard-section">
             <h2>Transactions in period (@_overview.Transactions.Count)</h2>
             @if (_overview.Transactions.Count == 0)
             {
@@ -86,6 +116,7 @@
                         <tr>
                             <th>Date</th>
                             <th>Type</th>
+                            <th>Customer</th>
                             <th>Item</th>
                             <th>Qty open</th>
                             <th>Status</th>
@@ -97,6 +128,7 @@
                             <tr class="dashboard-table__link" @onclick="() => OpenItem(row.ItemId)" tabindex="0">
                                 <td>@row.TransactionDate.ToString("d")</td>
                                 <td>@row.Type</td>
+                                <td>@(string.IsNullOrWhiteSpace(row.CustomerName) ? "—" : row.CustomerName)</td>
                                 <td>@row.ItemName</td>
                                 <td>@row.QuantityOpen.ToString("N0")</td>
                                 <td>@row.Status</td>

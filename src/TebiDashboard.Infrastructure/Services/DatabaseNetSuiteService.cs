@@ -11,6 +11,16 @@ namespace TebiDashboard.Infrastructure.Services;
 /// </summary>
 public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : INetSuiteService
 {
+    public async Task<IReadOnlyList<CustomerDto>> GetCustomersAsync(CancellationToken cancellationToken = default)
+    {
+        var rows = await dbContext.Customers
+            .AsNoTracking()
+            .OrderBy(c => c.Name)
+            .ToListAsync(cancellationToken);
+
+        return rows.Select(MapCustomer).ToList();
+    }
+
     public async Task<DashboardSummaryDto> GetDashboardSummaryAsync(DateRangeFilter filter, CancellationToken cancellationToken = default)
     {
         var revenueRows = await dbContext.RevenueRecords
@@ -75,11 +85,24 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .OrderBy(i => i.ItemName)
             .ToListAsync(cancellationToken);
 
+        var customerIdsInPeriod = transactions
+            .Where(t => !string.IsNullOrWhiteSpace(t.CustomerId))
+            .Select(t => t.CustomerId!)
+            .Distinct()
+            .ToHashSet();
+
+        var customers = await dbContext.Customers
+            .AsNoTracking()
+            .Where(c => customerIdsInPeriod.Contains(c.CustomerId))
+            .OrderBy(c => c.Name)
+            .ToListAsync(cancellationToken);
+
         return new PeriodOverviewDto
         {
             PeriodFrom = filter.From,
             PeriodTo = filter.To,
             Summary = summary,
+            Customers = customers.Select(MapCustomer).ToList(),
             Revenue = revenue,
             Expenses = expenses,
             Transactions = transactions,
@@ -110,7 +133,12 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .Where(i => itemIds.Contains(i.ItemId))
             .ToDictionaryAsync(i => i.ItemId, i => i.ItemName, cancellationToken);
 
-        return rows.Select(t => MapOpenTransaction(t, itemNames.GetValueOrDefault(t.ItemId, t.ItemId))).ToList();
+        var customerNames = await LoadCustomerNamesAsync(rows, cancellationToken);
+
+        return rows.Select(t => MapOpenTransaction(
+            t,
+            itemNames.GetValueOrDefault(t.ItemId, t.ItemId),
+            customerNames)).ToList();
     }
 
     public async Task<IReadOnlyList<RevenueDto>> GetRevenueAsync(DateRangeFilter filter, CancellationToken cancellationToken = default)
@@ -224,7 +252,9 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .Select(i => i.ItemName)
             .FirstOrDefaultAsync(cancellationToken) ?? itemId;
 
-        return rows.Select(t => MapOpenTransaction(t, itemName)).ToList();
+        var customerNames = await LoadCustomerNamesAsync(rows, cancellationToken);
+
+        return rows.Select(t => MapOpenTransaction(t, itemName, customerNames)).ToList();
     }
 
     public async Task<IReadOnlyList<ExpenseDto>> GetExpensesAsync(DateRangeFilter filter, CancellationToken cancellationToken = default)
@@ -277,15 +307,51 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
         };
     }
 
-    private static OpenTransactionDto MapOpenTransaction(Data.Entities.OpenTransactionRecord record, string itemName) => new()
+    private async Task<Dictionary<string, string>> LoadCustomerNamesAsync(
+        IReadOnlyList<Data.Entities.OpenTransactionRecord> rows,
+        CancellationToken cancellationToken)
+    {
+        var customerIds = rows
+            .Where(t => !string.IsNullOrWhiteSpace(t.CustomerId))
+            .Select(t => t.CustomerId!)
+            .Distinct()
+            .ToList();
+
+        if (customerIds.Count == 0)
+        {
+            return [];
+        }
+
+        return await dbContext.Customers
+            .AsNoTracking()
+            .Where(c => customerIds.Contains(c.CustomerId))
+            .ToDictionaryAsync(c => c.CustomerId, c => c.Name, cancellationToken);
+    }
+
+    private static OpenTransactionDto MapOpenTransaction(
+        Data.Entities.OpenTransactionRecord record,
+        string itemName,
+        IReadOnlyDictionary<string, string> customerNames) => new()
     {
         TransactionId = record.TransactionId,
         Type = record.Type,
         ItemId = record.ItemId,
         ItemName = itemName,
+        CustomerId = record.CustomerId,
+        CustomerName = record.CustomerId is null
+            ? string.Empty
+            : customerNames.GetValueOrDefault(record.CustomerId, record.CustomerId),
         TransactionDate = record.TransactionDate,
         QuantityOpen = record.QuantityOpen,
         Status = record.Status
+    };
+
+    private static CustomerDto MapCustomer(Data.Entities.CustomerRecord customer) => new()
+    {
+        CustomerId = customer.CustomerId,
+        Name = customer.Name,
+        City = customer.City,
+        ContactEmail = customer.ContactEmail
     };
 
     private static InventoryItemDto MapInventoryItem(Data.Entities.InventoryItemRecord item) => new()

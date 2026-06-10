@@ -12,6 +12,9 @@ public sealed class MockNetSuiteService : INetSuiteService
 {
     private static readonly DateOnly Today = DateOnly.FromDateTime(DateTime.UtcNow);
 
+    public Task<IReadOnlyList<CustomerDto>> GetCustomersAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<CustomerDto>>(GetMockCustomers());
+
     public Task<DashboardSummaryDto> GetDashboardSummaryAsync(DateRangeFilter filter, CancellationToken cancellationToken = default)
     {
         var revenue = GetMockRevenue().Where(r => r.Date >= filter.From && r.Date <= filter.To).ToList();
@@ -44,6 +47,11 @@ public sealed class MockNetSuiteService : INetSuiteService
         var lowStock = GetMockLowStock();
         var activeIds = transactions.Select(t => t.ItemId).ToHashSet();
 
+        var customerIdsInPeriod = transactions
+            .Where(t => !string.IsNullOrWhiteSpace(t.CustomerId))
+            .Select(t => t.CustomerId!)
+            .ToHashSet();
+
         var overview = new PeriodOverviewDto
         {
             PeriodFrom = filter.From,
@@ -58,6 +66,7 @@ public sealed class MockNetSuiteService : INetSuiteService
                 PeriodFrom = filter.From,
                 PeriodTo = filter.To
             },
+            Customers = GetMockCustomers().Where(c => customerIdsInPeriod.Contains(c.CustomerId)).ToList(),
             Revenue = revenue,
             Expenses = expenses,
             Transactions = transactions,
@@ -142,11 +151,20 @@ public sealed class MockNetSuiteService : INetSuiteService
         return Task.FromResult<IReadOnlyList<OpenTransactionDto>>(transactions);
     }
 
+    private static List<CustomerDto> GetMockCustomers() =>
+    [
+        new() { CustomerId = "c1", Name = "Bouwbedrijf Jansen", City = "Utrecht", ContactEmail = "inkoop@jansen.nl" },
+        new() { CustomerId = "c2", Name = "Gemeente Utrecht", City = "Utrecht", ContactEmail = "aanbesteding@utrecht.nl" },
+        new() { CustomerId = "c3", Name = "Stratenmakers BV", City = "Amersfoort", ContactEmail = "orders@stratenmakers.nl" },
+        new() { CustomerId = "c4", Name = "Woningbouw De Vliet", City = "Nieuwegein", ContactEmail = "inkoop@devliet.nl" },
+        new() { CustomerId = "c5", Name = "Aannemer Noord", City = "Groningen", ContactEmail = "sales@aannemernoord.nl" }
+    ];
+
     private static List<OpenTransactionDto> GetMockTransactions() =>
     [
-        new() { TransactionId = "t1", Type = "Sales Order", ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", TransactionDate = Today.AddDays(-1), QuantityOpen = 40, Status = "Pending Fulfillment" },
+        new() { TransactionId = "t1", Type = "Sales Order", ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", CustomerId = "c1", CustomerName = "Bouwbedrijf Jansen", TransactionDate = Today.AddDays(-1), QuantityOpen = 40, Status = "Pending Fulfillment" },
         new() { TransactionId = "t2", Type = "Transfer Order", ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", TransactionDate = Today.AddDays(-2), QuantityOpen = 20, Status = "Pending Receipt" },
-        new() { TransactionId = "t3", Type = "Sales Order", ItemId = "i2", ItemName = "Klinkers Rood-Bruin", TransactionDate = Today.AddDays(-5), QuantityOpen = 55, Status = "Pending Fulfillment" }
+        new() { TransactionId = "t3", Type = "Sales Order", ItemId = "i2", ItemName = "Klinkers Rood-Bruin", CustomerId = "c3", CustomerName = "Stratenmakers BV", TransactionDate = Today.AddDays(-5), QuantityOpen = 55, Status = "Pending Fulfillment" }
     ];
 
     public Task<IReadOnlyList<ExpenseDto>> GetExpensesAsync(DateRangeFilter filter, CancellationToken cancellationToken = default)
@@ -192,6 +210,8 @@ public sealed class MockNetSuiteService : INetSuiteService
                     Type = "Sales Order",
                     ItemId = "i1",
                     ItemName = "Betonstraatstenen Antraciet",
+                    CustomerId = "c1",
+                    CustomerName = "Bouwbedrijf Jansen",
                     TransactionDate = Today.AddDays(-1),
                     QuantityOpen = 40,
                     Status = "Pending Fulfillment"

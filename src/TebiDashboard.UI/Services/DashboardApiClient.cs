@@ -19,6 +19,9 @@ public sealed class DashboardApiClient(HttpClient httpClient)
             $"api/dashboard/period-overview?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
             cancellationToken);
 
+    public async Task<IReadOnlyList<CustomerDto>> GetCustomersAsync(CancellationToken cancellationToken = default)
+        => await httpClient.GetFromJsonAsync<IReadOnlyList<CustomerDto>>("api/customers", cancellationToken) ?? [];
+
     public async Task<IReadOnlyList<RevenueDto>> GetRevenueAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
         => await httpClient.GetFromJsonAsync<IReadOnlyList<RevenueDto>>(
             $"api/revenue?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",

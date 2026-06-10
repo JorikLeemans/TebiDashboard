@@ -11,6 +11,8 @@ public sealed class PeriodOverviewDto
 
     public DashboardSummaryDto Summary { get; init; } = new();
 
+    public IReadOnlyList<CustomerDto> Customers { get; init; } = [];
+
     public IReadOnlyList<RevenueDto> Revenue { get; init; } = [];
 
     public IReadOnlyList<ExpenseDto> Expenses { get; init; } = [];

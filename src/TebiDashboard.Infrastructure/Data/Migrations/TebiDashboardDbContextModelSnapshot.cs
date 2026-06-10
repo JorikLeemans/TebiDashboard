@@ -22,6 +22,32 @@ namespace TebiDashboard.Infrastructure.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("TebiDashboard.Infrastructure.Data.Entities.CustomerRecord", b =>
+                {
+                    b.Property<string>("CustomerId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ContactEmail")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.HasKey("CustomerId");
+
+                    b.ToTable("Customers");
+                });
+
             modelBuilder.Entity("TebiDashboard.Infrastructure.Data.Entities.ExpenseRecord", b =>
                 {
                     b.Property<string>("Id")
@@ -131,6 +157,10 @@ namespace TebiDashboard.Infrastructure.Data.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<string>("CustomerId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("ItemId")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -153,6 +183,8 @@ namespace TebiDashboard.Infrastructure.Data.Migrations
                         .HasColumnType("character varying(64)");
 
                     b.HasKey("TransactionId");
+
+                    b.HasIndex("CustomerId");
 
                     b.HasIndex("ItemId");
 
