@@ -9,11 +9,23 @@ namespace TebiDashboard.UI.Services;
 /// </summary>
 public sealed class DashboardApiClient(HttpClient httpClient)
 {
-    public async Task<DashboardSummaryDto?> GetSummaryAsync(CancellationToken cancellationToken = default)
-        => await httpClient.GetFromJsonAsync<DashboardSummaryDto>("api/dashboard/summary", cancellationToken);
+    public Task<DashboardSummaryDto?> GetSummaryAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
+        => httpClient.GetFromJsonAsync<DashboardSummaryDto>(
+            $"api/dashboard/summary?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
+            cancellationToken);
 
-    public async Task<IReadOnlyList<RevenueDto>> GetRevenueAsync(CancellationToken cancellationToken = default)
-        => await httpClient.GetFromJsonAsync<IReadOnlyList<RevenueDto>>("api/revenue", cancellationToken) ?? [];
+    public Task<PeriodOverviewDto?> GetPeriodOverviewAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
+        => httpClient.GetFromJsonAsync<PeriodOverviewDto>(
+            $"api/dashboard/period-overview?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
+            cancellationToken);
+
+    public async Task<IReadOnlyList<CustomerDto>> GetCustomersAsync(CancellationToken cancellationToken = default)
+        => await httpClient.GetFromJsonAsync<IReadOnlyList<CustomerDto>>("api/customers", cancellationToken) ?? [];
+
+    public async Task<IReadOnlyList<RevenueDto>> GetRevenueAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
+        => await httpClient.GetFromJsonAsync<IReadOnlyList<RevenueDto>>(
+            $"api/revenue?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
+            cancellationToken) ?? [];
 
     public async Task<IReadOnlyList<GoalDto>> GetGoalsAsync(int year, CancellationToken cancellationToken = default)
         => await httpClient.GetFromJsonAsync<IReadOnlyList<GoalDto>>($"api/goals?year={year}", cancellationToken) ?? [];
@@ -24,18 +36,24 @@ public sealed class DashboardApiClient(HttpClient httpClient)
     public async Task<IReadOnlyList<InventoryItemDto>> GetInventoryItemsAsync(CancellationToken cancellationToken = default)
         => await httpClient.GetFromJsonAsync<IReadOnlyList<InventoryItemDto>>("api/inventory/items", cancellationToken) ?? [];
 
-    public async Task<ItemDetailDto?> GetItemByIdAsync(string itemId, CancellationToken cancellationToken = default)
+    public Task<ItemDetailDto?> GetItemByIdAsync(string itemId, CancellationToken cancellationToken = default)
     {
-        var response = await httpClient.GetAsync($"api/items/{Uri.EscapeDataString(itemId)}", cancellationToken);
+        var response = httpClient.GetAsync($"api/items/{Uri.EscapeDataString(itemId)}", cancellationToken);
+        return HandleItemResponseAsync(response);
+    }
+
+    public Task<ItemDetailDto?> GetItemByBarcodeAsync(string barcode, CancellationToken cancellationToken = default)
+        => httpClient.GetFromJsonAsync<ItemDetailDto>($"api/items/by-barcode/{Uri.EscapeDataString(barcode)}", cancellationToken);
+
+    private static async Task<ItemDetailDto?> HandleItemResponseAsync(Task<HttpResponseMessage> responseTask)
+    {
+        var response = await responseTask;
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
             return null;
         }
 
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<ItemDetailDto>(cancellationToken);
+        return await response.Content.ReadFromJsonAsync<ItemDetailDto>();
     }
-
-    public async Task<ItemDetailDto?> GetItemByBarcodeAsync(string barcode, CancellationToken cancellationToken = default)
-        => await httpClient.GetFromJsonAsync<ItemDetailDto>($"api/items/by-barcode/{Uri.EscapeDataString(barcode)}", cancellationToken);
 }

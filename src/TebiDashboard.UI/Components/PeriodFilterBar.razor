@@ -1,0 +1,89 @@
+@inject IPeriodFilterService PeriodFilter
+@implements IDisposable
+
+<section class="period-filter" aria-label="Period filter">
+    <div class="period-filter__presets">
+        <span class="period-filter__label">Period</span>
+        <button type="button" class="period-filter__btn @ActiveClass(PeriodFilterPreset.Last2Days)" @onclick="() => Apply(PeriodFilterPreset.Last2Days)">Last 2 days</button>
+        <button type="button" class="period-filter__btn @ActiveClass(PeriodFilterPreset.Last7Days)" @onclick="() => Apply(PeriodFilterPreset.Last7Days)">Last 7 days</button>
+        <button type="button" class="period-filter__btn @ActiveClass(PeriodFilterPreset.Last30Days)" @onclick="() => Apply(PeriodFilterPreset.Last30Days)">Last 30 days</button>
+        <button type="button" class="period-filter__btn @ActiveClass(PeriodFilterPreset.ThisMonth)" @onclick="() => Apply(PeriodFilterPreset.ThisMonth)">This month</button>
+    </div>
+
+    <div class="period-filter__custom">
+        <label>
+            From
+            <input type="date" class="period-filter__input" value="@_customFrom" @onchange="OnFromChanged" />
+        </label>
+        <label>
+            To
+            <input type="date" class="period-filter__input" value="@_customTo" @onchange="OnToChanged" />
+        </label>
+    </div>
+
+    <p class="period-filter__summary">
+        Showing <strong>@PeriodFilter.From.ToString("d")</strong> – <strong>@PeriodFilter.To.ToString("d")</strong>
+    </p>
+</section>
+
+@code {
+    private PeriodFilterPreset _activePreset = PeriodFilterPreset.Last2Days;
+    private string _customFrom = "";
+    private string _customTo = "";
+
+    protected override void OnInitialized()
+    {
+        SyncInputs();
+        PeriodFilter.OnChanged += OnPeriodChanged;
+    }
+
+    private void OnPeriodChanged()
+    {
+        SyncInputs();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void SyncInputs()
+    {
+        _customFrom = PeriodFilter.From.ToString("yyyy-MM-dd");
+        _customTo = PeriodFilter.To.ToString("yyyy-MM-dd");
+    }
+
+    private void Apply(PeriodFilterPreset preset)
+    {
+        _activePreset = preset;
+        PeriodFilter.ApplyPreset(preset);
+    }
+
+    private void OnFromChanged(ChangeEventArgs args)
+    {
+        if (args.Value is not string value || !DateOnly.TryParse(value, out var from))
+        {
+            return;
+        }
+
+        _activePreset = default;
+        PeriodFilter.SetCustomRange(from, PeriodFilter.To);
+        _customFrom = value;
+    }
+
+    private void OnToChanged(ChangeEventArgs args)
+    {
+        if (args.Value is not string value || !DateOnly.TryParse(value, out var to))
+        {
+            return;
+        }
+
+        _activePreset = default;
+        PeriodFilter.SetCustomRange(PeriodFilter.From, to);
+        _customTo = value;
+    }
+
+    private string ActiveClass(PeriodFilterPreset preset) =>
+        _activePreset == preset ? "period-filter__btn--active" : "";
+
+    public void Dispose()
+    {
+        PeriodFilter.OnChanged -= OnPeriodChanged;
+    }
+}

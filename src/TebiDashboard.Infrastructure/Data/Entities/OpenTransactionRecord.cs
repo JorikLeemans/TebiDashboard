@@ -11,6 +11,16 @@ public sealed class OpenTransactionRecord
 
     public string ItemId { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Linked customer for sales orders; null for transfer/purchase orders.
+    /// </summary>
+    public string? CustomerId { get; set; }
+
+    /// <summary>
+    /// Date the transaction was created or last updated (used for period filtering).
+    /// </summary>
+    public DateOnly TransactionDate { get; set; }
+
     public decimal QuantityOpen { get; set; }
 
     public string Status { get; set; } = string.Empty;

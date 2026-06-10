@@ -98,8 +98,10 @@
                 <table class="item-detail__table" aria-label="Open transactions">
                     <thead>
                         <tr>
+                            <th scope="col">Date</th>
                             <th scope="col">Transaction</th>
                             <th scope="col">Type</th>
+                            <th scope="col">Customer</th>
                             <th scope="col">Quantity open</th>
                             <th scope="col">Status</th>
                         </tr>
@@ -108,8 +110,10 @@
                         @foreach (var transaction in _item.OpenTransactions)
                         {
                             <tr>
+                                <td>@transaction.TransactionDate.ToString("d")</td>
                                 <td><code>@transaction.TransactionId</code></td>
                                 <td>@transaction.Type</td>
+                                <td>@(string.IsNullOrWhiteSpace(transaction.CustomerName) ? "—" : transaction.CustomerName)</td>
                                 <td>@transaction.QuantityOpen.ToString("N0")</td>
                                 <td>@transaction.Status</td>
                             </tr>

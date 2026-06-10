@@ -12,12 +12,23 @@ public sealed class MockNetSuiteService : INetSuiteService
 {
     private static readonly DateOnly Today = DateOnly.FromDateTime(DateTime.UtcNow);
 
+    public Task<IReadOnlyList<CustomerDto>> GetCustomersAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<CustomerDto>>(GetMockCustomers());
+
     public Task<DashboardSummaryDto> GetDashboardSummaryAsync(DateRangeFilter filter, CancellationToken cancellationToken = default)
     {
+        var revenue = GetMockRevenue().Where(r => r.Date >= filter.From && r.Date <= filter.To).ToList();
+        var transactions = GetMockTransactions().Where(t => t.TransactionDate >= filter.From && t.TransactionDate <= filter.To).ToList();
+        var salesVolume = transactions.Sum(t => t.QuantityOpen);
+        if (salesVolume == 0)
+        {
+            salesVolume = revenue.Count;
+        }
+
         var summary = new DashboardSummaryDto
         {
-            Revenue = 1_250_000m,
-            SalesVolume = 8420m,
+            Revenue = revenue.Sum(r => r.Amount),
+            SalesVolume = salesVolume,
             GoalPercentage = 87.5m,
             RevenueTrend = "up",
             LowStockAlertCount = 3,
@@ -28,17 +39,58 @@ public sealed class MockNetSuiteService : INetSuiteService
         return Task.FromResult(summary);
     }
 
+    public Task<PeriodOverviewDto> GetPeriodOverviewAsync(DateRangeFilter filter, CancellationToken cancellationToken = default)
+    {
+        var revenue = GetMockRevenue().Where(r => r.Date >= filter.From && r.Date <= filter.To).ToList();
+        var expenses = GetMockExpenses().Where(e => e.Date >= filter.From && e.Date <= filter.To).ToList();
+        var transactions = GetMockTransactions().Where(t => t.TransactionDate >= filter.From && t.TransactionDate <= filter.To).ToList();
+        var lowStock = GetMockLowStock();
+        var activeIds = transactions.Select(t => t.ItemId).ToHashSet();
+
+        var customerIdsInPeriod = transactions
+            .Where(t => !string.IsNullOrWhiteSpace(t.CustomerId))
+            .Select(t => t.CustomerId!)
+            .ToHashSet();
+
+        var overview = new PeriodOverviewDto
+        {
+            PeriodFrom = filter.From,
+            PeriodTo = filter.To,
+            Summary = new DashboardSummaryDto
+            {
+                Revenue = revenue.Sum(r => r.Amount),
+                SalesVolume = transactions.Sum(t => t.QuantityOpen),
+                GoalPercentage = 87.5m,
+                RevenueTrend = "up",
+                LowStockAlertCount = lowStock.Count,
+                PeriodFrom = filter.From,
+                PeriodTo = filter.To
+            },
+            Customers = GetMockCustomers().Where(c => customerIdsInPeriod.Contains(c.CustomerId)).ToList(),
+            Revenue = revenue,
+            Expenses = expenses,
+            Transactions = transactions,
+            LowStockItems = lowStock,
+            InventoryWithActivity = GetMockInventory().Where(i => activeIds.Contains(i.ItemId)).ToList()
+        };
+
+        return Task.FromResult(overview);
+    }
+
     public Task<IReadOnlyList<RevenueDto>> GetRevenueAsync(DateRangeFilter filter, CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<RevenueDto> data =
-        [
-            new() { Id = "1", Date = Today.AddDays(-30), Amount = 42000m, CustomerId = "c1", CustomerName = "Bouwbedrijf Jansen", ProductGroupId = "pg1" },
-            new() { Id = "2", Date = Today.AddDays(-15), Amount = 38500m, CustomerId = "c2", CustomerName = "Gemeente Utrecht", ProductGroupId = "pg2" },
-            new() { Id = "3", Date = Today.AddDays(-7), Amount = 51200m, CustomerId = "c3", CustomerName = "Stratenmakers BV", ProductGroupId = "pg1" }
-        ];
-
-        return Task.FromResult(data);
+        var data = GetMockRevenue().Where(r => r.Date >= filter.From && r.Date <= filter.To).ToList();
+        return Task.FromResult<IReadOnlyList<RevenueDto>>(data);
     }
+
+    private static List<RevenueDto> GetMockRevenue() =>
+    [
+        new() { Id = "1", Date = Today.AddDays(-30), Amount = 42000m, CustomerId = "c1", CustomerName = "Bouwbedrijf Jansen", ProductGroupId = "pg1" },
+        new() { Id = "2", Date = Today.AddDays(-15), Amount = 38500m, CustomerId = "c2", CustomerName = "Gemeente Utrecht", ProductGroupId = "pg2" },
+        new() { Id = "3", Date = Today.AddDays(-7), Amount = 51200m, CustomerId = "c3", CustomerName = "Stratenmakers BV", ProductGroupId = "pg1" },
+        new() { Id = "4", Date = Today.AddDays(-2), Amount = 39500m, CustomerId = "c1", CustomerName = "Bouwbedrijf Jansen", ProductGroupId = "pg1" },
+        new() { Id = "5", Date = Today.AddDays(-1), Amount = 27800m, CustomerId = "c4", CustomerName = "Woningbouw De Vliet", ProductGroupId = "pg2" }
+    ];
 
     public Task<IReadOnlyList<GoalDto>> GetGoalsAsync(int year, string? period = null, CancellationToken cancellationToken = default)
     {
@@ -52,27 +104,23 @@ public sealed class MockNetSuiteService : INetSuiteService
     }
 
     public Task<IReadOnlyList<InventoryItemDto>> GetLowStockItemsAsync(bool highSalesOnly, CancellationToken cancellationToken = default)
-    {
-        IReadOnlyList<InventoryItemDto> items =
-        [
-            new() { ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", Barcode = "8712345000011", QuantityOnHand = 45, ReorderPoint = 100, RecentSalesVolume = 320, IsLowStock = true },
-            new() { ItemId = "i2", ItemName = "Klinkers Rood-Bruin", Barcode = "8712345000028", QuantityOnHand = 22, ReorderPoint = 80, RecentSalesVolume = 210, IsLowStock = true }
-        ];
+        => Task.FromResult<IReadOnlyList<InventoryItemDto>>(GetMockLowStock());
 
-        return Task.FromResult(items);
-    }
+    private static List<InventoryItemDto> GetMockLowStock() =>
+    [
+        new() { ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", Barcode = "8712345000011", QuantityOnHand = 45, ReorderPoint = 100, RecentSalesVolume = 320, IsLowStock = true },
+        new() { ItemId = "i2", ItemName = "Klinkers Rood-Bruin", Barcode = "8712345000028", QuantityOnHand = 22, ReorderPoint = 80, RecentSalesVolume = 210, IsLowStock = true }
+    ];
+
+    private static List<InventoryItemDto> GetMockInventory() =>
+    [
+        new() { ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", Barcode = "8712345000011", QuantityOnHand = 450, ReorderPoint = 100, RecentSalesVolume = 980, IsLowStock = false },
+        new() { ItemId = "i2", ItemName = "Klinkers Rood-Bruin", Barcode = "8712345000028", QuantityOnHand = 22, ReorderPoint = 80, RecentSalesVolume = 210, IsLowStock = true },
+        new() { ItemId = "i3", ItemName = "Tegels 60x60 Grijs", Barcode = "8712345000035", QuantityOnHand = 210, ReorderPoint = 50, RecentSalesVolume = 760, IsLowStock = false }
+    ];
 
     public Task<IReadOnlyList<InventoryItemDto>> GetInventoryItemsAsync(CancellationToken cancellationToken = default)
-    {
-        IReadOnlyList<InventoryItemDto> items =
-        [
-            new() { ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", Barcode = "8712345000011", QuantityOnHand = 450, ReorderPoint = 100, RecentSalesVolume = 980, IsLowStock = false },
-            new() { ItemId = "i2", ItemName = "Klinkers Rood-Bruin", Barcode = "8712345000028", QuantityOnHand = 22, ReorderPoint = 80, RecentSalesVolume = 210, IsLowStock = true },
-            new() { ItemId = "i3", ItemName = "Tegels 60x60 Grijs", Barcode = "8712345000035", QuantityOnHand = 210, ReorderPoint = 50, RecentSalesVolume = 760, IsLowStock = false }
-        ];
-
-        return Task.FromResult(items);
-    }
+        => Task.FromResult<IReadOnlyList<InventoryItemDto>>(GetMockInventory());
 
     public Task<IReadOnlyList<InventoryItemDto>> GetTopSellingItemsAsync(DateRangeFilter filter, int limit, CancellationToken cancellationToken = default)
     {
@@ -99,25 +147,38 @@ public sealed class MockNetSuiteService : INetSuiteService
 
     public Task<IReadOnlyList<OpenTransactionDto>> GetOpenTransactionsAsync(string itemId, CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<OpenTransactionDto> transactions =
-        [
-            new() { TransactionId = "t1", Type = "Sales Order", ItemId = itemId, QuantityOpen = 40, Status = "Pending Fulfillment" },
-            new() { TransactionId = "t2", Type = "Transfer Order", ItemId = itemId, QuantityOpen = 20, Status = "Pending Receipt" }
-        ];
-
-        return Task.FromResult(transactions);
+        var transactions = GetMockTransactions().Where(t => t.ItemId == itemId).ToList();
+        return Task.FromResult<IReadOnlyList<OpenTransactionDto>>(transactions);
     }
+
+    private static List<CustomerDto> GetMockCustomers() =>
+    [
+        new() { CustomerId = "c1", Name = "Bouwbedrijf Jansen", City = "Utrecht", ContactEmail = "inkoop@jansen.nl" },
+        new() { CustomerId = "c2", Name = "Gemeente Utrecht", City = "Utrecht", ContactEmail = "aanbesteding@utrecht.nl" },
+        new() { CustomerId = "c3", Name = "Stratenmakers BV", City = "Amersfoort", ContactEmail = "orders@stratenmakers.nl" },
+        new() { CustomerId = "c4", Name = "Woningbouw De Vliet", City = "Nieuwegein", ContactEmail = "inkoop@devliet.nl" },
+        new() { CustomerId = "c5", Name = "Aannemer Noord", City = "Groningen", ContactEmail = "sales@aannemernoord.nl" }
+    ];
+
+    private static List<OpenTransactionDto> GetMockTransactions() =>
+    [
+        new() { TransactionId = "t1", Type = "Sales Order", ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", CustomerId = "c1", CustomerName = "Bouwbedrijf Jansen", TransactionDate = Today.AddDays(-1), QuantityOpen = 40, Status = "Pending Fulfillment" },
+        new() { TransactionId = "t2", Type = "Transfer Order", ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", TransactionDate = Today.AddDays(-2), QuantityOpen = 20, Status = "Pending Receipt" },
+        new() { TransactionId = "t3", Type = "Sales Order", ItemId = "i2", ItemName = "Klinkers Rood-Bruin", CustomerId = "c3", CustomerName = "Stratenmakers BV", TransactionDate = Today.AddDays(-5), QuantityOpen = 55, Status = "Pending Fulfillment" }
+    ];
 
     public Task<IReadOnlyList<ExpenseDto>> GetExpensesAsync(DateRangeFilter filter, CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<ExpenseDto> expenses =
-        [
-            new() { Id = "e1", Date = Today.AddDays(-20), Category = "Transport", Amount = 12500m, VendorName = "Logistics Partner BV" },
-            new() { Id = "e2", Date = Today.AddDays(-10), Category = "Utilities", Amount = 4200m, VendorName = "Energiebedrijf NL" }
-        ];
-
-        return Task.FromResult(expenses);
+        var expenses = GetMockExpenses().Where(e => e.Date >= filter.From && e.Date <= filter.To).ToList();
+        return Task.FromResult<IReadOnlyList<ExpenseDto>>(expenses);
     }
+
+    private static List<ExpenseDto> GetMockExpenses() =>
+    [
+        new() { Id = "e1", Date = Today.AddDays(-20), Category = "Transport", Amount = 12500m, VendorName = "Logistics Partner BV" },
+        new() { Id = "e2", Date = Today.AddDays(-10), Category = "Utilities", Amount = 4200m, VendorName = "Energiebedrijf NL" },
+        new() { Id = "e3", Date = Today.AddDays(-2), Category = "Maintenance", Amount = 2950m, VendorName = "Technische Dienst BV" }
+    ];
 
     public Task<ItemDetailDto?> GetItemByBarcodeAsync(string barcode, CancellationToken cancellationToken = default)
     {
@@ -143,7 +204,18 @@ public sealed class MockNetSuiteService : INetSuiteService
             OpenTransactionCount = 2,
             OpenTransactions =
             [
-                new OpenTransactionDto { TransactionId = "t1", Type = "Sales Order", ItemId = "i1", QuantityOpen = 40, Status = "Pending Fulfillment" }
+                new OpenTransactionDto
+                {
+                    TransactionId = "t1",
+                    Type = "Sales Order",
+                    ItemId = "i1",
+                    ItemName = "Betonstraatstenen Antraciet",
+                    CustomerId = "c1",
+                    CustomerName = "Bouwbedrijf Jansen",
+                    TransactionDate = Today.AddDays(-1),
+                    QuantityOpen = 40,
+                    Status = "Pending Fulfillment"
+                }
             ]
         };
 

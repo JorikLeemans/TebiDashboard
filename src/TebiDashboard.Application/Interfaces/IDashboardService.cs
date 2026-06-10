@@ -9,6 +9,7 @@ namespace TebiDashboard.Application.Interfaces;
 public interface IDashboardService
 {
     Task<DashboardSummaryDto> GetSummaryAsync(DateRangeFilter filter, CancellationToken cancellationToken = default);
+    Task<PeriodOverviewDto> GetPeriodOverviewAsync(DateRangeFilter filter, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<RevenueDto>> GetRevenueAsync(DateRangeFilter filter, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<GoalDto>> GetGoalsWithProgressAsync(int year, string? period = null, CancellationToken cancellationToken = default);
 }

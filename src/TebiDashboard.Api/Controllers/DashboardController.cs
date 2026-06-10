@@ -23,4 +23,17 @@ public class DashboardController(IDashboardService dashboardService) : Controlle
         var summary = await dashboardService.GetSummaryAsync(filter, cancellationToken);
         return Ok(summary);
     }
+
+    [HttpGet("period-overview")]
+    public async Task<IActionResult> GetPeriodOverview([FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken cancellationToken)
+    {
+        var filter = new DateRangeFilter
+        {
+            From = from ?? DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2)),
+            To = to ?? DateOnly.FromDateTime(DateTime.UtcNow)
+        };
+
+        var overview = await dashboardService.GetPeriodOverviewAsync(filter, cancellationToken);
+        return Ok(overview);
+    }
 }

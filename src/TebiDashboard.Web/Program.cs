@@ -32,6 +32,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddScoped<IAuthStateService, AuthStateService>();
+builder.Services.AddScoped<IPeriodFilterService, PeriodFilterService>();
 
 var apiBaseUrl = ResolveApiBaseUrl(builder.Configuration["ApiBaseUrl"]);
 

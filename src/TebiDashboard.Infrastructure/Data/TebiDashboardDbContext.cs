@@ -10,6 +10,8 @@ public sealed class TebiDashboardDbContext(DbContextOptions<TebiDashboardDbConte
 {
     public DbSet<UserEntity> Users => Set<UserEntity>();
 
+    public DbSet<CustomerRecord> Customers => Set<CustomerRecord>();
+
     public DbSet<RevenueRecord> RevenueRecords => Set<RevenueRecord>();
 
     public DbSet<GoalRecord> Goals => Set<GoalRecord>();
@@ -30,6 +32,15 @@ public sealed class TebiDashboardDbContext(DbContextOptions<TebiDashboardDbConte
             entity.Property(e => e.Email).HasMaxLength(256);
             entity.Property(e => e.Password).HasMaxLength(256);
             entity.Property(e => e.Role).HasMaxLength(64);
+        });
+
+        modelBuilder.Entity<CustomerRecord>(entity =>
+        {
+            entity.HasKey(e => e.CustomerId);
+            entity.Property(e => e.CustomerId).HasMaxLength(64);
+            entity.Property(e => e.Name).HasMaxLength(256);
+            entity.Property(e => e.City).HasMaxLength(128);
+            entity.Property(e => e.ContactEmail).HasMaxLength(256);
         });
 
         modelBuilder.Entity<RevenueRecord>(entity =>
@@ -75,8 +86,11 @@ public sealed class TebiDashboardDbContext(DbContextOptions<TebiDashboardDbConte
             entity.Property(e => e.TransactionId).HasMaxLength(64);
             entity.Property(e => e.Type).HasMaxLength(64);
             entity.Property(e => e.ItemId).HasMaxLength(64);
+            entity.Property(e => e.CustomerId).HasMaxLength(64);
             entity.Property(e => e.Status).HasMaxLength(64);
             entity.HasIndex(e => e.ItemId);
+            entity.HasIndex(e => e.CustomerId);
+            entity.HasIndex(e => e.TransactionDate);
         });
 
         modelBuilder.Entity<ExpenseRecord>(entity =>

@@ -42,6 +42,14 @@ public static class DemoDataSeeder
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var year = today.Year;
 
+        // Customer master data — also referenced by revenue rows and sales orders.
+        dbContext.Customers.AddRange(
+            CreateCustomer("c1", "Bouwbedrijf Jansen", "Utrecht", "inkoop@jansen.nl"),
+            CreateCustomer("c2", "Gemeente Utrecht", "Utrecht", "aanbesteding@utrecht.nl"),
+            CreateCustomer("c3", "Stratenmakers BV", "Amersfoort", "orders@stratenmakers.nl"),
+            CreateCustomer("c4", "Woningbouw De Vliet", "Nieuwegein", "inkoop@devliet.nl"),
+            CreateCustomer("c5", "Aannemer Noord", "Groningen", "sales@aannemernoord.nl"));
+
         dbContext.RevenueRecords.AddRange(
             CreateRevenue("r01", today.AddDays(-165), 38500m, "c1", "Bouwbedrijf Jansen", "pg-paving"),
             CreateRevenue("r02", today.AddDays(-150), 41200m, "c2", "Gemeente Utrecht", "pg-tiles"),
@@ -93,12 +101,12 @@ public static class DemoDataSeeder
             CreateLocation("i9", "loc1", "Hoofdmagazijn", 12));
 
         dbContext.OpenTransactions.AddRange(
-            CreateTransaction("t1", "Sales Order", "i1", 40, "Pending Fulfillment"),
-            CreateTransaction("t2", "Transfer Order", "i1", 20, "Pending Receipt"),
-            CreateTransaction("t3", "Sales Order", "i2", 55, "Pending Fulfillment"),
-            CreateTransaction("t4", "Purchase Order", "i4", 120, "Pending Receipt"),
-            CreateTransaction("t5", "Sales Order", "i3", 30, "Pending Fulfillment"),
-            CreateTransaction("t6", "Transfer Order", "i6", 45, "In Transit"));
+            CreateTransaction("t1", "Sales Order", "i1", today.AddDays(-1), 40, "Pending Fulfillment", "c1"),
+            CreateTransaction("t2", "Transfer Order", "i1", today.AddDays(-2), 20, "Pending Receipt"),
+            CreateTransaction("t3", "Sales Order", "i2", today.AddDays(-5), 55, "Pending Fulfillment", "c3"),
+            CreateTransaction("t4", "Purchase Order", "i4", today.AddDays(-12), 120, "Pending Receipt"),
+            CreateTransaction("t5", "Sales Order", "i3", today.AddDays(-3), 30, "Pending Fulfillment", "c2"),
+            CreateTransaction("t6", "Transfer Order", "i6", today.AddDays(-18), 45, "In Transit"));
 
         dbContext.Expenses.AddRange(
             CreateExpense("e1", today.AddDays(-80), "Transport", 12500m, "Logistics Partner BV"),
@@ -123,6 +131,7 @@ public static class DemoDataSeeder
         dbContext.Expenses.RemoveRange(dbContext.Expenses);
         dbContext.Goals.RemoveRange(dbContext.Goals);
         dbContext.RevenueRecords.RemoveRange(dbContext.RevenueRecords);
+        dbContext.Customers.RemoveRange(dbContext.Customers);
         dbContext.InventoryItems.RemoveRange(dbContext.InventoryItems);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -190,16 +199,32 @@ public static class DemoDataSeeder
         QuantityOnHand = quantity
     };
 
+    private static CustomerRecord CreateCustomer(
+        string customerId,
+        string name,
+        string city,
+        string contactEmail) => new()
+    {
+        CustomerId = customerId,
+        Name = name,
+        City = city,
+        ContactEmail = contactEmail
+    };
+
     private static OpenTransactionRecord CreateTransaction(
         string transactionId,
         string type,
         string itemId,
+        DateOnly transactionDate,
         decimal quantityOpen,
-        string status) => new()
+        string status,
+        string? customerId = null) => new()
     {
         TransactionId = transactionId,
         Type = type,
         ItemId = itemId,
+        CustomerId = customerId,
+        TransactionDate = transactionDate,
         QuantityOpen = quantityOpen,
         Status = status
     };
