@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.HttpOverrides;
 using TebbiDashboard.Application;
 using TebbiDashboard.Infrastructure;
-using TebbiDashboard.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,15 +37,12 @@ if (!app.Environment.IsDevelopment())
     });
 }
 
-// Apply migrations and seed demo data when a persistent provider is configured.
-await app.InitializeAsync();
-
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseHttpsRedirection();
 }
 
-app.UseHttpsRedirection();
 app.UseCors("Clients");
 app.MapControllers();
 

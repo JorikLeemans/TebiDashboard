@@ -49,6 +49,7 @@ public static class DependencyInjection
         services.AddScoped<INetSuiteService, DatabaseNetSuiteService>();
         services.AddScoped<IUserStore, EfUserStore>();
         services.AddScoped<IDemoDataAdminService, DatabaseDemoDataAdminService>();
+        services.AddHostedService<DatabaseMigrationHostedService>();
 
         return services;
     }

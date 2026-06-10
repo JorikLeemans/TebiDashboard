@@ -146,7 +146,7 @@ Deploy **3 onderdelen** op Railway: PostgreSQL, API en Web UI. De MAUI-app blijf
    - **Dockerfile Path**: `Dockerfile.api`
    - **Config file path**: `/railway.toml` (staat in de repo)
 4. Open **Variables** → **Add Reference**:
-   - Koppel `DATABASE_URL` van de PostgreSQL-service
+   - Koppel `DATABASE_URL` van de PostgreSQL-service (of individueel: `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`)
 5. Voeg deze variabelen toe:
 
 | Variable | Value |
@@ -202,6 +202,7 @@ Deploy **3 onderdelen** op Railway: PostgreSQL, API en Web UI. De MAUI-app blijf
 | Probleem | Oplossing |
 |----------|-----------|
 | **Railpack could not determine how to build** | Zet **Builder** op `Dockerfile` (Settings → Build). Railpack herkent onze monorepo niet; gebruik `Dockerfile.api` of `Dockerfile.web`. |
+| **Healthcheck blijft falen** | Controleer deploy **runtime logs** (niet alleen build). Zorg dat `DATABASE_URL` gekoppeld is. HTTPS-redirect is uitgeschakeld in Production. |
 | API start niet | Check deploy logs; controleer of `DATABASE_URL` gekoppeld is |
 | Web toont login maar data laadt niet | `ApiBaseUrl` moet exact de **publieke HTTPS API-URL** zijn met `/` aan het eind |
 | Database leeg na deploy | Zet `Database__SeedDemoData=true`; herstart API |
