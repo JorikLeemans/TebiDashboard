@@ -1,0 +1,11 @@
+@using Microsoft.AspNetCore.Components.Routing
+@using TebbiDashboard.UI.Services
+
+<Router AppAssembly="typeof(TebbiDashboard.UI.Pages.DashboardHome).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" />
+    </Found>
+    <NotFound>
+        <p>Page not found.</p>
+    </NotFound>
+</Router>

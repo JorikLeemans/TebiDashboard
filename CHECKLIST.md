@@ -49,11 +49,14 @@ Afvinklijst gekoppeld aan het [adviesrapport](./LU2%20AdviesRapportage.docx) en 
 - [x] `docs/architectuur.md` opgesteld
 - [x] `docs/netsuite-data-mapping.md` opgesteld
 - [x] `docs/fases.md` opgesteld
+- [x] LU-3 portfolio-docs (`lu3-assessment`, user stories, DoD, OO/patterns, installation)
+- [x] Voorstelformulier verwerkt ([proposal-form.md](./docs/proposal-form.md))
 - [x] `CHECKLIST.md` en `README.md` aangemaakt
 - [x] Git-repository geïnitialiseerd (branch `main`, `.gitignore`)
 - [x] Eerste commit en push naar GitHub
-- [ ] Solution-structuur aanmaken
-- [ ] CI-basis (build + test pipeline)
+- [x] Solution-structuur aanmaken (`src/TebbiDashboard.slnx`)
+- [x] 5 unit tests + 3 API tests + 3 UI tests (groen)
+- [ ] MAUI workload installeren (zie [maui-setup.md](./docs/maui-setup.md))
 
 ## Fase 2 — Web API
 
@@ -94,6 +97,31 @@ Afvinklijst gekoppeld aan het [adviesrapport](./LU2%20AdviesRapportage.docx) en 
 - [ ] MAUI distributie (MSIX / APK)
 - [ ] Gebruikershandleiding
 - [ ] Doorontwikkeling Could have-items
+
+---
+
+## LU-3 Portfolio (assessment)
+
+Zie [docs/lu3-assessment.md](./docs/lu3-assessment.md) voor volledige mapping.
+
+### Niet-functioneel
+
+- [ ] .NET 10 + C# 14 (`global.json`, target frameworks)
+- [ ] Broncode volledig in het Engels
+- [ ] `.editorconfig` + consistente codestijl
+- [ ] Demonstratie Windows + Android
+- [ ] Min. 3 zinnige unit tests (groen) — **8 tests** (5 application + 3 API)
+- [ ] Min. 3 zinnige UI/device running tests — **3 bUnit UI tests** (+ device na MAUI workload)
+- [x] OO-principes & patterns gedocumenteerd ([oo-and-patterns.md](./docs/oo-and-patterns.md))
+- [x] Architectuurstijl gemotiveerd ([ONTWERP.md](./docs/ONTWERP.md) ADR's)
+- [x] Installatie- & gebruikershandleiding ([installation.md](./docs/installation.md))
+
+### Functioneel
+
+- [x] User stories opgesteld ([user-stories.md](./docs/user-stories.md))
+- [x] Definition of Done opgesteld ([definition-of-done.md](./docs/definition-of-done.md))
+- [ ] US-01 t/m US-11 geïmplementeerd en Done (voorstelformulier)
+- [ ] US-12 t/m US-14 (login, platform, dashboard home)
 
 ---
 

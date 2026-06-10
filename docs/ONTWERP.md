@@ -2,7 +2,7 @@
 
 **Versie:** 1.0  
 **Datum:** juni 2026  
-**Bron:** [LU2 AdviesRapportage.docx](../LU2%20AdviesRapportage.docx)  
+**Bron:** [LU2 AdviesRapportage.docx](../LU2%20AdviesRapportage.docx), [Voorstelformulier](../Jorik%20Leemans%20Voorstelformulier%20.NET%20MAUI%20app.docx)  
 **Projectlocatie:** `F:\School\Full-Stack .NET MAUI`
 
 ---
@@ -13,16 +13,22 @@
 
 TEBI gebruikt NetSuite als ERP-systeem. NetSuite bevat alle bedrijfsdata, maar biedt onvoldoende mogelijkheden om omzet, afzet, trends en doelstellingen overzichtelijk te visualiseren en te presenteren aan medewerkers, klanten en leveranciers.
 
+### Gebruikers (voorstelformulier)
+
+Directie, inkoop, voorraadbeheer, verkoop en financiële medewerkers bij TEBI Bestratingsmaterialen.
+
 ### Oplossing
 
-Een **dashboard-applicatie als aanvulling** op NetSuite — geen vervanging. De applicatie haalt data op via een beveiligde Web API, toont deze in grafieken en tabellen, en is toegankelijk via browser en native app.
+Een **dashboard-applicatie als aanvulling** op NetSuite — geen vervanging. Live data via Web API; weergave in Blazor (MAUI Hybrid + Web). Op het terrein: **barcode-scan** voor snelle artikelopzoeking.
 
 ### Scope (Must have)
 
-- NetSuite-koppeling via API
-- Dashboards: omzet, afzet, trends, doelen
+- NetSuite-koppeling via API (**live data**, mock alleen voor dev/test)
+- Dashboards: omzet, winst/uitgaven, afzet, trends, doelen
+- **Voorraad:** locaties, lage voorraad, openstaande transacties
+- **Barcode:** artikel opzoeken via camera/scanner (Android + Windows)
 - Filters op periode, klant, leverancier, artikelgroep
-- Gebruiksvriendelijke, web-toegankelijke interface
+- Windows + Android (kantoor + terrein)
 - Veilige gegevensverwerking
 
 ### Buiten scope (Won't have)
@@ -65,6 +71,18 @@ Een **dashboard-applicatie als aanvulling** op NetSuite — geen vervanging. De 
 
 **Reden:** Must have "web-based applicatie" uit adviesrapport; MAUI dekt native, Web dekt browser.
 
+### ADR-006: Barcode via MAUI device features
+
+**Besluit:** `IBarcodeScannerService` in MAUI; ZXing.Net.Maui op Android; keyboard wedge + optionele camera op Windows.
+
+**Reden:** Voorstelformulier — terreinmedewerkers scannen artikelbarcodes; unieke barcode per artikel bij TEBI.
+
+### ADR-007: Live NetSuite-data (geen mock in productie)
+
+**Besluit:** Productie gebruikt echte NetSuite API; `MockNetSuiteService` alleen voor lokale ontwikkeling en tests.
+
+**Reden:** Voorstelformulier — realistische bedrijfsvraag; live dashboard is het doel.
+
 ---
 
 ## 3. Functionele modules
@@ -106,18 +124,40 @@ Een **dashboard-applicatie als aanvulling** op NetSuite — geen vervanging. De 
 | Leverancier | Dropdown / zoek | NetSuite |
 | Artikelgroep | Dropdown | NetSuite |
 
+### 3.7 Voorraad (voorstelformulier)
+
+- Lage voorraad + hoge verkoop (inkoop-alert)
+- Opslaglocaties per artikel (meerdere plekken op terrein)
+- Openstaande transacties per artikel
+- Voorraadwaarde in KPI (optioneel)
+
+### 3.8 Barcode scan (MAUI device feature)
+
+- Camera-scan op Android (terrein)
+- USB-barcode scanner op Windows (keyboard wedge)
+- Lookup: artikel + voorraad + open transacties + verkoop/inkoop-context
+
+### 3.9 Uitgaven / financieel
+
+- Uitgaven per categorie en periode
+- Complementair aan omzet/winst-inzicht voor directie/financieel
+
 ---
 
 ## 4. Technische keuzes
 
 | Onderdeel | Keuze | Toelichting |
 |-----------|-------|-------------|
-| Runtime | .NET 8 LTS (of .NET 9) | LTS stabiel voor school/productie |
+| Runtime | **.NET 10** / **C# 14** | LU-3 portfolio-eis; volg actuele .NET 10 + MAUI-richtlijnen |
+| Taal broncode | **Engels** | LU-3: identifiers, classes, methods, comments |
+| Codestijl | `.editorconfig` + `dotnet format` | LU-3: consistente stijl |
+| Demo-platformen | **Windows + Android** | LU-3: demonstratie op 2 platformen |
 | Auth | JWT Bearer + rollen | `Admin`, `Management`, `Verkoper`, `Inkoop`, `ReadOnly` |
 | NetSuite | REST / SuiteTalk API | OAuth 1.0 of 2.0 (afhankelijk TEBI-configuratie) |
 | UI-framework | MudBlazor | Gratis, goede Blazor-charts en componenten |
 | Cache | IMemoryCache | Should have: auto-refresh; later Redis mogelijk |
 | Opslag (optioneel) | SQLite / SQL Server | Geaggregeerde snapshots voor snellere dashboards |
+| Tests | xUnit; min. 3 unit + 3 UI/device | LU-3 portfolio; zie [lu3-assessment.md](./lu3-assessment.md) |
 | Secrets | User Secrets (dev) / Key Vault (prod) | Geen credentials in source control |
 
 ---
@@ -129,16 +169,22 @@ Basis-URL: `https://{host}/api`
 ### Endpoints (Must have)
 
 ```
-GET  /health                          → Health check
-GET  /dashboard/summary               → KPI-samenvatting
-GET  /omzet?from=&to=&klantId=        → Omzetdata
-GET  /afzet?from=&to=&artikelgroep=   → Afzetdata
-GET  /trends?from=&to=&interval=      → Trenddata
-GET  /doelen?jaar=                    → Doelstellingen vs. actueel
-GET  /filters/klanten                 → Klantenlijst voor dropdown
-GET  /filters/leveranciers            → Leverancierslijst
-GET  /filters/artikelgroepen          → Artikelgroepen
-POST /auth/login                      → JWT-token (Fase 2)
+GET  /health
+GET  /dashboard/summary
+GET  /revenue?from=&to=&customerId=
+GET  /sales-volume/top?from=&to=&limit=
+GET  /sales-volume/popular?from=&to=
+GET  /trends?from=&to=&interval=
+GET  /goals?year=&period=
+GET  /goals/by-item?period=
+GET  /goals/progress?goalId=
+GET  /expenses?from=&to=
+GET  /inventory/low-stock?highSales=true
+GET  /inventory/{itemId}/locations
+GET  /inventory/{itemId}/open-transactions
+GET  /items/by-barcode/{barcode}
+GET  /filters/customers|suppliers|product-groups
+POST /auth/login
 ```
 
 ### Voorbeeld-response: `/dashboard/summary`
@@ -199,4 +245,10 @@ Zie [fases.md](./fases.md) voor de volledige uitwerking van de 6 implementatiefa
 - [architectuur.md](./architectuur.md)
 - [netsuite-data-mapping.md](./netsuite-data-mapping.md)
 - [fases.md](./fases.md)
+- [lu3-assessment.md](./lu3-assessment.md) — LU-3 portfolio-eisen
+- [user-stories.md](./user-stories.md)
+- [definition-of-done.md](./definition-of-done.md)
+- [oo-and-patterns.md](./oo-and-patterns.md)
+- [installation.md](./installation.md)
+- [proposal-form.md](./proposal-form.md) — voorstelformulier TEBI
 - [CHECKLIST.md](../CHECKLIST.md)
