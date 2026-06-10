@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.Logging;
 using TebiDashboard.Maui.Services;
 using TebiDashboard.UI.Services;
@@ -9,6 +10,11 @@ public static class MauiProgram
 {
     public static MauiApp CreateMauiApp()
     {
+        // Default to Dutch locale so currency and dates render with € instead of ¤.
+        var dutchCulture = CultureInfo.GetCultureInfo("nl-NL");
+        CultureInfo.DefaultThreadCurrentCulture = dutchCulture;
+        CultureInfo.DefaultThreadCurrentUICulture = dutchCulture;
+
         var builder = MauiApp.CreateBuilder();
         builder
             .UseMauiApp<App>()

@@ -1,0 +1,190 @@
+@page "/customers/{CustomerId}"
+@layout DashboardLayout
+@using TebiDashboard.Shared.Dtos
+@inject DashboardApiClient ApiClient
+@inject IPeriodFilterService PeriodFilter
+@inject IAuthStateService AuthState
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>@(_detail?.Customer.Name ?? "Customer detail") — TEBI Dashboard</PageTitle>
+
+<div class="customer-detail">
+    <nav class="customer-detail__nav">
+        <a href="/customers" class="customer-detail__back">← Back to customers</a>
+    </nav>
+
+    @if (_isLoading)
+    {
+        <p class="customer-detail__status">Loading customer details...</p>
+    }
+    else if (_error is not null)
+    {
+        <p class="error" role="alert">@_error</p>
+    }
+    else if (_detail is null)
+    {
+        <p class="customer-detail__status">Customer not found.</p>
+    }
+    else
+    {
+        <header class="customer-detail__header">
+            <div>
+                <h1>@_detail.Customer.Name</h1>
+                <p class="customer-detail__meta">
+                    <span>ID: <code>@_detail.Customer.CustomerId</code></span>
+                    <span>City: @_detail.Customer.City</span>
+                    <span>Contact: @_detail.Customer.ContactEmail</span>
+                </p>
+            </div>
+        </header>
+
+        <section class="customer-detail__kpi-grid" aria-label="Customer summary">
+            <article class="customer-detail__kpi">
+                <h2>Total spent</h2>
+                <p>@EuroFormatting.FormatWhole(_detail.TotalSpent)</p>
+            </article>
+            <article class="customer-detail__kpi">
+                <h2>Revenue entries</h2>
+                <p>@_detail.Revenue.Count</p>
+            </article>
+            <article class="customer-detail__kpi">
+                <h2>Sales orders</h2>
+                <p>@_detail.SalesOrders.Count</p>
+            </article>
+            <article class="customer-detail__kpi">
+                <h2>Period</h2>
+                <p>@_detail.PeriodFrom.ToString("d") – @_detail.PeriodTo.ToString("d")</p>
+            </article>
+        </section>
+
+        <section class="customer-detail__section">
+            <h2>Revenue in period</h2>
+            @if (_detail.Revenue.Count == 0)
+            {
+                <p class="customer-detail__empty">No revenue recorded for this customer in the selected period.</p>
+            }
+            else
+            {
+                <table class="customer-detail__table" aria-label="Customer revenue">
+                    <thead>
+                        <tr>
+                            <th scope="col">Date</th>
+                            <th scope="col">Amount</th>
+                            <th scope="col">Product group</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in _detail.Revenue)
+                        {
+                            <tr>
+                                <td>@row.Date.ToString("d")</td>
+                                <td>@EuroFormatting.FormatWhole(row.Amount)</td>
+                                <td><code>@row.ProductGroupId</code></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+
+        <section class="customer-detail__section">
+            <h2>Sales orders in period</h2>
+            @if (_detail.SalesOrders.Count == 0)
+            {
+                <p class="customer-detail__empty">No open sales orders linked to this customer in the selected period.</p>
+            }
+            else
+            {
+                <table class="customer-detail__table" aria-label="Customer sales orders">
+                    <thead>
+                        <tr>
+                            <th scope="col">Date</th>
+                            <th scope="col">Order</th>
+                            <th scope="col">Item</th>
+                            <th scope="col">Qty open</th>
+                            <th scope="col">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var order in _detail.SalesOrders)
+                        {
+                            <tr class="customer-detail__link-row" @onclick="() => OpenItem(order.ItemId)" tabindex="0">
+                                <td>@order.TransactionDate.ToString("d")</td>
+                                <td><code>@order.TransactionId</code></td>
+                                <td>@order.ItemName</td>
+                                <td>@order.QuantityOpen.ToString("N0")</td>
+                                <td>@order.Status</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string CustomerId { get; set; } = string.Empty;
+
+    private CustomerDetailDto? _detail;
+    private bool _isLoading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthState.InitializeAsync();
+
+        if (!AuthState.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        PeriodFilter.OnChanged += OnPeriodChanged;
+        await LoadDetailAsync();
+    }
+
+    private void OnPeriodChanged()
+    {
+        _ = ReloadDetailAsync();
+    }
+
+    private async Task ReloadDetailAsync()
+    {
+        await LoadDetailAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadDetailAsync()
+    {
+        _isLoading = true;
+        _error = null;
+
+        try
+        {
+            _detail = await ApiClient.GetCustomerDetailAsync(CustomerId, PeriodFilter.From, PeriodFilter.To);
+
+            if (_detail is null)
+            {
+                _error = $"No customer found with id '{CustomerId}'.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load customer details: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenItem(string itemId) => Navigation.NavigateTo($"/inventory/{Uri.EscapeDataString(itemId)}");
+
+    public void Dispose()
+    {
+        PeriodFilter.OnChanged -= OnPeriodChanged;
+    }
+}

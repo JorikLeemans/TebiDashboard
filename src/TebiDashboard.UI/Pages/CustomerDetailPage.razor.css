@@ -1,0 +1,106 @@
+.customer-detail {
+  padding: 1rem;
+  font-family: Segoe UI, sans-serif;
+}
+
+.customer-detail__nav {
+  margin-bottom: 1rem;
+}
+
+.customer-detail__back {
+  color: #2a8a4a;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.customer-detail__back:hover {
+  text-decoration: underline;
+}
+
+.customer-detail__header h1 {
+  margin: 0 0 0.5rem;
+}
+
+.customer-detail__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 0;
+  color: #555;
+}
+
+.customer-detail__status,
+.customer-detail__empty {
+  color: #555;
+}
+
+.customer-detail__kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin: 1.25rem 0;
+}
+
+.customer-detail__kpi {
+  background: #fff;
+  border: 1px solid #dde3ea;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.customer-detail__kpi h2 {
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+  color: #556;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.customer-detail__kpi p {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.customer-detail__section {
+  background: #fff;
+  border: 1px solid #dde3ea;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.customer-detail__section h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+.customer-detail__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.customer-detail__table th,
+.customer-detail__table td {
+  padding: 0.6rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.customer-detail__table th {
+  font-size: 0.85rem;
+  color: #445;
+  background: #f7faf8;
+}
+
+.customer-detail__link-row {
+  cursor: pointer;
+}
+
+.customer-detail__link-row:hover {
+  background: #f0f7f2;
+}
+
+.error {
+  color: #b00020;
+}
