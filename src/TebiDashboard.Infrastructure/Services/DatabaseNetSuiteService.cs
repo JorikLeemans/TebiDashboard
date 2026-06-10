@@ -19,7 +19,18 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .ToListAsync(cancellationToken);
 
         var totalRevenue = revenueRows.Sum(r => r.Amount);
-        var salesVolume = await dbContext.InventoryItems.AsNoTracking().SumAsync(i => i.RecentSalesVolume, cancellationToken);
+
+        // Sales volume in the selected period: sum of open transaction quantities, fallback to revenue line count.
+        var salesVolume = await dbContext.OpenTransactions
+            .AsNoTracking()
+            .Where(t => t.TransactionDate >= filter.From && t.TransactionDate <= filter.To)
+            .SumAsync(t => t.QuantityOpen, cancellationToken);
+
+        if (salesVolume == 0)
+        {
+            salesVolume = revenueRows.Count;
+        }
+
         var lowStockCount = await dbContext.InventoryItems.AsNoTracking().CountAsync(i => i.IsLowStock, cancellationToken);
 
         var year = filter.To.Year;
@@ -47,6 +58,59 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             PeriodFrom = filter.From,
             PeriodTo = filter.To
         };
+    }
+
+    public async Task<PeriodOverviewDto> GetPeriodOverviewAsync(DateRangeFilter filter, CancellationToken cancellationToken = default)
+    {
+        var summary = await GetDashboardSummaryAsync(filter, cancellationToken);
+        var revenue = await GetRevenueAsync(filter, cancellationToken);
+        var expenses = await GetExpensesAsync(filter, cancellationToken);
+        var transactions = await GetTransactionsInPeriodAsync(filter, cancellationToken);
+        var lowStock = await GetLowStockItemsAsync(highSalesOnly: false, cancellationToken);
+
+        var activeItemIds = transactions.Select(t => t.ItemId).Distinct().ToHashSet();
+        var inventoryWithActivity = await dbContext.InventoryItems
+            .AsNoTracking()
+            .Where(i => activeItemIds.Contains(i.ItemId))
+            .OrderBy(i => i.ItemName)
+            .ToListAsync(cancellationToken);
+
+        return new PeriodOverviewDto
+        {
+            PeriodFrom = filter.From,
+            PeriodTo = filter.To,
+            Summary = summary,
+            Revenue = revenue,
+            Expenses = expenses,
+            Transactions = transactions,
+            LowStockItems = lowStock,
+            InventoryWithActivity = inventoryWithActivity.Select(MapInventoryItem).ToList()
+        };
+    }
+
+    private async Task<IReadOnlyList<OpenTransactionDto>> GetTransactionsInPeriodAsync(
+        DateRangeFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var rows = await dbContext.OpenTransactions
+            .AsNoTracking()
+            .Where(t => t.TransactionDate >= filter.From && t.TransactionDate <= filter.To)
+            .OrderByDescending(t => t.TransactionDate)
+            .ThenBy(t => t.Type)
+            .ToListAsync(cancellationToken);
+
+        if (rows.Count == 0)
+        {
+            return [];
+        }
+
+        var itemIds = rows.Select(r => r.ItemId).Distinct().ToList();
+        var itemNames = await dbContext.InventoryItems
+            .AsNoTracking()
+            .Where(i => itemIds.Contains(i.ItemId))
+            .ToDictionaryAsync(i => i.ItemId, i => i.ItemName, cancellationToken);
+
+        return rows.Select(t => MapOpenTransaction(t, itemNames.GetValueOrDefault(t.ItemId, t.ItemId))).ToList();
     }
 
     public async Task<IReadOnlyList<RevenueDto>> GetRevenueAsync(DateRangeFilter filter, CancellationToken cancellationToken = default)
@@ -150,17 +214,17 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
         var rows = await dbContext.OpenTransactions
             .AsNoTracking()
             .Where(t => t.ItemId == itemId)
-            .OrderBy(t => t.Type)
+            .OrderByDescending(t => t.TransactionDate)
+            .ThenBy(t => t.Type)
             .ToListAsync(cancellationToken);
 
-        return rows.Select(t => new OpenTransactionDto
-        {
-            TransactionId = t.TransactionId,
-            Type = t.Type,
-            ItemId = t.ItemId,
-            QuantityOpen = t.QuantityOpen,
-            Status = t.Status
-        }).ToList();
+        var itemName = await dbContext.InventoryItems
+            .AsNoTracking()
+            .Where(i => i.ItemId == itemId)
+            .Select(i => i.ItemName)
+            .FirstOrDefaultAsync(cancellationToken) ?? itemId;
+
+        return rows.Select(t => MapOpenTransaction(t, itemName)).ToList();
     }
 
     public async Task<IReadOnlyList<ExpenseDto>> GetExpensesAsync(DateRangeFilter filter, CancellationToken cancellationToken = default)
@@ -212,6 +276,17 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             OpenTransactions = transactions.ToList()
         };
     }
+
+    private static OpenTransactionDto MapOpenTransaction(Data.Entities.OpenTransactionRecord record, string itemName) => new()
+    {
+        TransactionId = record.TransactionId,
+        Type = record.Type,
+        ItemId = record.ItemId,
+        ItemName = itemName,
+        TransactionDate = record.TransactionDate,
+        QuantityOpen = record.QuantityOpen,
+        Status = record.Status
+    };
 
     private static InventoryItemDto MapInventoryItem(Data.Entities.InventoryItemRecord item) => new()
     {

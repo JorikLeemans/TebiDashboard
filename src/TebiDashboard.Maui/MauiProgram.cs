@@ -21,6 +21,7 @@ public static class MauiProgram
         builder.Services.AddMauiBlazorWebView();
         builder.Services.AddSingleton<IBarcodeScannerService, BarcodeScannerService>();
         builder.Services.AddScoped<IAuthStateService, AuthStateService>();
+        builder.Services.AddScoped<IPeriodFilterService, PeriodFilterService>();
 
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();

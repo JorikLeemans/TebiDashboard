@@ -64,6 +64,8 @@ public class InventoryPageTests
                         TransactionId = "t1",
                         Type = "Sales Order",
                         ItemId = "i1",
+                        ItemName = "Betonstraatstenen Antraciet",
+                        TransactionDate = new DateOnly(2026, 6, 9),
                         QuantityOpen = 40,
                         Status = "Pending Fulfillment"
                     }

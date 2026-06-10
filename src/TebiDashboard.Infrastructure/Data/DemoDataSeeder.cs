@@ -93,12 +93,12 @@ public static class DemoDataSeeder
             CreateLocation("i9", "loc1", "Hoofdmagazijn", 12));
 
         dbContext.OpenTransactions.AddRange(
-            CreateTransaction("t1", "Sales Order", "i1", 40, "Pending Fulfillment"),
-            CreateTransaction("t2", "Transfer Order", "i1", 20, "Pending Receipt"),
-            CreateTransaction("t3", "Sales Order", "i2", 55, "Pending Fulfillment"),
-            CreateTransaction("t4", "Purchase Order", "i4", 120, "Pending Receipt"),
-            CreateTransaction("t5", "Sales Order", "i3", 30, "Pending Fulfillment"),
-            CreateTransaction("t6", "Transfer Order", "i6", 45, "In Transit"));
+            CreateTransaction("t1", "Sales Order", "i1", today.AddDays(-1), 40, "Pending Fulfillment"),
+            CreateTransaction("t2", "Transfer Order", "i1", today.AddDays(-2), 20, "Pending Receipt"),
+            CreateTransaction("t3", "Sales Order", "i2", today.AddDays(-5), 55, "Pending Fulfillment"),
+            CreateTransaction("t4", "Purchase Order", "i4", today.AddDays(-12), 120, "Pending Receipt"),
+            CreateTransaction("t5", "Sales Order", "i3", today.AddDays(-3), 30, "Pending Fulfillment"),
+            CreateTransaction("t6", "Transfer Order", "i6", today.AddDays(-18), 45, "In Transit"));
 
         dbContext.Expenses.AddRange(
             CreateExpense("e1", today.AddDays(-80), "Transport", 12500m, "Logistics Partner BV"),
@@ -194,12 +194,14 @@ public static class DemoDataSeeder
         string transactionId,
         string type,
         string itemId,
+        DateOnly transactionDate,
         decimal quantityOpen,
         string status) => new()
     {
         TransactionId = transactionId,
         Type = type,
         ItemId = itemId,
+        TransactionDate = transactionDate,
         QuantityOpen = quantityOpen,
         Status = status
     };

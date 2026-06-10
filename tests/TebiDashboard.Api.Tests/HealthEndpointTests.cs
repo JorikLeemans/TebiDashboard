@@ -48,6 +48,13 @@ public class HealthEndpointTests : IClassFixture<TebiWebApplicationFactory>
     }
 
     [Fact]
+    public async Task PeriodOverview_ReturnsOk_WithMockData()
+    {
+        var response = await _client.GetAsync("/api/dashboard/period-overview");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
     public async Task ItemById_ReturnsNotFound_ForUnknownItem()
     {
         var response = await _client.GetAsync("/api/items/unknown");

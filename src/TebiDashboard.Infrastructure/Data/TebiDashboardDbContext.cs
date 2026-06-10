@@ -77,6 +77,7 @@ public sealed class TebiDashboardDbContext(DbContextOptions<TebiDashboardDbConte
             entity.Property(e => e.ItemId).HasMaxLength(64);
             entity.Property(e => e.Status).HasMaxLength(64);
             entity.HasIndex(e => e.ItemId);
+            entity.HasIndex(e => e.TransactionDate);
         });
 
         modelBuilder.Entity<ExpenseRecord>(entity =>

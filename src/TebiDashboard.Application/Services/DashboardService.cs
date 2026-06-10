@@ -12,6 +12,9 @@ public sealed class DashboardService(INetSuiteService netSuiteService) : IDashbo
     public Task<DashboardSummaryDto> GetSummaryAsync(DateRangeFilter filter, CancellationToken cancellationToken = default)
         => netSuiteService.GetDashboardSummaryAsync(filter, cancellationToken);
 
+    public Task<PeriodOverviewDto> GetPeriodOverviewAsync(DateRangeFilter filter, CancellationToken cancellationToken = default)
+        => netSuiteService.GetPeriodOverviewAsync(filter, cancellationToken);
+
     public Task<IReadOnlyList<RevenueDto>> GetRevenueAsync(DateRangeFilter filter, CancellationToken cancellationToken = default)
         => netSuiteService.GetRevenueAsync(filter, cancellationToken);
 

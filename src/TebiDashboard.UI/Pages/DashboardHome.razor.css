@@ -55,3 +55,47 @@
   margin-top:1rem;
   color:#555;
 }
+
+.dashboard-section {
+  background: #fff;
+  border: 1px solid #dde3ea;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.dashboard-section h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+.dashboard-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.dashboard-table th,
+.dashboard-table td {
+  padding: 0.6rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.dashboard-table th {
+  font-size: 0.85rem;
+  color: #445;
+  background: #f7faf8;
+}
+
+.dashboard-table__link {
+  cursor: pointer;
+}
+
+.dashboard-table__link:hover {
+  background: #f0f7f2;
+}
+
+.dashboard-empty {
+  color: #666;
+  margin: 0;
+}

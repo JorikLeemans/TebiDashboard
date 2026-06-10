@@ -2,8 +2,10 @@
 @layout DashboardLayout
 @using TebiDashboard.Shared.Dtos
 @inject DashboardApiClient ApiClient
+@inject IPeriodFilterService PeriodFilter
 @inject IAuthStateService AuthState
 @inject NavigationManager Navigation
+@implements IDisposable
 
 <PageTitle>TEBI Dashboard</PageTitle>
 
@@ -16,60 +18,216 @@
     }
     else if (_error is not null)
     {
-        <p class="error">@_error</p>
+        <p class="error" role="alert">@_error</p>
     }
-    else if (_summary is not null)
+    else if (_overview is not null)
     {
         <div class="kpi-grid">
             <div class="kpi-card">
                 <h3>Revenue</h3>
-                <p class="kpi-value">@_summary.Revenue.ToString("C0")</p>
-                <span class="trend">@_summary.RevenueTrend</span>
+                <p class="kpi-value">@_overview.Summary.Revenue.ToString("C0")</p>
+                <span class="trend">@_overview.Summary.RevenueTrend</span>
             </div>
             <div class="kpi-card">
                 <h3>Sales volume</h3>
-                <p class="kpi-value">@_summary.SalesVolume.ToString("N0")</p>
+                <p class="kpi-value">@_overview.Summary.SalesVolume.ToString("N0")</p>
             </div>
             <div class="kpi-card">
                 <h3>Goal progress</h3>
-                <p class="kpi-value">@_summary.GoalPercentage.ToString("F1")%</p>
+                <p class="kpi-value">@_overview.Summary.GoalPercentage.ToString("F1")%</p>
             </div>
             <a href="/inventory" class="kpi-card alert kpi-card--link">
                 <h3>Low stock alerts</h3>
-                <p class="kpi-value">@_summary.LowStockAlertCount</p>
+                <p class="kpi-value">@_overview.Summary.LowStockAlertCount</p>
                 <span class="kpi-card__hint">View inventory →</span>
             </a>
         </div>
-        <p class="period">Period: @_summary.PeriodFrom.ToString("d") – @_summary.PeriodTo.ToString("d")</p>
+
+        <section class="dashboard-section">
+            <h2>Sales in period (@_overview.Revenue.Count)</h2>
+            @if (_overview.Revenue.Count == 0)
+            {
+                <p class="dashboard-empty">No revenue records in this period.</p>
+            }
+            else
+            {
+                <table class="dashboard-table" aria-label="Revenue in period">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Customer</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in _overview.Revenue)
+                        {
+                            <tr>
+                                <td>@row.Date.ToString("d")</td>
+                                <td>@row.CustomerName</td>
+                                <td>@row.Amount.ToString("C0")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+
+        <section class="dashboard-section">
+            <h2>Transactions in period (@_overview.Transactions.Count)</h2>
+            @if (_overview.Transactions.Count == 0)
+            {
+                <p class="dashboard-empty">No open transactions in this period.</p>
+            }
+            else
+            {
+                <table class="dashboard-table" aria-label="Transactions in period">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Item</th>
+                            <th>Qty open</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in _overview.Transactions)
+                        {
+                            <tr class="dashboard-table__link" @onclick="() => OpenItem(row.ItemId)" tabindex="0">
+                                <td>@row.TransactionDate.ToString("d")</td>
+                                <td>@row.Type</td>
+                                <td>@row.ItemName</td>
+                                <td>@row.QuantityOpen.ToString("N0")</td>
+                                <td>@row.Status</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+
+        <section class="dashboard-section">
+            <h2>Expenses in period (@_overview.Expenses.Count)</h2>
+            @if (_overview.Expenses.Count == 0)
+            {
+                <p class="dashboard-empty">No expenses in this period.</p>
+            }
+            else
+            {
+                <table class="dashboard-table" aria-label="Expenses in period">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Category</th>
+                            <th>Vendor</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in _overview.Expenses)
+                        {
+                            <tr>
+                                <td>@row.Date.ToString("d")</td>
+                                <td>@row.Category</td>
+                                <td>@row.VendorName</td>
+                                <td>@row.Amount.ToString("C0")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+
+        <section class="dashboard-section">
+            <h2>Inventory with activity (@_overview.InventoryWithActivity.Count)</h2>
+            @if (_overview.InventoryWithActivity.Count == 0)
+            {
+                <p class="dashboard-empty">No inventory items linked to transactions in this period.</p>
+            }
+            else
+            {
+                <table class="dashboard-table" aria-label="Inventory with activity">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>On hand</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in _overview.InventoryWithActivity)
+                        {
+                            <tr class="dashboard-table__link" @onclick="() => OpenItem(item.ItemId)" tabindex="0">
+                                <td>@item.ItemName</td>
+                                <td>@item.QuantityOnHand.ToString("N0")</td>
+                                <td>@(item.IsLowStock ? "Low stock" : "OK")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
     }
 </div>
 
 @code {
-  private DashboardSummaryDto? _summary;
-  private bool _isLoading = true;
-  private string? _error;
+    private PeriodOverviewDto? _overview;
+    private bool _isLoading = true;
+    private string? _error;
 
-  protected override async Task OnInitializedAsync()
-  {
-    await AuthState.InitializeAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthState.InitializeAsync();
 
-    if (!AuthState.IsAuthenticated)
-    {
-      Navigation.NavigateTo("/login");
-      return;
+        if (!AuthState.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        PeriodFilter.OnChanged += OnPeriodChanged;
+        await LoadOverviewAsync();
     }
 
-    try
+    private void OnPeriodChanged()
     {
-      _summary = await ApiClient.GetSummaryAsync();
+        _ = ReloadOverviewAsync();
     }
-    catch (Exception ex)
+
+    private async Task ReloadOverviewAsync()
     {
-      _error = $"Failed to load dashboard: {ex.Message}";
+        await LoadOverviewAsync();
+        await InvokeAsync(StateHasChanged);
     }
-    finally
+
+    private async Task LoadOverviewAsync()
     {
-      _isLoading = false;
+        _isLoading = true;
+        _error = null;
+
+        try
+        {
+            _overview = await ApiClient.GetPeriodOverviewAsync(PeriodFilter.From, PeriodFilter.To);
+            if (_overview is null)
+            {
+                _error = "No overview data returned from the API.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load dashboard: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
-  }
+
+    private void OpenItem(string itemId) => Navigation.NavigateTo($"/inventory/{Uri.EscapeDataString(itemId)}");
+
+    public void Dispose()
+    {
+        PeriodFilter.OnChanged -= OnPeriodChanged;
+    }
 }

@@ -11,6 +11,11 @@ public sealed class OpenTransactionRecord
 
     public string ItemId { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Date the transaction was created or last updated (used for period filtering).
+    /// </summary>
+    public DateOnly TransactionDate { get; set; }
+
     public decimal QuantityOpen { get; set; }
 
     public string Status { get; set; } = string.Empty;
