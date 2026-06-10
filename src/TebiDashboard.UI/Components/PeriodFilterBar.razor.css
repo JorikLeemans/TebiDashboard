@@ -7,6 +7,23 @@
   font-family: Segoe UI, sans-serif;
 }
 
+.period-filter__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.period-filter__header:only-child,
+.period-filter__header:has(+ .period-filter__presets) {
+  margin-bottom: 0.75rem;
+}
+
+.period-filter:not(:has(.period-filter__presets)) .period-filter__header {
+  margin-bottom: 0;
+}
+
 .period-filter__presets {
   display: flex;
   flex-wrap: wrap;
@@ -18,7 +35,21 @@
 .period-filter__label {
   font-weight: 600;
   color: #334;
-  margin-right: 0.25rem;
+}
+
+.period-filter__toggle {
+  border: 1px solid #c5d6cc;
+  background: #f7faf8;
+  color: #1a3d2b;
+  border-radius: 6px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.period-filter__toggle:hover {
+  background: #eef8f1;
 }
 
 .period-filter__btn {
@@ -63,4 +94,8 @@
   margin: 0;
   font-size: 0.9rem;
   color: #555;
+}
+
+.period-filter__summary--compact {
+  flex: 1;
 }

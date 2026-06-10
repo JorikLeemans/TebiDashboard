@@ -50,6 +50,34 @@ public class GoalsPageTests
         Assert.Contains("Betonstraatstenen Antraciet", cut.Markup);
     }
 
+    [Fact]
+    public void GoalsPage_ShowsQuarterOnItemGoals_WhenAllQuartersSelected()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        SetupGoals(mockHttp,
+        [
+            new GoalDto
+            {
+                Id = "g-i1",
+                Year = 2026,
+                Period = "Q2",
+                ItemId = "i1",
+                ItemName = "Betonstraatstenen Antraciet",
+                TargetValue = 1200m,
+                ActualValue = 980m,
+                Percentage = 81.7m,
+                Status = "at-risk"
+            }
+        ]);
+
+        var cut = ctx.Render<GoalsPage>();
+        cut.WaitForElement(".goals-page__section", TimeSpan.FromSeconds(5));
+
+        var quarterSelect = cut.FindAll("select")[1];
+        quarterSelect.Change("");
+        cut.WaitForAssertion(() => Assert.Contains("(Q2 2026)", cut.Markup));
+    }
+
     private static void SetupGoals(MockHttpMessageHandler mockHttp, IReadOnlyList<GoalDto> goals)
     {
         mockHttp.When(HttpMethod.Get, "*/api/goals*")
