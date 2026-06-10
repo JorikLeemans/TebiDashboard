@@ -89,6 +89,18 @@ For Android emulator, use `https://10.0.2.2:7001` to reach host machine localhos
 
 ## Run locally
 
+### Quick start (API + Blazor Web)
+
+From the repository root:
+
+```powershell
+.\start.cmd
+```
+
+`start.cmd` runs `start.ps1` with `-ExecutionPolicy Bypass`, so you do not need to change Windows execution policy.
+
+This opens two terminal windows (API on `https://localhost:7119`, Web on `https://localhost:7274`), trusts the HTTPS dev certificate, and waits for the API health check before starting the web app.
+
 ### 1. Start Web API
 
 ```bash
@@ -96,7 +108,7 @@ cd src/TebbiDashboard.Api
 dotnet run
 ```
 
-Swagger UI: `https://localhost:7001/swagger`
+Swagger UI: `https://localhost:7119/swagger`
 
 ### 2. Start MAUI app — Windows
 
@@ -118,6 +130,16 @@ dotnet build -f net10.0-android
 dotnet run -f net10.0-android
 ```
 
+Or: Visual Studio → target **Android Emulators**.
+
+### 4. Blazor Web (optional)
+
+```bash
+cd src/TebbiDashboard.Web
+dotnet run
+```
+
+Browser: `https://localhost:7274`
 Or: Visual Studio → target **Android Emulators**.
 
 ### 4. Blazor Web (optional)
@@ -180,6 +202,7 @@ cd src/TebbiDashboard.Maui
 dotnet publish -f net10.0-android -c Release
 ```
 
+| `running scripts is disabled` | Use `.\start.cmd` instead of `.\start.ps1`, or run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once |
 APK location: `bin/Release/net10.0-android/publish/`
 
 ---

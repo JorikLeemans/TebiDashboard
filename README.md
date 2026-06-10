@@ -50,13 +50,28 @@ F:\School\Full-Stack .NET MAUI\
 
 ### Snel starten
 
+```powershell
+# Eén venster: start API + Web op de achtergrond, opent browser
+.\start.cmd
+
+# Alles stoppen
+.\stop.cmd
+```
+
+Handmatig (twee terminals):
+
 ```bash
-# API
 dotnet run --project src/TebbiDashboard.Api
-
-# Blazor Web (andere terminal)
 dotnet run --project src/TebbiDashboard.Web
+```
 
+```bash
+```bash
+dotnet run --project src/TebbiDashboard.Api
+dotnet run --project src/TebbiDashboard.Web
+```
+
+```bash
 # Tests (zonder MAUI)
 dotnet test src/TebbiDashboard.slnf
 ```
