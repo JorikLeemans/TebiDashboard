@@ -19,11 +19,6 @@ public static class DemoDataSeeder
             await ClearDashboardDataAsync(dbContext, cancellationToken);
         }
 
-        if (!forceReseed && await dbContext.Users.AnyAsync(cancellationToken))
-        {
-            return;
-        }
-
         if (!await dbContext.Users.AnyAsync(cancellationToken))
         {
             dbContext.Users.AddRange(
@@ -33,6 +28,10 @@ public static class DemoDataSeeder
                 new UserEntity { Email = "inventory@tebi.nl", Password = "inventory1", Role = Roles.Inventory });
         }
 
+        // Backfill customer master data when the table was added after an existing deployment.
+        await EnsureDemoCustomersAsync(dbContext, cancellationToken);
+        await BackfillSalesOrderCustomersAsync(dbContext, cancellationToken);
+
         if (await dbContext.RevenueRecords.AnyAsync(cancellationToken))
         {
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -41,14 +40,6 @@ public static class DemoDataSeeder
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var year = today.Year;
-
-        // Customer master data — also referenced by revenue rows and sales orders.
-        dbContext.Customers.AddRange(
-            CreateCustomer("c1", "Bouwbedrijf Jansen", "Utrecht", "inkoop@jansen.nl"),
-            CreateCustomer("c2", "Gemeente Utrecht", "Utrecht", "aanbesteding@utrecht.nl"),
-            CreateCustomer("c3", "Stratenmakers BV", "Amersfoort", "orders@stratenmakers.nl"),
-            CreateCustomer("c4", "Woningbouw De Vliet", "Nieuwegein", "inkoop@devliet.nl"),
-            CreateCustomer("c5", "Aannemer Noord", "Groningen", "sales@aannemernoord.nl"));
 
         dbContext.RevenueRecords.AddRange(
             CreateRevenue("r01", today.AddDays(-165), 38500m, "c1", "Bouwbedrijf Jansen", "pg-paving"),
@@ -198,6 +189,66 @@ public static class DemoDataSeeder
         LocationName = locationName,
         QuantityOnHand = quantity
     };
+
+    private static CustomerRecord[] GetDemoCustomers() =>
+    [
+        CreateCustomer("c1", "Bouwbedrijf Jansen", "Utrecht", "inkoop@jansen.nl"),
+        CreateCustomer("c2", "Gemeente Utrecht", "Utrecht", "aanbesteding@utrecht.nl"),
+        CreateCustomer("c3", "Stratenmakers BV", "Amersfoort", "orders@stratenmakers.nl"),
+        CreateCustomer("c4", "Woningbouw De Vliet", "Nieuwegein", "inkoop@devliet.nl"),
+        CreateCustomer("c5", "Aannemer Noord", "Groningen", "sales@aannemernoord.nl")
+    ];
+
+    /// <summary>
+    /// Inserts demo customers when the Customers table is empty on an already-seeded database.
+    /// </summary>
+    private static async Task EnsureDemoCustomersAsync(
+        TebiDashboardDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        if (await dbContext.Customers.AnyAsync(cancellationToken))
+        {
+            return;
+        }
+
+        dbContext.Customers.AddRange(GetDemoCustomers());
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Links known demo sales orders to customers when CustomerId was not stored yet.
+    /// </summary>
+    private static async Task BackfillSalesOrderCustomersAsync(
+        TebiDashboardDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var salesOrderCustomerLinks = new Dictionary<string, string>
+        {
+            ["t1"] = "c1",
+            ["t3"] = "c3",
+            ["t5"] = "c2"
+        };
+
+        var salesOrders = await dbContext.OpenTransactions
+            .Where(t => t.Type == "Sales Order" && t.CustomerId == null)
+            .ToListAsync(cancellationToken);
+
+        var updated = false;
+
+        foreach (var order in salesOrders)
+        {
+            if (salesOrderCustomerLinks.TryGetValue(order.TransactionId, out var customerId))
+            {
+                order.CustomerId = customerId;
+                updated = true;
+            }
+        }
+
+        if (updated)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+    }
 
     private static CustomerRecord CreateCustomer(
         string customerId,

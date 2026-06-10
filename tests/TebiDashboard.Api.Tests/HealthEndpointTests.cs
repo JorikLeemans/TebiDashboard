@@ -55,6 +55,16 @@ public class HealthEndpointTests : IClassFixture<TebiWebApplicationFactory>
     }
 
     [Fact]
+    public async Task CustomersOverview_ReturnsCustomers_WithMockData()
+    {
+        var response = await _client.GetAsync("/api/customers/overview");
+        var content = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Bouwbedrijf Jansen", content);
+    }
+
+    [Fact]
     public async Task ItemById_ReturnsNotFound_ForUnknownItem()
     {
         var response = await _client.GetAsync("/api/items/unknown");
