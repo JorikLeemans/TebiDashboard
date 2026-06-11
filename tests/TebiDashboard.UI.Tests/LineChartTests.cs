@@ -23,6 +23,8 @@ public class LineChartTests
         cut.WaitForElement(".line-chart__svg");
 
         Assert.Contains("line-chart__line", cut.Markup);
+        Assert.Contains("line-chart-clip-", cut.Markup);
+        Assert.Contains("clip-path", cut.Markup);
         Assert.Contains("line-chart__y-label", cut.Markup);
         Assert.Contains("line-chart__grid", cut.Markup);
         Assert.Contains("01-04-2026", cut.Markup);

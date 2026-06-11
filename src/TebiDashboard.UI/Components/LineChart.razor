@@ -44,25 +44,37 @@
                   x2="@PlotRight"
                   y2="@PlotBottom" />
 
-            @if (!string.IsNullOrEmpty(_areaPath))
-            {
-                <path class="line-chart__area" d="@_areaPath" />
-            }
+            <defs>
+                <clipPath id="@_clipPathId">
+                    <rect x="@PlotLeft"
+                          y="@PlotTop"
+                          width="@(PlotRight - PlotLeft)"
+                          height="@(PlotBottom - PlotTop)" />
+                </clipPath>
+            </defs>
 
-            @if (!string.IsNullOrEmpty(_linePath))
-            {
-                <path class="line-chart__line" d="@_linePath" />
-            }
+            @* Clip line, fill, and markers so nothing renders outside the plot area *@
+            <g clip-path="url(#@_clipPathId)">
+                @if (!string.IsNullOrEmpty(_areaPath))
+                {
+                    <path class="line-chart__area" d="@_areaPath" />
+                }
 
-            @foreach (var point in _points)
-            {
-                <circle class="line-chart__point"
-                        cx="@point.X"
-                        cy="@point.Y"
-                        r="4">
-                    <title>@($"{point.Label}: {FormatValue(point.Value)}")</title>
-                </circle>
-            }
+                @if (!string.IsNullOrEmpty(_linePath))
+                {
+                    <path class="line-chart__line" d="@_linePath" />
+                }
+
+                @foreach (var point in _points)
+                {
+                    <circle class="line-chart__point"
+                            cx="@point.X"
+                            cy="@point.Y"
+                            r="@PointRadius">
+                        <title>@($"{point.Label}: {FormatValue(point.Value)}")</title>
+                    </circle>
+                }
+            </g>
 
             @foreach (var label in _xLabels)
             {
@@ -84,6 +96,11 @@
     private const int PlotRight = 788;
     private const int PlotTop = 12;
     private const int PlotBottom = 232;
+    private const int PointRadius = 4;
+    // Inset keeps marker circles fully inside the clipped plot bounds.
+    private const int PlotInset = PointRadius + 2;
+
+    private readonly string _clipPathId = $"line-chart-clip-{Guid.NewGuid():N}";
 
     [Parameter]
     public IReadOnlyList<ChartBarItem> Items { get; set; } = [];
@@ -117,18 +134,18 @@
         }
 
         var chartMax = ComputeChartMax(Items.Max(item => item.Value));
-        var plotWidth = PlotRight - PlotLeft;
-        var plotHeight = PlotBottom - PlotTop;
+        var innerWidth = PlotRight - PlotLeft - (PlotInset * 2);
+        var innerHeight = PlotBottom - PlotTop - (PlotInset * 2);
 
-        BuildYTicks(chartMax, plotHeight);
+        BuildYTicks(chartMax, innerHeight);
 
         for (var index = 0; index < Items.Count; index++)
         {
             var item = Items[index];
-            var x = PlotLeft + (Items.Count == 1
-                ? plotWidth / 2.0
-                : index * plotWidth / (Items.Count - 1.0));
-            var y = ValueToY(item.Value, chartMax, plotHeight);
+            var x = PlotLeft + PlotInset + (Items.Count == 1
+                ? innerWidth / 2.0
+                : index * innerWidth / (Items.Count - 1.0));
+            var y = PlotTop + PlotInset + ValueToY(item.Value, chartMax, innerHeight);
 
             _points.Add(new ChartPoint(x, y, item.Label, item.Value));
         }
@@ -138,14 +155,14 @@
         _xLabels.AddRange(BuildXAxisLabels(_points));
     }
 
-    private void BuildYTicks(decimal chartMax, int plotHeight)
+    private void BuildYTicks(decimal chartMax, int innerHeight)
     {
         const int tickCount = 5;
 
         for (var index = 0; index < tickCount; index++)
         {
             var value = chartMax * index / (tickCount - 1);
-            var y = ValueToY(value, chartMax, plotHeight);
+            var y = PlotTop + PlotInset + ValueToY(value, chartMax, innerHeight);
             _yTicks.Add(new ChartTick(y, value));
         }
     }
@@ -175,12 +192,18 @@
     {
         if (chartMax <= 0)
         {
-            return PlotBottom;
+            return plotHeight;
         }
 
         var ratio = (double)(value / chartMax);
-        return PlotBottom - ratio * plotHeight;
+        return plotHeight - ratio * plotHeight;
     }
+
+    /// <summary>
+    /// Prevents smooth-line control points from overshooting outside the plot.
+    /// </summary>
+    private static double ClampPlotY(double y, int plotTop, int plotBottom, int plotInset) =>
+        Math.Clamp(y, plotTop + plotInset, plotBottom - plotInset);
 
     /// <summary>
     /// Renders SVG text without conflicting with Blazor's &lt;text&gt; tag helper.
@@ -213,9 +236,9 @@
             var following = points[Math.Min(index + 2, points.Count - 1)];
 
             var control1X = current.X + (next.X - previous.X) / 6d;
-            var control1Y = current.Y + (next.Y - previous.Y) / 6d;
+            var control1Y = ClampPlotY(current.Y + (next.Y - previous.Y) / 6d, PlotTop, PlotBottom, PlotInset);
             var control2X = next.X - (following.X - current.X) / 6d;
-            var control2Y = next.Y - (following.Y - current.Y) / 6d;
+            var control2Y = ClampPlotY(next.Y - (following.Y - current.Y) / 6d, PlotTop, PlotBottom, PlotInset);
 
             path.Append(FormattableString.Invariant(
                 $" C {control1X:F1},{control1Y:F1} {control2X:F1},{control2Y:F1} {next.X:F1},{next.Y:F1}"));

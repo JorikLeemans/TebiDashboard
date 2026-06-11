@@ -21,8 +21,9 @@ public class BarChartTests
 
         cut.WaitForElement(".bar-chart__bar");
 
-        Assert.Contains("height: 100.0%", cut.Markup);
-        Assert.Contains("height: 50.0%", cut.Markup);
-        Assert.Contains("height: 25.0%", cut.Markup);
+        // Bar area = 220 - 22 - 26 = 172px; heights scale to 100%, 50%, and 25%.
+        Assert.Contains("height: 172px", cut.Markup);
+        Assert.Contains("height: 86px", cut.Markup);
+        Assert.Contains("height: 43px", cut.Markup);
     }
 }
