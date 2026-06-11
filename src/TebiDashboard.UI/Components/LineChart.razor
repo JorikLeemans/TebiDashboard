@@ -1,0 +1,270 @@
+@using System.Globalization
+@using System.Text
+@using TebiDashboard.Shared.Formatting
+
+<div class="line-chart" role="img" aria-label="@AriaLabel">
+    @if (Items.Count == 0)
+    {
+        <p class="line-chart__empty">@EmptyMessage</p>
+    }
+    else
+    {
+        <svg class="line-chart__svg"
+             xmlns="http://www.w3.org/2000/svg"
+             viewBox="0 0 @ViewWidth @ViewHeight"
+             preserveAspectRatio="xMidYMid meet"
+             aria-hidden="true">
+            @* Horizontal grid lines and Y-axis labels *@
+            @foreach (var tick in _yTicks)
+            {
+                <line class="line-chart__grid"
+                      x1="@PlotLeft"
+                      y1="@tick.Y"
+                      x2="@PlotRight"
+                      y2="@tick.Y" />
+                @((MarkupString)BuildSvgText(
+                    PlotLeft - 8,
+                    tick.Y + 4,
+                    "end",
+                    "line-chart__y-label",
+                    FormatValue(tick.Value)))
+            }
+
+            @* Y-axis spine *@
+            <line class="line-chart__axis"
+                  x1="@PlotLeft"
+                  y1="@PlotTop"
+                  x2="@PlotLeft"
+                  y2="@PlotBottom" />
+
+            @* X-axis spine *@
+            <line class="line-chart__axis"
+                  x1="@PlotLeft"
+                  y1="@PlotBottom"
+                  x2="@PlotRight"
+                  y2="@PlotBottom" />
+
+            @if (!string.IsNullOrEmpty(_areaPath))
+            {
+                <path class="line-chart__area" d="@_areaPath" />
+            }
+
+            @if (!string.IsNullOrEmpty(_linePath))
+            {
+                <path class="line-chart__line" d="@_linePath" />
+            }
+
+            @foreach (var point in _points)
+            {
+                <circle class="line-chart__point"
+                        cx="@point.X"
+                        cy="@point.Y"
+                        r="4">
+                    <title>@($"{point.Label}: {FormatValue(point.Value)}")</title>
+                </circle>
+            }
+
+            @foreach (var label in _xLabels)
+            {
+                @((MarkupString)BuildSvgText(
+                    label.X,
+                    PlotBottom + 22,
+                    "middle",
+                    "line-chart__x-label",
+                    label.Text))
+            }
+        </svg>
+    }
+</div>
+
+@code {
+    private const int ViewWidth = 800;
+    private const int ViewHeight = 280;
+    private const int PlotLeft = 76;
+    private const int PlotRight = 788;
+    private const int PlotTop = 12;
+    private const int PlotBottom = 232;
+
+    [Parameter]
+    public IReadOnlyList<ChartBarItem> Items { get; set; } = [];
+
+    [Parameter]
+    public string AriaLabel { get; set; } = "Line chart";
+
+    [Parameter]
+    public string EmptyMessage { get; set; } = "No data to display.";
+
+    [Parameter]
+    public bool UseCompactCurrency { get; set; } = true;
+
+    private readonly List<ChartTick> _yTicks = [];
+    private readonly List<ChartPoint> _points = [];
+    private readonly List<ChartAxisLabel> _xLabels = [];
+    private string _linePath = string.Empty;
+    private string _areaPath = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        _yTicks.Clear();
+        _points.Clear();
+        _xLabels.Clear();
+        _linePath = string.Empty;
+        _areaPath = string.Empty;
+
+        if (Items.Count == 0)
+        {
+            return;
+        }
+
+        var chartMax = ComputeChartMax(Items.Max(item => item.Value));
+        var plotWidth = PlotRight - PlotLeft;
+        var plotHeight = PlotBottom - PlotTop;
+
+        BuildYTicks(chartMax, plotHeight);
+
+        for (var index = 0; index < Items.Count; index++)
+        {
+            var item = Items[index];
+            var x = PlotLeft + (Items.Count == 1
+                ? plotWidth / 2.0
+                : index * plotWidth / (Items.Count - 1.0));
+            var y = ValueToY(item.Value, chartMax, plotHeight);
+
+            _points.Add(new ChartPoint(x, y, item.Label, item.Value));
+        }
+
+        _linePath = BuildSmoothLinePath(_points);
+        _areaPath = BuildAreaPath(_linePath, _points);
+        _xLabels.AddRange(BuildXAxisLabels(_points));
+    }
+
+    private void BuildYTicks(decimal chartMax, int plotHeight)
+    {
+        const int tickCount = 5;
+
+        for (var index = 0; index < tickCount; index++)
+        {
+            var value = chartMax * index / (tickCount - 1);
+            var y = ValueToY(value, chartMax, plotHeight);
+            _yTicks.Add(new ChartTick(y, value));
+        }
+    }
+
+    private static decimal ComputeChartMax(decimal dataMax)
+    {
+        if (dataMax <= 0)
+        {
+            return 1_000m;
+        }
+
+        var withHeadroom = dataMax * 1.08m;
+        var step = withHeadroom switch
+        {
+            < 1_000m => 100m,
+            < 5_000m => 500m,
+            < 10_000m => 1_000m,
+            < 50_000m => 5_000m,
+            < 100_000m => 10_000m,
+            _ => 25_000m
+        };
+
+        return (decimal)Math.Ceiling((double)withHeadroom / (double)step) * step;
+    }
+
+    private double ValueToY(decimal value, decimal chartMax, int plotHeight)
+    {
+        if (chartMax <= 0)
+        {
+            return PlotBottom;
+        }
+
+        var ratio = (double)(value / chartMax);
+        return PlotBottom - ratio * plotHeight;
+    }
+
+    /// <summary>
+    /// Renders SVG text without conflicting with Blazor's &lt;text&gt; tag helper.
+    /// </summary>
+    private static string BuildSvgText(double x, double y, string anchor, string cssClass, string content) =>
+        FormattableString.Invariant(
+            $"<text x=\"{x:F1}\" y=\"{y:F1}\" text-anchor=\"{anchor}\" class=\"{cssClass}\">{System.Net.WebUtility.HtmlEncode(content)}</text>");
+
+    private static string BuildSmoothLinePath(IReadOnlyList<ChartPoint> points)
+    {
+        if (points.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        if (points.Count == 1)
+        {
+            var single = points[0];
+            return FormattableString.Invariant($"M {single.X:F1},{single.Y:F1}");
+        }
+
+        var path = new StringBuilder();
+        path.Append(FormattableString.Invariant($"M {points[0].X:F1},{points[0].Y:F1}"));
+
+        for (var index = 0; index < points.Count - 1; index++)
+        {
+            var previous = points[Math.Max(index - 1, 0)];
+            var current = points[index];
+            var next = points[index + 1];
+            var following = points[Math.Min(index + 2, points.Count - 1)];
+
+            var control1X = current.X + (next.X - previous.X) / 6d;
+            var control1Y = current.Y + (next.Y - previous.Y) / 6d;
+            var control2X = next.X - (following.X - current.X) / 6d;
+            var control2Y = next.Y - (following.Y - current.Y) / 6d;
+
+            path.Append(FormattableString.Invariant(
+                $" C {control1X:F1},{control1Y:F1} {control2X:F1},{control2Y:F1} {next.X:F1},{next.Y:F1}"));
+        }
+
+        return path.ToString();
+    }
+
+    private string BuildAreaPath(string linePath, IReadOnlyList<ChartPoint> points)
+    {
+        if (string.IsNullOrEmpty(linePath) || points.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var last = points[^1];
+        var first = points[0];
+        return FormattableString.Invariant(
+            $"{linePath} L {last.X:F1},{PlotBottom:F1} L {first.X:F1},{PlotBottom:F1} Z");
+    }
+
+    private static IReadOnlyList<ChartAxisLabel> BuildXAxisLabels(IReadOnlyList<ChartPoint> points)
+    {
+        if (points.Count <= 6)
+        {
+            return points.Select(point => new ChartAxisLabel(point.X, point.Label)).ToList();
+        }
+
+        // Show a readable subset of date labels on busy charts.
+        var labelCount = Math.Min(7, points.Count);
+        var step = (points.Count - 1) / (double)(labelCount - 1);
+        var labels = new List<ChartAxisLabel>();
+
+        for (var index = 0; index < labelCount; index++)
+        {
+            var pointIndex = (int)Math.Round(index * step);
+            var point = points[pointIndex];
+            labels.Add(new ChartAxisLabel(point.X, point.Label));
+        }
+
+        return labels;
+    }
+
+    private string FormatValue(decimal value) =>
+        UseCompactCurrency ? EuroFormatting.FormatWhole(value) : value.ToString("N0", CultureInfo.CurrentCulture);
+
+    private sealed record ChartPoint(double X, double Y, string Label, decimal Value);
+
+    private sealed record ChartTick(double Y, decimal Value);
+
+    private sealed record ChartAxisLabel(double X, string Text);
+}

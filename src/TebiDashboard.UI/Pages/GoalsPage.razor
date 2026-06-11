@@ -53,11 +53,10 @@
     {
         <section class="goals-page__section">
             <h2>@_revenueChartTitle</h2>
-            <BarChart Items="_dailyRevenueChartItems"
-                      AriaLabel="Daily revenue trend for selected goal period"
-                      EmptyMessage="No revenue records in this period to chart."
-                      UseCompactCurrency="true"
-                      HeightPx="240" />
+            <LineChart Items="_dailyRevenueChartItems"
+                       AriaLabel="Daily revenue trend for selected goal period"
+                       EmptyMessage="No revenue records in this period to chart."
+                       UseCompactCurrency="true" />
         </section>
 
         <section class="goals-page__section">
