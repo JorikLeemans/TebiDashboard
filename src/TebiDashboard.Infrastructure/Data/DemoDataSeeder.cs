@@ -35,6 +35,8 @@ public static class DemoDataSeeder
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         await EnsureDemoGoalsForYearAsync(dbContext, today, today.Year - 1, cancellationToken);
+        await EnsureDemoRevenueSpreadAsync(dbContext, today, cancellationToken);
+        await EnsureDemoSalesOrderSpreadAsync(dbContext, today, cancellationToken);
 
         if (await dbContext.RevenueRecords.AnyAsync(cancellationToken))
         {
@@ -44,22 +46,7 @@ public static class DemoDataSeeder
 
         var year = today.Year;
 
-        dbContext.RevenueRecords.AddRange(
-            CreateRevenue("r01", today.AddDays(-165), 38500m, "c1", "Bouwbedrijf Jansen", "pg-paving"),
-            CreateRevenue("r02", today.AddDays(-150), 41200m, "c2", "Gemeente Utrecht", "pg-tiles"),
-            CreateRevenue("r03", today.AddDays(-135), 29800m, "c3", "Stratenmakers BV", "pg-paving"),
-            CreateRevenue("r04", today.AddDays(-120), 52100m, "c4", "Woningbouw De Vliet", "pg-paving"),
-            CreateRevenue("r05", today.AddDays(-105), 36750m, "c1", "Bouwbedrijf Jansen", "pg-edging"),
-            CreateRevenue("r06", today.AddDays(-90), 44300m, "c5", "Aannemer Noord", "pg-tiles"),
-            CreateRevenue("r07", today.AddDays(-75), 48900m, "c2", "Gemeente Utrecht", "pg-paving"),
-            CreateRevenue("r08", today.AddDays(-60), 33600m, "c3", "Stratenmakers BV", "pg-edging"),
-            CreateRevenue("r09", today.AddDays(-45), 55400m, "c4", "Woningbouw De Vliet", "pg-tiles"),
-            CreateRevenue("r10", today.AddDays(-30), 42000m, "c1", "Bouwbedrijf Jansen", "pg-paving"),
-            CreateRevenue("r11", today.AddDays(-21), 38500m, "c2", "Gemeente Utrecht", "pg-tiles"),
-            CreateRevenue("r12", today.AddDays(-14), 51200m, "c3", "Stratenmakers BV", "pg-paving"),
-            CreateRevenue("r13", today.AddDays(-10), 27800m, "c5", "Aannemer Noord", "pg-edging"),
-            CreateRevenue("r14", today.AddDays(-7), 46100m, "c4", "Woningbouw De Vliet", "pg-paving"),
-            CreateRevenue("r15", today.AddDays(-3), 39500m, "c1", "Bouwbedrijf Jansen", "pg-tiles"));
+        dbContext.RevenueRecords.AddRange(BuildDemoRevenueRecords(today));
 
         dbContext.Goals.AddRange(BuildDemoGoals(today, year));
         dbContext.Goals.AddRange(BuildDemoGoals(today, year - 1));
@@ -87,13 +74,7 @@ public static class DemoDataSeeder
             CreateLocation("i6", "loc4", "Bulkopslag", 18),
             CreateLocation("i9", "loc1", "Hoofdmagazijn", 12));
 
-        dbContext.OpenTransactions.AddRange(
-            CreateTransaction("t1", "Sales Order", "i1", today.AddDays(-1), 40, "Pending Fulfillment", "c1"),
-            CreateTransaction("t2", "Transfer Order", "i1", today.AddDays(-2), 20, "Pending Receipt"),
-            CreateTransaction("t3", "Sales Order", "i2", today.AddDays(-5), 55, "Pending Fulfillment", "c3"),
-            CreateTransaction("t4", "Purchase Order", "i4", today.AddDays(-12), 120, "Pending Receipt"),
-            CreateTransaction("t5", "Sales Order", "i3", today.AddDays(-3), 30, "Pending Fulfillment", "c2"),
-            CreateTransaction("t6", "Transfer Order", "i6", today.AddDays(-18), 45, "In Transit"));
+        dbContext.OpenTransactions.AddRange(BuildDemoOpenTransactions(today));
 
         dbContext.Expenses.AddRange(
             CreateExpense("e1", today.AddDays(-80), "Transport", 12500m, "Logistics Partner BV"),
@@ -122,6 +103,110 @@ public static class DemoDataSeeder
         dbContext.InventoryItems.RemoveRange(dbContext.InventoryItems);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// Adds smaller revenue lines on separate days so charts show visible variation.
+    /// </summary>
+    private static async Task EnsureDemoRevenueSpreadAsync(
+        TebiDashboardDbContext dbContext,
+        DateOnly today,
+        CancellationToken cancellationToken)
+    {
+        if (await dbContext.RevenueRecords.AnyAsync(revenue => revenue.Id == "r16", cancellationToken))
+        {
+            return;
+        }
+
+        dbContext.RevenueRecords.AddRange(BuildDemoRevenueSpread(today));
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Adds extra sales orders spread across recent days for transaction charts.
+    /// </summary>
+    private static async Task EnsureDemoSalesOrderSpreadAsync(
+        TebiDashboardDbContext dbContext,
+        DateOnly today,
+        CancellationToken cancellationToken)
+    {
+        if (await dbContext.OpenTransactions.AnyAsync(transaction => transaction.TransactionId == "t7", cancellationToken))
+        {
+            return;
+        }
+
+        dbContext.OpenTransactions.AddRange(BuildDemoSalesOrderSpread(today));
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static RevenueRecord[] BuildDemoRevenueRecords(DateOnly today) =>
+    [
+        CreateRevenue("r01", today.AddDays(-165), 38500m, "c1", "Bouwbedrijf Jansen", "pg-paving"),
+        CreateRevenue("r02", today.AddDays(-150), 41200m, "c2", "Gemeente Utrecht", "pg-tiles"),
+        CreateRevenue("r03", today.AddDays(-135), 29800m, "c3", "Stratenmakers BV", "pg-paving"),
+        CreateRevenue("r04", today.AddDays(-120), 52100m, "c4", "Woningbouw De Vliet", "pg-paving"),
+        CreateRevenue("r05", today.AddDays(-105), 36750m, "c1", "Bouwbedrijf Jansen", "pg-edging"),
+        CreateRevenue("r06", today.AddDays(-90), 44300m, "c5", "Aannemer Noord", "pg-tiles"),
+        CreateRevenue("r07", today.AddDays(-75), 48900m, "c2", "Gemeente Utrecht", "pg-paving"),
+        CreateRevenue("r08", today.AddDays(-60), 33600m, "c3", "Stratenmakers BV", "pg-edging"),
+        CreateRevenue("r09", today.AddDays(-45), 55400m, "c4", "Woningbouw De Vliet", "pg-tiles"),
+        CreateRevenue("r10", today.AddDays(-30), 42000m, "c1", "Bouwbedrijf Jansen", "pg-paving"),
+        CreateRevenue("r11", today.AddDays(-21), 38500m, "c2", "Gemeente Utrecht", "pg-tiles"),
+        CreateRevenue("r12", today.AddDays(-14), 51200m, "c3", "Stratenmakers BV", "pg-paving"),
+        CreateRevenue("r13", today.AddDays(-10), 27800m, "c5", "Aannemer Noord", "pg-edging"),
+        CreateRevenue("r14", today.AddDays(-7), 46100m, "c4", "Woningbouw De Vliet", "pg-paving"),
+        CreateRevenue("r15", today.AddDays(-3), 39500m, "c1", "Bouwbedrijf Jansen", "pg-tiles"),
+        ..BuildDemoRevenueSpread(today)
+    ];
+
+    private static RevenueRecord[] BuildDemoRevenueSpread(DateOnly today) =>
+    [
+        CreateRevenue("r16", today.AddDays(-44), 8200m, "c2", "Gemeente Utrecht", "pg-tiles"),
+        CreateRevenue("r17", today.AddDays(-41), 15600m, "c3", "Stratenmakers BV", "pg-paving"),
+        CreateRevenue("r18", today.AddDays(-39), 6800m, "c1", "Bouwbedrijf Jansen", "pg-edging"),
+        CreateRevenue("r19", today.AddDays(-37), 22400m, "c4", "Woningbouw De Vliet", "pg-paving"),
+        CreateRevenue("r20", today.AddDays(-35), 9400m, "c5", "Aannemer Noord", "pg-tiles"),
+        CreateRevenue("r21", today.AddDays(-33), 18700m, "c2", "Gemeente Utrecht", "pg-paving"),
+        CreateRevenue("r22", today.AddDays(-32), 5200m, "c3", "Stratenmakers BV", "pg-edging"),
+        CreateRevenue("r23", today.AddDays(-29), 14300m, "c1", "Bouwbedrijf Jansen", "pg-paving"),
+        CreateRevenue("r24", today.AddDays(-27), 7600m, "c4", "Woningbouw De Vliet", "pg-tiles"),
+        CreateRevenue("r25", today.AddDays(-25), 19800m, "c2", "Gemeente Utrecht", "pg-tiles"),
+        CreateRevenue("r26", today.AddDays(-23), 11200m, "c5", "Aannemer Noord", "pg-paving"),
+        CreateRevenue("r27", today.AddDays(-20), 6300m, "c3", "Stratenmakers BV", "pg-paving"),
+        CreateRevenue("r28", today.AddDays(-19), 17400m, "c1", "Bouwbedrijf Jansen", "pg-tiles"),
+        CreateRevenue("r29", today.AddDays(-17), 8900m, "c4", "Woningbouw De Vliet", "pg-edging"),
+        CreateRevenue("r30", today.AddDays(-16), 23100m, "c2", "Gemeente Utrecht", "pg-paving"),
+        CreateRevenue("r31", today.AddDays(-13), 7200m, "c5", "Aannemer Noord", "pg-tiles"),
+        CreateRevenue("r32", today.AddDays(-11), 16500m, "c3", "Stratenmakers BV", "pg-tiles"),
+        CreateRevenue("r33", today.AddDays(-9), 10800m, "c1", "Bouwbedrijf Jansen", "pg-paving"),
+        CreateRevenue("r34", today.AddDays(-8), 5400m, "c4", "Woningbouw De Vliet", "pg-paving"),
+        CreateRevenue("r35", today.AddDays(-6), 19200m, "c2", "Gemeente Utrecht", "pg-edging"),
+        CreateRevenue("r36", today.AddDays(-4), 8700m, "c5", "Aannemer Noord", "pg-paving"),
+        CreateRevenue("r37", today.AddDays(-2), 14900m, "c3", "Stratenmakers BV", "pg-paving"),
+        CreateRevenue("r38", today.AddDays(-1), 6100m, "c1", "Bouwbedrijf Jansen", "pg-edging")
+    ];
+
+    private static OpenTransactionRecord[] BuildDemoOpenTransactions(DateOnly today) =>
+    [
+        CreateTransaction("t1", "Sales Order", "i1", today.AddDays(-1), 40, "Pending Fulfillment", "c1"),
+        CreateTransaction("t2", "Transfer Order", "i1", today.AddDays(-2), 20, "Pending Receipt"),
+        CreateTransaction("t3", "Sales Order", "i2", today.AddDays(-5), 55, "Pending Fulfillment", "c3"),
+        CreateTransaction("t4", "Purchase Order", "i4", today.AddDays(-12), 120, "Pending Receipt"),
+        CreateTransaction("t5", "Sales Order", "i3", today.AddDays(-3), 30, "Pending Fulfillment", "c2"),
+        CreateTransaction("t6", "Transfer Order", "i6", today.AddDays(-18), 45, "In Transit"),
+        ..BuildDemoSalesOrderSpread(today)
+    ];
+
+    private static OpenTransactionRecord[] BuildDemoSalesOrderSpread(DateOnly today) =>
+    [
+        CreateTransaction("t7", "Sales Order", "i1", today.AddDays(-8), 25, "Pending Fulfillment", "c4"),
+        CreateTransaction("t8", "Sales Order", "i5", today.AddDays(-11), 18, "Pending Fulfillment", "c1"),
+        CreateTransaction("t9", "Sales Order", "i7", today.AddDays(-15), 32, "Pending Fulfillment", "c2"),
+        CreateTransaction("t10", "Sales Order", "i3", today.AddDays(-20), 22, "Pending Fulfillment", "c5"),
+        CreateTransaction("t11", "Sales Order", "i8", today.AddDays(-24), 14, "Pending Fulfillment", "c3"),
+        CreateTransaction("t12", "Sales Order", "i10", today.AddDays(-28), 36, "Pending Fulfillment", "c4"),
+        CreateTransaction("t13", "Sales Order", "i2", today.AddDays(-34), 28, "Pending Fulfillment", "c1"),
+        CreateTransaction("t14", "Sales Order", "i5", today.AddDays(-40), 20, "Pending Fulfillment", "c2")
+    ];
 
     private static RevenueRecord CreateRevenue(
         string id,

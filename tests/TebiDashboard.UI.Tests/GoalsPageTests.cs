@@ -45,6 +45,7 @@ public class GoalsPageTests
         var cut = ctx.Render<GoalsPage>();
         cut.WaitForElement(".goals-page__section", TimeSpan.FromSeconds(5));
 
+        Assert.Contains("Daily revenue in", cut.Markup);
         Assert.Contains("Company revenue goals", cut.Markup);
         Assert.Contains("Item goals", cut.Markup);
         Assert.Contains("Betonstraatstenen Antraciet", cut.Markup);
@@ -82,6 +83,14 @@ public class GoalsPageTests
     {
         mockHttp.When(HttpMethod.Get, "*/api/goals*")
             .Respond(HttpStatusCode.OK, _ => JsonContent.Create(goals));
+
+        mockHttp.When(HttpMethod.Get, "*/api/revenue*")
+            .Respond(HttpStatusCode.OK, _ => JsonContent.Create<IReadOnlyList<RevenueDto>>(
+            [
+                new RevenueDto { Id = "1", Date = new DateOnly(2026, 6, 1), Amount = 8200m, CustomerName = "Test" },
+                new RevenueDto { Id = "2", Date = new DateOnly(2026, 6, 3), Amount = 15600m, CustomerName = "Test" },
+                new RevenueDto { Id = "3", Date = new DateOnly(2026, 6, 5), Amount = 6800m, CustomerName = "Test" }
+            ]));
     }
 
     private static BunitContext CreateAuthenticatedContext(out MockHttpMessageHandler mockHttp)

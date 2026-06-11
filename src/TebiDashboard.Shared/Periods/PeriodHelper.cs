@@ -27,4 +27,72 @@ public static class PeriodHelper
         "Q4" => 4,
         _ => 0
     };
+
+    /// <summary>
+    /// Returns true when the goal period has fully ended (prior years or earlier quarters).
+    /// </summary>
+    public static bool IsPeriodCompleted(int year, string period, DateOnly referenceDate)
+    {
+        var periodIndex = GetQuarterIndex(period);
+        if (periodIndex == 0)
+        {
+            return false;
+        }
+
+        if (year < referenceDate.Year)
+        {
+            return true;
+        }
+
+        if (year > referenceDate.Year)
+        {
+            return false;
+        }
+
+        var currentQuarterIndex = GetQuarterIndex(GetQuarter(referenceDate));
+        return periodIndex < currentQuarterIndex;
+    }
+
+    /// <summary>
+    /// Returns the inclusive calendar range for a quarter, capped at the reference date for the current year.
+    /// </summary>
+    public static (DateOnly From, DateOnly To) GetQuarterDateRange(int year, string period, DateOnly referenceDate)
+    {
+        var periodIndex = GetQuarterIndex(period);
+        if (periodIndex == 0)
+        {
+            var yearStart = new DateOnly(year, 1, 1);
+            var yearEnd = new DateOnly(year, 12, 31);
+            if (year == referenceDate.Year)
+            {
+                yearEnd = referenceDate;
+            }
+
+            return (yearStart, yearEnd);
+        }
+
+        var fromMonth = periodIndex switch
+        {
+            1 => 1,
+            2 => 4,
+            3 => 7,
+            _ => 10
+        };
+
+        var from = new DateOnly(year, fromMonth, 1);
+        var to = periodIndex switch
+        {
+            1 => new DateOnly(year, 3, 31),
+            2 => new DateOnly(year, 6, 30),
+            3 => new DateOnly(year, 9, 30),
+            _ => new DateOnly(year, 12, 31)
+        };
+
+        if (year == referenceDate.Year && to > referenceDate)
+        {
+            to = referenceDate;
+        }
+
+        return (from, to);
+    }
 }

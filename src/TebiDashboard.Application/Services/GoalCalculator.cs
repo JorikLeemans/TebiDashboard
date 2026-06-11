@@ -1,4 +1,5 @@
 using TebiDashboard.Shared.Dtos;
+using TebiDashboard.Shared.Periods;
 
 namespace TebiDashboard.Application.Services;
 
@@ -39,15 +40,38 @@ public static class GoalCalculator
     }
 
     /// <summary>
-    /// Enriches a goal DTO with calculated percentage and status.
+    /// Maps a completed period to achieved or not achieved based on target vs actual.
     /// </summary>
-    public static GoalDto WithProgress(GoalDto goal)
+    public static string ComputeCompletedStatus(decimal actual, decimal target) =>
+        actual >= target ? "achieved" : "not-achieved";
+
+    /// <summary>
+    /// Picks traffic-light status for in-progress periods or final outcome for closed periods.
+    /// </summary>
+    public static string ComputeStatusForGoal(GoalDto goal, DateOnly referenceDate)
     {
         var percentage = ComputePercentage(goal.ActualValue, goal.TargetValue);
+
+        if (PeriodHelper.IsPeriodCompleted(goal.Year, goal.Period, referenceDate))
+        {
+            return ComputeCompletedStatus(goal.ActualValue, goal.TargetValue);
+        }
+
+        return ComputeStatus(percentage);
+    }
+
+    /// <summary>
+    /// Enriches a goal DTO with calculated percentage and status.
+    /// </summary>
+    public static GoalDto WithProgress(GoalDto goal, DateOnly? referenceDate = null)
+    {
+        var today = referenceDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var percentage = ComputePercentage(goal.ActualValue, goal.TargetValue);
+
         return goal with
         {
             Percentage = percentage,
-            Status = ComputeStatus(percentage)
+            Status = ComputeStatusForGoal(goal, today)
         };
     }
 }

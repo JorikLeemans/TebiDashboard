@@ -52,6 +52,15 @@
     else
     {
         <section class="goals-page__section">
+            <h2>@_revenueChartTitle</h2>
+            <BarChart Items="_dailyRevenueChartItems"
+                      AriaLabel="Daily revenue trend for selected goal period"
+                      EmptyMessage="No revenue records in this period to chart."
+                      UseCompactCurrency="true"
+                      HeightPx="240" />
+        </section>
+
+        <section class="goals-page__section">
             <h2>Company revenue goals (@_companyGoals.Count)</h2>
             @if (_companyGoals.Count == 0)
             {
@@ -61,7 +70,7 @@
             {
                 <div class="goals-page__chart-wrap">
                     <BarChart Items="_companyChartItems"
-                              AriaLabel="Company goal progress chart"
+                              AriaLabel="Company goal progress by quarter"
                               EmptyMessage="No company goals to chart."
                               UseCompactCurrency="true" />
                 </div>
@@ -105,6 +114,8 @@
     private IReadOnlyList<GoalDto> _companyGoals = [];
     private IReadOnlyList<GoalDto> _itemGoals = [];
     private IReadOnlyList<ChartBarItem> _companyChartItems = [];
+    private IReadOnlyList<ChartBarItem> _dailyRevenueChartItems = [];
+    private string _revenueChartTitle = "Daily revenue";
 
     private IReadOnlyList<int> _yearOptions =
     [
@@ -159,6 +170,8 @@
                     Value = goal.ActualValue
                 })
                 .ToList();
+
+            await LoadRevenueChartAsync();
         }
         catch (Exception ex)
         {
@@ -168,6 +181,31 @@
         {
             _isLoading = false;
         }
+    }
+
+    private async Task LoadRevenueChartAsync()
+    {
+        var periodLabel = string.IsNullOrWhiteSpace(_selectedPeriod)
+            ? $"year {_selectedYear}"
+            : $"{_selectedPeriod} {_selectedYear}";
+
+        _revenueChartTitle = $"Daily revenue in {periodLabel}";
+
+        var (from, to) = string.IsNullOrWhiteSpace(_selectedPeriod)
+            ? (new DateOnly(_selectedYear, 1, 1), _selectedYear == Today.Year ? Today : new DateOnly(_selectedYear, 12, 31))
+            : PeriodHelper.GetQuarterDateRange(_selectedYear, _selectedPeriod, Today);
+
+        var revenue = await ApiClient.GetRevenueAsync(from, to);
+
+        _dailyRevenueChartItems = revenue
+            .GroupBy(row => row.Date)
+            .OrderBy(group => group.Key)
+            .Select(group => new ChartBarItem
+            {
+                Label = group.Key.ToString("d"),
+                Value = group.Sum(row => row.Amount)
+            })
+            .ToList();
     }
 
     private string FormatItemGoalTitle(GoalDto goal)

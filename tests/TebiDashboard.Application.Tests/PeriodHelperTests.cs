@@ -24,4 +24,34 @@ public class PeriodHelperTests
     {
         Assert.Equal(expected, PeriodHelper.GetQuarterIndex(period));
     }
+
+    [Fact]
+    public void GetQuarterDateRange_ReturnsExpectedBounds()
+    {
+        var referenceDate = new DateOnly(2026, 6, 15);
+        var (from, to) = PeriodHelper.GetQuarterDateRange(2026, "Q2", referenceDate);
+
+        Assert.Equal(new DateOnly(2026, 4, 1), from);
+        Assert.Equal(referenceDate, to);
+    }
+
+    [Theory]
+    [InlineData(2025, "Q4", 2026, 6, 15, true)]
+    [InlineData(2026, "Q1", 2026, 6, 15, true)]
+    [InlineData(2026, "Q2", 2026, 6, 15, false)]
+    [InlineData(2026, "Q3", 2026, 6, 15, false)]
+    [InlineData(2027, "Q1", 2026, 6, 15, false)]
+    public void IsPeriodCompleted_ReturnsExpectedResult(
+        int goalYear,
+        string goalPeriod,
+        int referenceYear,
+        int referenceMonth,
+        int referenceDay,
+        bool expected)
+    {
+        var referenceDate = new DateOnly(referenceYear, referenceMonth, referenceDay);
+        var completed = PeriodHelper.IsPeriodCompleted(goalYear, goalPeriod, referenceDate);
+
+        Assert.Equal(expected, completed);
+    }
 }
