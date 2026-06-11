@@ -25,5 +25,10 @@ public sealed class OpenTransactionDto
 
     public decimal QuantityOpen { get; init; }
 
+    /// <summary>
+    /// Order line value in euros for sales and purchase orders.
+    /// </summary>
+    public decimal Amount { get; init; }
+
     public string Status { get; init; } = string.Empty;
 }

@@ -100,6 +100,7 @@ public sealed class TebiDashboardDbContext(DbContextOptions<TebiDashboardDbConte
             entity.Property(e => e.CustomerId).HasMaxLength(64);
             entity.Property(e => e.SupplierId).HasMaxLength(64);
             entity.Property(e => e.Status).HasMaxLength(64);
+            entity.Property(e => e.Amount).HasPrecision(18, 2);
             entity.HasIndex(e => e.ItemId);
             entity.HasIndex(e => e.CustomerId);
             entity.HasIndex(e => e.SupplierId);
