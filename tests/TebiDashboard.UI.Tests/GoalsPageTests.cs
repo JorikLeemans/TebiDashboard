@@ -46,6 +46,7 @@ public class GoalsPageTests
         cut.WaitForElement(".goals-page__section", TimeSpan.FromSeconds(5));
 
         Assert.Contains("Daily revenue in", cut.Markup);
+        Assert.Contains("line-chart__line", cut.Markup);
         Assert.Contains("Company revenue goals", cut.Markup);
         Assert.Contains("Item goals", cut.Markup);
         Assert.Contains("Betonstraatstenen Antraciet", cut.Markup);
