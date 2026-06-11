@@ -40,6 +40,7 @@ public static class DemoDataSeeder
         await EnsureDemoGoalsForYearAsync(dbContext, today, today.Year - 1, cancellationToken);
         await EnsureDemoRevenueSpreadAsync(dbContext, today, cancellationToken);
         await EnsureDemoSalesOrderSpreadAsync(dbContext, today, cancellationToken);
+        await EnsureDemoExpenseSpreadAsync(dbContext, today, cancellationToken);
         await EnsureDemoPurchaseOrderSpreadAsync(dbContext, today, cancellationToken);
         await EnsureDemoOrderAmountAlignmentAsync(dbContext, today, cancellationToken);
 
@@ -90,6 +91,7 @@ public static class DemoDataSeeder
             CreateExpense("e6", today.AddDays(-18), "Utilities", 4100m, "Energiebedrijf NL", "s4"),
             CreateExpense("e7", today.AddDays(-12), "Insurance", 7200m, "Verzekeraar NL", "s8"),
             CreateExpense("e8", today.AddDays(-5), "Maintenance", 2950m, "Technische Dienst BV", "s5"));
+        dbContext.Expenses.AddRange(BuildDemoExpenseSpread(today));
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -203,12 +205,26 @@ public static class DemoDataSeeder
         ..BuildDemoPurchaseOrderSpread(today)
     ];
 
+    private static ExpenseRecord[] BuildDemoExpenseSpread(DateOnly today) =>
+    [
+        // Recent supplier expenses so the default "Last 2 days" filter shows spend.
+        CreateExpense("e9", today.AddDays(-2), "Transport", 8400m, "Logistics Partner BV", "s3"),
+        CreateExpense("e10", today.AddDays(-1), "Utilities", 5200m, "Energiebedrijf NL", "s4"),
+        CreateExpense("e11", today, "Maintenance", 3600m, "Technische Dienst BV", "s5"),
+        CreateExpense("e12", today.AddDays(-2), "Insurance", 4800m, "Verzekeraar NL", "s8")
+    ];
+
     private static OpenTransactionRecord[] BuildDemoPurchaseOrderSpread(DateOnly today) =>
     [
         CreateTransaction("t15", "Purchase Order", "i2", today.AddDays(-20), 80, "Pending Receipt", supplierId: "s2"),
         CreateTransaction("t16", "Purchase Order", "i6", today.AddDays(-8), 200, "Pending Receipt", supplierId: "s1"),
         CreateTransaction("t17", "Purchase Order", "i3", today.AddDays(-25), 95, "Pending Receipt", supplierId: "s6"),
-        CreateTransaction("t18", "Purchase Order", "i8", today.AddDays(-14), 60, "Pending Receipt", supplierId: "s6")
+        CreateTransaction("t18", "Purchase Order", "i8", today.AddDays(-14), 60, "Pending Receipt", supplierId: "s6"),
+        // Recent purchase orders linked to suppliers for the default period filter.
+        CreateTransaction("t19", "Purchase Order", "i4", today.AddDays(-2), 45, "Pending Receipt", supplierId: "s1"),
+        CreateTransaction("t20", "Purchase Order", "i2", today.AddDays(-1), 30, "Pending Receipt", supplierId: "s2"),
+        CreateTransaction("t21", "Purchase Order", "i3", today, 55, "Pending Receipt", supplierId: "s6"),
+        CreateTransaction("t22", "Purchase Order", "i8", today.AddDays(-1), 25, "Pending Receipt", supplierId: "s6")
     ];
 
     private static OpenTransactionRecord[] BuildDemoSalesOrderSpread(DateOnly today) =>
@@ -499,6 +515,31 @@ public static class DemoDataSeeder
     }
 
     /// <summary>
+    /// Adds recent expense lines so supplier spend appears in the default period filter.
+    /// </summary>
+    private static async Task EnsureDemoExpenseSpreadAsync(
+        TebiDashboardDbContext dbContext,
+        DateOnly today,
+        CancellationToken cancellationToken)
+    {
+        var spread = BuildDemoExpenseSpread(today);
+        var spreadIds = spread.Select(expense => expense.Id).ToList();
+        var existingIds = await dbContext.Expenses
+            .Where(expense => spreadIds.Contains(expense.Id))
+            .Select(expense => expense.Id)
+            .ToListAsync(cancellationToken);
+
+        var missing = spread.Where(expense => !existingIds.Contains(expense.Id)).ToArray();
+        if (missing.Length == 0)
+        {
+            return;
+        }
+
+        dbContext.Expenses.AddRange(missing);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
     /// Adds extra purchase orders spread across recent days for supplier charts and lists.
     /// </summary>
     private static async Task EnsureDemoPurchaseOrderSpreadAsync(
@@ -506,12 +547,20 @@ public static class DemoDataSeeder
         DateOnly today,
         CancellationToken cancellationToken)
     {
-        if (await dbContext.OpenTransactions.AnyAsync(transaction => transaction.TransactionId == "t15", cancellationToken))
+        var spread = BuildDemoPurchaseOrderSpread(today);
+        var spreadIds = spread.Select(order => order.TransactionId).ToList();
+        var existingIds = await dbContext.OpenTransactions
+            .Where(order => spreadIds.Contains(order.TransactionId))
+            .Select(order => order.TransactionId)
+            .ToListAsync(cancellationToken);
+
+        var missing = spread.Where(order => !existingIds.Contains(order.TransactionId)).ToArray();
+        if (missing.Length == 0)
         {
             return;
         }
 
-        dbContext.OpenTransactions.AddRange(BuildDemoPurchaseOrderSpread(today));
+        dbContext.OpenTransactions.AddRange(missing);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
