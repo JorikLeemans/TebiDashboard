@@ -364,7 +364,12 @@ public sealed class MockNetSuiteService : INetSuiteService
         new() { TransactionId = "t15", Type = "Purchase Order", ItemId = "i2", ItemName = "Klinkers Rood-Bruin", SupplierId = "s2", SupplierName = "Klinker Import BV", TransactionDate = Today.AddDays(-20), QuantityOpen = 80, Amount = 54_400m, Status = "Pending Receipt" },
         new() { TransactionId = "t16", Type = "Purchase Order", ItemId = "i6", ItemName = "Grind 16-32 mm", SupplierId = "s1", SupplierName = "BetonCentrale Midden-NL", TransactionDate = Today.AddDays(-8), QuantityOpen = 200, Amount = 7_600m, Status = "Pending Receipt" },
         new() { TransactionId = "t17", Type = "Purchase Order", ItemId = "i3", ItemName = "Tegels 60x60 Grijs", SupplierId = "s6", SupplierName = "TegelGroothandel BV", TransactionDate = Today.AddDays(-25), QuantityOpen = 95, Amount = 51_300m, Status = "Pending Receipt" },
-        new() { TransactionId = "t18", Type = "Purchase Order", ItemId = "i8", ItemName = "Keramische Tegels Antraciet", SupplierId = "s6", SupplierName = "TegelGroothandel BV", TransactionDate = Today.AddDays(-14), QuantityOpen = 60, Amount = 37_200m, Status = "Pending Receipt" }
+        new() { TransactionId = "t18", Type = "Purchase Order", ItemId = "i8", ItemName = "Keramische Tegels Antraciet", SupplierId = "s6", SupplierName = "TegelGroothandel BV", TransactionDate = Today.AddDays(-14), QuantityOpen = 60, Amount = 37_200m, Status = "Pending Receipt" },
+        // Recent purchase orders so supplier overview works with the default period filter.
+        new() { TransactionId = "t19", Type = "Purchase Order", ItemId = "i4", ItemName = "Betonblokken 40x20", SupplierId = "s1", SupplierName = "BetonCentrale Midden-NL", TransactionDate = Today.AddDays(-2), QuantityOpen = 45, Amount = 10_800m, Status = "Pending Receipt" },
+        new() { TransactionId = "t20", Type = "Purchase Order", ItemId = "i2", ItemName = "Klinkers Rood-Bruin", SupplierId = "s2", SupplierName = "Klinker Import BV", TransactionDate = Today.AddDays(-1), QuantityOpen = 30, Amount = 20_400m, Status = "Pending Receipt" },
+        new() { TransactionId = "t21", Type = "Purchase Order", ItemId = "i3", ItemName = "Tegels 60x60 Grijs", SupplierId = "s6", SupplierName = "TegelGroothandel BV", TransactionDate = Today, QuantityOpen = 55, Amount = 29_700m, Status = "Pending Receipt" },
+        new() { TransactionId = "t22", Type = "Purchase Order", ItemId = "i8", ItemName = "Keramische Tegels Antraciet", SupplierId = "s6", SupplierName = "TegelGroothandel BV", TransactionDate = Today.AddDays(-1), QuantityOpen = 25, Amount = 15_500m, Status = "Pending Receipt" }
     ];
 
     private static List<SupplierDto> GetMockSuppliers() =>
@@ -387,7 +392,11 @@ public sealed class MockNetSuiteService : INetSuiteService
     [
         new() { Id = "e1", Date = Today.AddDays(-20), Category = "Transport", Amount = 12500m, VendorName = "Logistics Partner BV", SupplierId = "s3" },
         new() { Id = "e2", Date = Today.AddDays(-10), Category = "Utilities", Amount = 4200m, VendorName = "Energiebedrijf NL", SupplierId = "s4" },
-        new() { Id = "e3", Date = Today.AddDays(-2), Category = "Maintenance", Amount = 2950m, VendorName = "Technische Dienst BV", SupplierId = "s5" }
+        new() { Id = "e3", Date = Today.AddDays(-2), Category = "Maintenance", Amount = 2950m, VendorName = "Technische Dienst BV", SupplierId = "s5" },
+        new() { Id = "e9", Date = Today.AddDays(-2), Category = "Transport", Amount = 8400m, VendorName = "Logistics Partner BV", SupplierId = "s3" },
+        new() { Id = "e10", Date = Today.AddDays(-1), Category = "Utilities", Amount = 5200m, VendorName = "Energiebedrijf NL", SupplierId = "s4" },
+        new() { Id = "e11", Date = Today, Category = "Maintenance", Amount = 3600m, VendorName = "Technische Dienst BV", SupplierId = "s5" },
+        new() { Id = "e12", Date = Today.AddDays(-2), Category = "Insurance", Amount = 4800m, VendorName = "Verzekeraar NL", SupplierId = "s8" }
     ];
 
     public Task<ItemDetailDto?> GetItemByBarcodeAsync(string barcode, CancellationToken cancellationToken = default)
