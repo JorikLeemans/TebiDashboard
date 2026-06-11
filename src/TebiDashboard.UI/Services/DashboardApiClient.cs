@@ -22,6 +22,42 @@ public sealed class DashboardApiClient(HttpClient httpClient)
     public async Task<IReadOnlyList<CustomerDto>> GetCustomersAsync(CancellationToken cancellationToken = default)
         => await httpClient.GetFromJsonAsync<IReadOnlyList<CustomerDto>>("api/customers", cancellationToken) ?? [];
 
+    public async Task<IReadOnlyList<SupplierDto>> GetSuppliersAsync(CancellationToken cancellationToken = default)
+        => await httpClient.GetFromJsonAsync<IReadOnlyList<SupplierDto>>("api/suppliers", cancellationToken) ?? [];
+
+    public async Task<IReadOnlyList<SupplierOverviewDto>> GetSuppliersOverviewAsync(
+        DateOnly from,
+        DateOnly to,
+        CancellationToken cancellationToken = default)
+        => await httpClient.GetFromJsonAsync<IReadOnlyList<SupplierOverviewDto>>(
+            $"api/suppliers/overview?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
+            cancellationToken) ?? [];
+
+    public Task<SupplierDetailDto?> GetSupplierDetailAsync(
+        string supplierId,
+        DateOnly from,
+        DateOnly to,
+        CancellationToken cancellationToken = default)
+    {
+        var response = httpClient.GetAsync(
+            $"api/suppliers/{Uri.EscapeDataString(supplierId)}?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
+            cancellationToken);
+
+        return HandleSupplierDetailResponseAsync(response);
+    }
+
+    private static async Task<SupplierDetailDto?> HandleSupplierDetailResponseAsync(Task<HttpResponseMessage> responseTask)
+    {
+        var response = await responseTask;
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<SupplierDetailDto>();
+    }
+
     public async Task<IReadOnlyList<CustomerOverviewDto>> GetCustomersOverviewAsync(
         DateOnly from,
         DateOnly to,

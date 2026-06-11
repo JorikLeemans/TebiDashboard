@@ -12,6 +12,8 @@ public sealed class TebiDashboardDbContext(DbContextOptions<TebiDashboardDbConte
 
     public DbSet<CustomerRecord> Customers => Set<CustomerRecord>();
 
+    public DbSet<SupplierRecord> Suppliers => Set<SupplierRecord>();
+
     public DbSet<RevenueRecord> RevenueRecords => Set<RevenueRecord>();
 
     public DbSet<GoalRecord> Goals => Set<GoalRecord>();
@@ -38,6 +40,15 @@ public sealed class TebiDashboardDbContext(DbContextOptions<TebiDashboardDbConte
         {
             entity.HasKey(e => e.CustomerId);
             entity.Property(e => e.CustomerId).HasMaxLength(64);
+            entity.Property(e => e.Name).HasMaxLength(256);
+            entity.Property(e => e.City).HasMaxLength(128);
+            entity.Property(e => e.ContactEmail).HasMaxLength(256);
+        });
+
+        modelBuilder.Entity<SupplierRecord>(entity =>
+        {
+            entity.HasKey(e => e.SupplierId);
+            entity.Property(e => e.SupplierId).HasMaxLength(64);
             entity.Property(e => e.Name).HasMaxLength(256);
             entity.Property(e => e.City).HasMaxLength(128);
             entity.Property(e => e.ContactEmail).HasMaxLength(256);
@@ -87,9 +98,11 @@ public sealed class TebiDashboardDbContext(DbContextOptions<TebiDashboardDbConte
             entity.Property(e => e.Type).HasMaxLength(64);
             entity.Property(e => e.ItemId).HasMaxLength(64);
             entity.Property(e => e.CustomerId).HasMaxLength(64);
+            entity.Property(e => e.SupplierId).HasMaxLength(64);
             entity.Property(e => e.Status).HasMaxLength(64);
             entity.HasIndex(e => e.ItemId);
             entity.HasIndex(e => e.CustomerId);
+            entity.HasIndex(e => e.SupplierId);
             entity.HasIndex(e => e.TransactionDate);
         });
 
@@ -99,6 +112,8 @@ public sealed class TebiDashboardDbContext(DbContextOptions<TebiDashboardDbConte
             entity.Property(e => e.Id).HasMaxLength(64);
             entity.Property(e => e.Category).HasMaxLength(128);
             entity.Property(e => e.VendorName).HasMaxLength(256);
+            entity.Property(e => e.SupplierId).HasMaxLength(64);
+            entity.HasIndex(e => e.SupplierId);
         });
     }
 }

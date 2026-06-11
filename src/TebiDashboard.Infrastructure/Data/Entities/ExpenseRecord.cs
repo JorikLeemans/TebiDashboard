@@ -14,4 +14,9 @@ public sealed class ExpenseRecord
     public decimal Amount { get; set; }
 
     public string VendorName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Linked supplier master record; optional for legacy expense rows.
+    /// </summary>
+    public string? SupplierId { get; set; }
 }

@@ -86,6 +86,93 @@ public sealed class MockNetSuiteService : INetSuiteService
         return Task.FromResult<CustomerDetailDto?>(detail);
     }
 
+    public Task<IReadOnlyList<SupplierDto>> GetSuppliersAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<SupplierDto>>(GetMockSuppliers());
+
+    public Task<IReadOnlyList<SupplierOverviewDto>> GetSuppliersOverviewAsync(
+        DateRangeFilter filter,
+        CancellationToken cancellationToken = default)
+    {
+        var expenses = GetMockExpenses().Where(e => e.Date >= filter.From && e.Date <= filter.To).ToList();
+        var purchaseOrders = GetMockTransactions()
+            .Where(t => t.Type == "Purchase Order"
+                && !string.IsNullOrWhiteSpace(t.SupplierId)
+                && t.TransactionDate >= filter.From
+                && t.TransactionDate <= filter.To)
+            .ToList();
+
+        var overview = GetMockSuppliers()
+            .Select(supplier =>
+            {
+                var supplierExpenses = expenses.Where(e => e.SupplierId == supplier.SupplierId).ToList();
+                var supplierOrders = purchaseOrders.Where(t => t.SupplierId == supplier.SupplierId).ToList();
+
+                return new SupplierOverviewDto
+                {
+                    SupplierId = supplier.SupplierId,
+                    Name = supplier.Name,
+                    City = supplier.City,
+                    ContactEmail = supplier.ContactEmail,
+                    TotalPurchased = supplierExpenses.Sum(e => e.Amount),
+                    ExpenseEntryCount = supplierExpenses.Count,
+                    PurchaseOrderCount = supplierOrders.Count,
+                    PurchasedItemCount = supplierOrders.Select(t => t.ItemId).Distinct().Count()
+                };
+            })
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<SupplierOverviewDto>>(overview);
+    }
+
+    public Task<SupplierDetailDto?> GetSupplierDetailAsync(
+        string supplierId,
+        DateRangeFilter filter,
+        CancellationToken cancellationToken = default)
+    {
+        var supplier = GetMockSuppliers().FirstOrDefault(s => s.SupplierId == supplierId);
+        if (supplier is null)
+        {
+            return Task.FromResult<SupplierDetailDto?>(null);
+        }
+
+        var expenses = GetMockExpenses()
+            .Where(e => e.SupplierId == supplierId && e.Date >= filter.From && e.Date <= filter.To)
+            .OrderByDescending(e => e.Date)
+            .ToList();
+
+        var purchaseOrders = GetMockTransactions()
+            .Where(t => t.Type == "Purchase Order"
+                && t.SupplierId == supplierId
+                && t.TransactionDate >= filter.From
+                && t.TransactionDate <= filter.To)
+            .OrderByDescending(t => t.TransactionDate)
+            .ToList();
+
+        var purchasedItems = purchaseOrders
+            .GroupBy(t => t.ItemId)
+            .Select(group => new SupplierPurchasedItemDto
+            {
+                ItemId = group.Key,
+                ItemName = group.First().ItemName,
+                TotalQuantityOpen = group.Sum(t => t.QuantityOpen)
+            })
+            .OrderBy(item => item.ItemName)
+            .ToList();
+
+        var detail = new SupplierDetailDto
+        {
+            Supplier = supplier,
+            PeriodFrom = filter.From,
+            PeriodTo = filter.To,
+            TotalPurchased = expenses.Sum(e => e.Amount),
+            Expenses = expenses,
+            PurchaseOrders = purchaseOrders,
+            PurchasedItems = purchasedItems
+        };
+
+        return Task.FromResult<SupplierDetailDto?>(detail);
+    }
+
     public Task<DashboardSummaryDto> GetDashboardSummaryAsync(DateRangeFilter filter, CancellationToken cancellationToken = default)
     {
         var revenue = GetMockRevenue().Where(r => r.Date >= filter.From && r.Date <= filter.To).ToList();
@@ -264,7 +351,20 @@ public sealed class MockNetSuiteService : INetSuiteService
     [
         new() { TransactionId = "t1", Type = "Sales Order", ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", CustomerId = "c1", CustomerName = "Bouwbedrijf Jansen", TransactionDate = Today.AddDays(-1), QuantityOpen = 40, Status = "Pending Fulfillment" },
         new() { TransactionId = "t2", Type = "Transfer Order", ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", TransactionDate = Today.AddDays(-2), QuantityOpen = 20, Status = "Pending Receipt" },
-        new() { TransactionId = "t3", Type = "Sales Order", ItemId = "i2", ItemName = "Klinkers Rood-Bruin", CustomerId = "c3", CustomerName = "Stratenmakers BV", TransactionDate = Today.AddDays(-5), QuantityOpen = 55, Status = "Pending Fulfillment" }
+        new() { TransactionId = "t3", Type = "Sales Order", ItemId = "i2", ItemName = "Klinkers Rood-Bruin", CustomerId = "c3", CustomerName = "Stratenmakers BV", TransactionDate = Today.AddDays(-5), QuantityOpen = 55, Status = "Pending Fulfillment" },
+        new() { TransactionId = "t4", Type = "Purchase Order", ItemId = "i4", ItemName = "Betonblokken 40x20", SupplierId = "s1", SupplierName = "BetonCentrale Midden-NL", TransactionDate = Today.AddDays(-12), QuantityOpen = 120, Status = "Pending Receipt" },
+        new() { TransactionId = "t15", Type = "Purchase Order", ItemId = "i2", ItemName = "Klinkers Rood-Bruin", SupplierId = "s2", SupplierName = "Klinker Import BV", TransactionDate = Today.AddDays(-20), QuantityOpen = 80, Status = "Pending Receipt" },
+        new() { TransactionId = "t16", Type = "Purchase Order", ItemId = "i6", ItemName = "Grind 16-32 mm", SupplierId = "s1", SupplierName = "BetonCentrale Midden-NL", TransactionDate = Today.AddDays(-8), QuantityOpen = 200, Status = "Pending Receipt" }
+    ];
+
+    private static List<SupplierDto> GetMockSuppliers() =>
+    [
+        new() { SupplierId = "s1", Name = "BetonCentrale Midden-NL", City = "Nieuwegein", ContactEmail = "inkoop@betoncentrale.nl" },
+        new() { SupplierId = "s2", Name = "Klinker Import BV", City = "Rotterdam", ContactEmail = "orders@klinkerimport.nl" },
+        new() { SupplierId = "s3", Name = "Logistics Partner BV", City = "Utrecht", ContactEmail = "transport@logistics.nl" },
+        new() { SupplierId = "s4", Name = "Energiebedrijf NL", City = "Arnhem", ContactEmail = "zakelijk@energie.nl" },
+        new() { SupplierId = "s5", Name = "Technische Dienst BV", City = "Amersfoort", ContactEmail = "service@technisch.nl" },
+        new() { SupplierId = "s6", Name = "TegelGroothandel BV", City = "Utrecht", ContactEmail = "handel@tegelgroothandel.nl" }
     ];
 
     public Task<IReadOnlyList<ExpenseDto>> GetExpensesAsync(DateRangeFilter filter, CancellationToken cancellationToken = default)
@@ -275,9 +375,9 @@ public sealed class MockNetSuiteService : INetSuiteService
 
     private static List<ExpenseDto> GetMockExpenses() =>
     [
-        new() { Id = "e1", Date = Today.AddDays(-20), Category = "Transport", Amount = 12500m, VendorName = "Logistics Partner BV" },
-        new() { Id = "e2", Date = Today.AddDays(-10), Category = "Utilities", Amount = 4200m, VendorName = "Energiebedrijf NL" },
-        new() { Id = "e3", Date = Today.AddDays(-2), Category = "Maintenance", Amount = 2950m, VendorName = "Technische Dienst BV" }
+        new() { Id = "e1", Date = Today.AddDays(-20), Category = "Transport", Amount = 12500m, VendorName = "Logistics Partner BV", SupplierId = "s3" },
+        new() { Id = "e2", Date = Today.AddDays(-10), Category = "Utilities", Amount = 4200m, VendorName = "Energiebedrijf NL", SupplierId = "s4" },
+        new() { Id = "e3", Date = Today.AddDays(-2), Category = "Maintenance", Amount = 2950m, VendorName = "Technische Dienst BV", SupplierId = "s5" }
     ];
 
     public Task<ItemDetailDto?> GetItemByBarcodeAsync(string barcode, CancellationToken cancellationToken = default)

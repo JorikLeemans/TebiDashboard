@@ -65,12 +65,18 @@ namespace TebiDashboard.Infrastructure.Data.Migrations
                     b.Property<DateOnly>("Date")
                         .HasColumnType("date");
 
+                    b.Property<string>("SupplierId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("VendorName")
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SupplierId");
 
                     b.ToTable("Expenses");
                 });
@@ -174,6 +180,10 @@ namespace TebiDashboard.Infrastructure.Data.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<string>("SupplierId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<DateOnly>("TransactionDate")
                         .HasColumnType("date");
 
@@ -187,6 +197,8 @@ namespace TebiDashboard.Infrastructure.Data.Migrations
                     b.HasIndex("CustomerId");
 
                     b.HasIndex("ItemId");
+
+                    b.HasIndex("SupplierId");
 
                     b.HasIndex("TransactionDate");
 
@@ -256,6 +268,32 @@ namespace TebiDashboard.Infrastructure.Data.Migrations
                     b.HasIndex("ItemId");
 
                     b.ToTable("StockLocations");
+                });
+
+            modelBuilder.Entity("TebiDashboard.Infrastructure.Data.Entities.SupplierRecord", b =>
+                {
+                    b.Property<string>("SupplierId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ContactEmail")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.HasKey("SupplierId");
+
+                    b.ToTable("Suppliers");
                 });
 
             modelBuilder.Entity("TebiDashboard.Infrastructure.Data.Entities.UserEntity", b =>

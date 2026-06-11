@@ -73,6 +73,45 @@ public class DashboardHomeTests
     }
 
     [Fact]
+    public void DashboardHome_LinksCustomerInSalesTable_WhenCustomerIdPresent()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        SetupPeriodOverview(mockHttp, new PeriodOverviewDto
+        {
+            PeriodFrom = new DateOnly(2026, 6, 8),
+            PeriodTo = new DateOnly(2026, 6, 10),
+            Summary = new DashboardSummaryDto
+            {
+                Revenue = 42000m,
+                SalesVolume = 1m,
+                GoalPercentage = 80m,
+                RevenueTrend = "up",
+                LowStockAlertCount = 0,
+                PeriodFrom = new DateOnly(2026, 6, 8),
+                PeriodTo = new DateOnly(2026, 6, 10)
+            },
+            Revenue =
+            [
+                new RevenueDto
+                {
+                    Id = "1",
+                    Date = new DateOnly(2026, 6, 9),
+                    Amount = 42000m,
+                    CustomerId = "c1",
+                    CustomerName = "Bouwbedrijf Jansen"
+                }
+            ]
+        });
+        SetupGoals(mockHttp);
+
+        var cut = ctx.Render<DashboardHome>();
+        cut.WaitForElement(".dashboard-table__customer-link", TimeSpan.FromSeconds(5));
+
+        Assert.Contains("href=\"/customers/c1\"", cut.Markup);
+        Assert.Contains("Bouwbedrijf Jansen", cut.Markup);
+    }
+
+    [Fact]
     public void DashboardHome_ShowsError_WhenApiFails()
     {
         using var ctx = CreateAuthenticatedContext(out var mockHttp);

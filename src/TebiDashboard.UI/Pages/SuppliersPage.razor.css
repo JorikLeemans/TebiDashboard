@@ -1,0 +1,65 @@
+.suppliers-page {
+  padding: 1rem;
+  font-family: Segoe UI, sans-serif;
+}
+
+.suppliers-page__header h1 {
+  margin: 0 0 0.25rem;
+}
+
+.suppliers-page__subtitle {
+  margin: 0 0 1.25rem;
+  color: #555;
+}
+
+.suppliers-page__status {
+  color: #555;
+}
+
+.suppliers-table-wrap {
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid #dde3ea;
+  border-radius: 8px;
+}
+
+.suppliers-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 820px;
+}
+
+.suppliers-table th,
+.suppliers-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.suppliers-table th {
+  background: #f7faf8;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #445;
+}
+
+.suppliers-table__row {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.suppliers-table__row:hover,
+.suppliers-table__row:focus {
+  background: #f0f7f2;
+  outline: none;
+}
+
+.suppliers-table__name {
+  font-weight: 600;
+  color: #1a3d2b;
+}
+
+.error {
+  color: #b00020;
+}

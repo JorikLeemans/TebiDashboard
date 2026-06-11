@@ -28,5 +28,6 @@ public enum PeriodFilterPreset
     Last2Days,
     Last7Days,
     Last30Days,
-    ThisMonth
+    ThisMonth,
+    ThisYear
 }

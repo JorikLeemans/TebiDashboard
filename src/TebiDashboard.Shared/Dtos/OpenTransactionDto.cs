@@ -17,6 +17,10 @@ public sealed class OpenTransactionDto
 
     public string CustomerName { get; init; } = string.Empty;
 
+    public string? SupplierId { get; init; }
+
+    public string SupplierName { get; init; } = string.Empty;
+
     public DateOnly TransactionDate { get; init; }
 
     public decimal QuantityOpen { get; init; }
