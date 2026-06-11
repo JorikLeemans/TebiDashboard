@@ -28,5 +28,10 @@ public sealed class OpenTransactionRecord
 
     public decimal QuantityOpen { get; set; }
 
+    /// <summary>
+    /// Monetary value of the open order line (sales or purchase orders).
+    /// </summary>
+    public decimal Amount { get; set; }
+
     public string Status { get; set; } = string.Empty;
 }

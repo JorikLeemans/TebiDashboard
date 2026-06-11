@@ -41,6 +41,7 @@ public static class DemoDataSeeder
         await EnsureDemoRevenueSpreadAsync(dbContext, today, cancellationToken);
         await EnsureDemoSalesOrderSpreadAsync(dbContext, today, cancellationToken);
         await EnsureDemoPurchaseOrderSpreadAsync(dbContext, today, cancellationToken);
+        await EnsureDemoOrderAmountAlignmentAsync(dbContext, today, cancellationToken);
 
         if (await dbContext.RevenueRecords.AnyAsync(cancellationToken))
         {
@@ -212,14 +213,14 @@ public static class DemoDataSeeder
 
     private static OpenTransactionRecord[] BuildDemoSalesOrderSpread(DateOnly today) =>
     [
-        CreateTransaction("t7", "Sales Order", "i1", today.AddDays(-8), 25, "Pending Fulfillment", "c4"),
-        CreateTransaction("t8", "Sales Order", "i5", today.AddDays(-11), 18, "Pending Fulfillment", "c1"),
-        CreateTransaction("t9", "Sales Order", "i7", today.AddDays(-15), 32, "Pending Fulfillment", "c2"),
-        CreateTransaction("t10", "Sales Order", "i3", today.AddDays(-20), 22, "Pending Fulfillment", "c5"),
-        CreateTransaction("t11", "Sales Order", "i8", today.AddDays(-24), 14, "Pending Fulfillment", "c3"),
-        CreateTransaction("t12", "Sales Order", "i10", today.AddDays(-28), 36, "Pending Fulfillment", "c4"),
-        CreateTransaction("t13", "Sales Order", "i2", today.AddDays(-34), 28, "Pending Fulfillment", "c1"),
-        CreateTransaction("t14", "Sales Order", "i5", today.AddDays(-40), 20, "Pending Fulfillment", "c2")
+        CreateTransaction("t7", "Sales Order", "i1", today.AddDays(-8), 25, "Pending Fulfillment", customerId: "c4"),
+        CreateTransaction("t8", "Sales Order", "i5", today.AddDays(-11), 18, "Pending Fulfillment", customerId: "c1"),
+        CreateTransaction("t9", "Sales Order", "i7", today.AddDays(-15), 32, "Pending Fulfillment", customerId: "c2"),
+        CreateTransaction("t10", "Sales Order", "i3", today.AddDays(-20), 22, "Pending Fulfillment", customerId: "c5"),
+        CreateTransaction("t11", "Sales Order", "i8", today.AddDays(-24), 14, "Pending Fulfillment", customerId: "c3"),
+        CreateTransaction("t12", "Sales Order", "i10", today.AddDays(-28), 36, "Pending Fulfillment", customerId: "c4"),
+        CreateTransaction("t13", "Sales Order", "i2", today.AddDays(-34), 28, "Pending Fulfillment", customerId: "c1"),
+        CreateTransaction("t14", "Sales Order", "i5", today.AddDays(-40), 20, "Pending Fulfillment", customerId: "c2")
     ];
 
     private static RevenueRecord CreateRevenue(
@@ -514,6 +515,147 @@ public static class DemoDataSeeder
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Keeps sales and purchase order amounts aligned with revenue and expense totals.
+    /// </summary>
+    private static async Task EnsureDemoOrderAmountAlignmentAsync(
+        TebiDashboardDbContext dbContext,
+        DateOnly today,
+        CancellationToken cancellationToken)
+    {
+        var windowStart = today.AddDays(-120);
+
+        var revenueRows = await dbContext.RevenueRecords
+            .Where(revenue => revenue.Date >= windowStart && revenue.Date <= today)
+            .OrderBy(revenue => revenue.CustomerId)
+            .ThenBy(revenue => revenue.Date)
+            .ToListAsync(cancellationToken);
+
+        foreach (var customerGroup in revenueRows.GroupBy(revenue => revenue.CustomerId))
+        {
+            var customerId = customerGroup.Key;
+            var targetTotal = customerGroup.Sum(revenue => revenue.Amount);
+
+            var salesOrders = await dbContext.OpenTransactions
+                .Where(transaction => transaction.Type == "Sales Order"
+                    && transaction.CustomerId == customerId
+                    && transaction.TransactionDate >= windowStart
+                    && transaction.TransactionDate <= today)
+                .OrderBy(transaction => transaction.TransactionDate)
+                .ToListAsync(cancellationToken);
+
+            if (salesOrders.Count == 0)
+            {
+                foreach (var revenue in customerGroup)
+                {
+                    var linkedOrderId = $"t-so-{revenue.Id}";
+                    if (await dbContext.OpenTransactions.AnyAsync(
+                            transaction => transaction.TransactionId == linkedOrderId,
+                            cancellationToken))
+                    {
+                        continue;
+                    }
+
+                    var itemId = MapProductGroupToItem(revenue.ProductGroupId);
+                    var unitPrice = GetDemoSalesUnitPrice(itemId);
+                    var quantity = Math.Max(1m, Math.Round(revenue.Amount / unitPrice, 0));
+
+                    dbContext.OpenTransactions.Add(CreateTransaction(
+                        linkedOrderId,
+                        "Sales Order",
+                        itemId,
+                        revenue.Date,
+                        quantity,
+                        "Pending Fulfillment",
+                        customerId: customerId,
+                        amount: revenue.Amount));
+                }
+
+                continue;
+            }
+
+            DistributeOrderAmounts(salesOrders, targetTotal);
+        }
+
+        var purchaseOrders = await dbContext.OpenTransactions
+            .Where(transaction => transaction.Type == "Purchase Order")
+            .ToListAsync(cancellationToken);
+
+        foreach (var purchaseOrder in purchaseOrders)
+        {
+            if (purchaseOrder.Amount > 0)
+            {
+                continue;
+            }
+
+            purchaseOrder.Amount = Math.Round(
+                purchaseOrder.QuantityOpen * GetDemoPurchaseUnitPrice(purchaseOrder.ItemId),
+                0);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static void DistributeOrderAmounts(IList<OpenTransactionRecord> orders, decimal targetTotal)
+    {
+        if (orders.Count == 0)
+        {
+            return;
+        }
+
+        if (targetTotal <= 0)
+        {
+            foreach (var order in orders)
+            {
+                order.Amount = 0m;
+            }
+
+            return;
+        }
+
+        var share = Math.Round(targetTotal / orders.Count, 0, MidpointRounding.AwayFromZero);
+        var assigned = 0m;
+
+        for (var index = 0; index < orders.Count; index++)
+        {
+            var amount = index == orders.Count - 1
+                ? targetTotal - assigned
+                : share;
+            orders[index].Amount = amount;
+            assigned += amount;
+        }
+    }
+
+    private static string MapProductGroupToItem(string productGroupId) => productGroupId switch
+    {
+        "pg-tiles" => "i3",
+        "pg-edging" => "i5",
+        _ => "i1"
+    };
+
+    private static decimal GetDemoSalesUnitPrice(string itemId) => itemId switch
+    {
+        "i2" => 1200m,
+        "i3" => 950m,
+        "i4" => 420m,
+        "i5" => 780m,
+        "i6" => 65m,
+        "i7" => 880m,
+        "i8" => 1100m,
+        "i10" => 720m,
+        _ => 850m
+    };
+
+    private static decimal GetDemoPurchaseUnitPrice(string itemId) => itemId switch
+    {
+        "i2" => 680m,
+        "i3" => 540m,
+        "i4" => 240m,
+        "i6" => 38m,
+        "i8" => 620m,
+        _ => 480m
+    };
+
     private static async Task BackfillSalesOrderCustomersAsync(
         TebiDashboardDbContext dbContext,
         CancellationToken cancellationToken)
@@ -578,7 +720,8 @@ public static class DemoDataSeeder
         decimal quantityOpen,
         string status,
         string? customerId = null,
-        string? supplierId = null) => new()
+        string? supplierId = null,
+        decimal amount = 0m) => new()
     {
         TransactionId = transactionId,
         Type = type,
@@ -587,6 +730,7 @@ public static class DemoDataSeeder
         SupplierId = supplierId,
         TransactionDate = transactionDate,
         QuantityOpen = quantityOpen,
+        Amount = amount,
         Status = status
     };
 

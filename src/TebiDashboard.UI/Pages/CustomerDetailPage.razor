@@ -43,6 +43,8 @@
             <article class="customer-detail__kpi">
                 <h2>Total spent</h2>
                 <p>@EuroFormatting.FormatWhole(_detail.TotalSpent)</p>
+                @* Total spent is the sum of sales order amounts in the selected period. *@
+                <p class="customer-detail__kpi-hint">Sum of sales order amounts below</p>
             </article>
             <article class="customer-detail__kpi">
                 <h2>Revenue entries</h2>
@@ -84,6 +86,16 @@
                             </tr>
                         }
                     </tbody>
+                    @if (_detail.Revenue.Count > 0)
+                    {
+                        <tfoot>
+                            <tr>
+                                <th scope="row">Total</th>
+                                <td>@EuroFormatting.FormatWhole(RevenueTotal)</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    }
                 </table>
             }
         </section>
@@ -103,6 +115,7 @@
                             <th scope="col">Order</th>
                             <th scope="col">Item</th>
                             <th scope="col">Qty open</th>
+                            <th scope="col">Amount</th>
                             <th scope="col">Status</th>
                         </tr>
                     </thead>
@@ -114,10 +127,21 @@
                                 <td><code>@order.TransactionId</code></td>
                                 <td>@order.ItemName</td>
                                 <td>@order.QuantityOpen.ToString("N0")</td>
+                                <td>@EuroFormatting.FormatWhole(order.Amount)</td>
                                 <td>@order.Status</td>
                             </tr>
                         }
                     </tbody>
+                    @if (_detail.SalesOrders.Count > 0)
+                    {
+                        <tfoot>
+                            <tr>
+                                <th scope="row" colspan="4">Total</th>
+                                <td>@EuroFormatting.FormatWhole(SalesOrdersTotal)</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    }
                 </table>
             }
         </section>
@@ -131,6 +155,10 @@
     private CustomerDetailDto? _detail;
     private bool _isLoading = true;
     private string? _error;
+
+    // Footer totals make it easy to compare revenue with sales orders in the same period.
+    private decimal RevenueTotal => _detail?.Revenue.Sum(row => row.Amount) ?? 0m;
+    private decimal SalesOrdersTotal => _detail?.SalesOrders.Sum(order => order.Amount) ?? 0m;
 
     protected override async Task OnInitializedAsync()
     {

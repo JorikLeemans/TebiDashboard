@@ -163,6 +163,10 @@ namespace TebiDashboard.Infrastructure.Data.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<string>("CustomerId")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");

@@ -62,6 +62,13 @@
   font-weight: 700;
 }
 
+.supplier-detail__kpi-hint {
+  margin-top: 0.35rem !important;
+  font-size: 0.75rem !important;
+  font-weight: 400 !important;
+  color: #667;
+}
+
 .supplier-detail__section {
   background: #fff;
   border: 1px solid #dde3ea;

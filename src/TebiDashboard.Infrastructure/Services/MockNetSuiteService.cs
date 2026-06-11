@@ -39,7 +39,7 @@ public sealed class MockNetSuiteService : INetSuiteService
                     Name = customer.Name,
                     City = customer.City,
                     ContactEmail = customer.ContactEmail,
-                    TotalSpent = customerRevenue.Sum(r => r.Amount),
+                    TotalSpent = customerOrders.Sum(order => order.Amount),
                     RevenueEntryCount = customerRevenue.Count,
                     SalesOrderCount = customerOrders.Count
                 };
@@ -78,7 +78,7 @@ public sealed class MockNetSuiteService : INetSuiteService
             Customer = customer,
             PeriodFrom = filter.From,
             PeriodTo = filter.To,
-            TotalSpent = revenue.Sum(r => r.Amount),
+            TotalSpent = salesOrders.Sum(order => order.Amount),
             Revenue = revenue,
             SalesOrders = salesOrders
         };
@@ -113,10 +113,11 @@ public sealed class MockNetSuiteService : INetSuiteService
                     Name = supplier.Name,
                     City = supplier.City,
                     ContactEmail = supplier.ContactEmail,
-                    TotalPurchased = supplierExpenses.Sum(e => e.Amount),
+                    TotalPurchased = supplierExpenses.Sum(expense => expense.Amount)
+                        + supplierOrders.Sum(order => order.Amount),
                     ExpenseEntryCount = supplierExpenses.Count,
                     PurchaseOrderCount = supplierOrders.Count,
-                    PurchasedItemCount = supplierOrders.Select(t => t.ItemId).Distinct().Count()
+                    PurchasedItemCount = supplierOrders.Select(order => order.ItemId).Distinct().Count()
                 };
             })
             .ToList();
@@ -164,7 +165,8 @@ public sealed class MockNetSuiteService : INetSuiteService
             Supplier = supplier,
             PeriodFrom = filter.From,
             PeriodTo = filter.To,
-            TotalPurchased = expenses.Sum(e => e.Amount),
+            TotalPurchased = expenses.Sum(expense => expense.Amount)
+                + purchaseOrders.Sum(order => order.Amount),
             Expenses = expenses,
             PurchaseOrders = purchaseOrders,
             PurchasedItems = purchasedItems
@@ -349,12 +351,20 @@ public sealed class MockNetSuiteService : INetSuiteService
 
     private static List<OpenTransactionDto> GetMockTransactions() =>
     [
-        new() { TransactionId = "t1", Type = "Sales Order", ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", CustomerId = "c1", CustomerName = "Bouwbedrijf Jansen", TransactionDate = Today.AddDays(-1), QuantityOpen = 40, Status = "Pending Fulfillment" },
-        new() { TransactionId = "t2", Type = "Transfer Order", ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", TransactionDate = Today.AddDays(-2), QuantityOpen = 20, Status = "Pending Receipt" },
-        new() { TransactionId = "t3", Type = "Sales Order", ItemId = "i2", ItemName = "Klinkers Rood-Bruin", CustomerId = "c3", CustomerName = "Stratenmakers BV", TransactionDate = Today.AddDays(-5), QuantityOpen = 55, Status = "Pending Fulfillment" },
-        new() { TransactionId = "t4", Type = "Purchase Order", ItemId = "i4", ItemName = "Betonblokken 40x20", SupplierId = "s1", SupplierName = "BetonCentrale Midden-NL", TransactionDate = Today.AddDays(-12), QuantityOpen = 120, Status = "Pending Receipt" },
-        new() { TransactionId = "t15", Type = "Purchase Order", ItemId = "i2", ItemName = "Klinkers Rood-Bruin", SupplierId = "s2", SupplierName = "Klinker Import BV", TransactionDate = Today.AddDays(-20), QuantityOpen = 80, Status = "Pending Receipt" },
-        new() { TransactionId = "t16", Type = "Purchase Order", ItemId = "i6", ItemName = "Grind 16-32 mm", SupplierId = "s1", SupplierName = "BetonCentrale Midden-NL", TransactionDate = Today.AddDays(-8), QuantityOpen = 200, Status = "Pending Receipt" }
+        new() { TransactionId = "t1", Type = "Sales Order", ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", CustomerId = "c1", CustomerName = "Bouwbedrijf Jansen", TransactionDate = Today.AddDays(-1), QuantityOpen = 40, Amount = 39_500m, Status = "Pending Fulfillment" },
+        new() { TransactionId = "t2", Type = "Transfer Order", ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", TransactionDate = Today.AddDays(-2), QuantityOpen = 20, Amount = 0m, Status = "Pending Receipt" },
+        new() { TransactionId = "t3", Type = "Sales Order", ItemId = "i2", ItemName = "Klinkers Rood-Bruin", CustomerId = "c3", CustomerName = "Stratenmakers BV", TransactionDate = Today.AddDays(-5), QuantityOpen = 55, Amount = 51_200m, Status = "Pending Fulfillment" },
+        new() { TransactionId = "t4", Type = "Purchase Order", ItemId = "i4", ItemName = "Betonblokken 40x20", SupplierId = "s1", SupplierName = "BetonCentrale Midden-NL", TransactionDate = Today.AddDays(-12), QuantityOpen = 120, Amount = 28_800m, Status = "Pending Receipt" },
+        new() { TransactionId = "t5", Type = "Sales Order", ItemId = "i3", ItemName = "Tegels 60x60 Grijs", CustomerId = "c2", CustomerName = "Gemeente Utrecht", TransactionDate = Today.AddDays(-3), QuantityOpen = 30, Amount = 11_200m, Status = "Pending Fulfillment" },
+        new() { TransactionId = "t-so-12", Type = "Sales Order", ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", CustomerId = "c1", CustomerName = "Bouwbedrijf Jansen", TransactionDate = Today.AddDays(-2), QuantityOpen = 47, Amount = 39_500m, Status = "Pending Fulfillment" },
+        new() { TransactionId = "t-so-10", Type = "Sales Order", ItemId = "i2", ItemName = "Klinkers Rood-Bruin", CustomerId = "c2", CustomerName = "Gemeente Utrecht", TransactionDate = Today.AddDays(-5), QuantityOpen = 12, Amount = 11_200m, Status = "Pending Fulfillment" },
+        new() { TransactionId = "t-so-9", Type = "Sales Order", ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", CustomerId = "c3", CustomerName = "Stratenmakers BV", TransactionDate = Today.AddDays(-7), QuantityOpen = 60, Amount = 51_200m, Status = "Pending Fulfillment" },
+        new() { TransactionId = "t-so-11", Type = "Sales Order", ItemId = "i2", ItemName = "Klinkers Rood-Bruin", CustomerId = "c4", CustomerName = "Woningbouw De Vliet", TransactionDate = Today.AddDays(-4), QuantityOpen = 24, Amount = 27_800m, Status = "Pending Fulfillment" },
+        new() { TransactionId = "t-so-13", Type = "Sales Order", ItemId = "i2", ItemName = "Klinkers Rood-Bruin", CustomerId = "c4", CustomerName = "Woningbouw De Vliet", TransactionDate = Today.AddDays(-1), QuantityOpen = 24, Amount = 27_800m, Status = "Pending Fulfillment" },
+        new() { TransactionId = "t15", Type = "Purchase Order", ItemId = "i2", ItemName = "Klinkers Rood-Bruin", SupplierId = "s2", SupplierName = "Klinker Import BV", TransactionDate = Today.AddDays(-20), QuantityOpen = 80, Amount = 54_400m, Status = "Pending Receipt" },
+        new() { TransactionId = "t16", Type = "Purchase Order", ItemId = "i6", ItemName = "Grind 16-32 mm", SupplierId = "s1", SupplierName = "BetonCentrale Midden-NL", TransactionDate = Today.AddDays(-8), QuantityOpen = 200, Amount = 7_600m, Status = "Pending Receipt" },
+        new() { TransactionId = "t17", Type = "Purchase Order", ItemId = "i3", ItemName = "Tegels 60x60 Grijs", SupplierId = "s6", SupplierName = "TegelGroothandel BV", TransactionDate = Today.AddDays(-25), QuantityOpen = 95, Amount = 51_300m, Status = "Pending Receipt" },
+        new() { TransactionId = "t18", Type = "Purchase Order", ItemId = "i8", ItemName = "Keramische Tegels Antraciet", SupplierId = "s6", SupplierName = "TegelGroothandel BV", TransactionDate = Today.AddDays(-14), QuantityOpen = 60, Amount = 37_200m, Status = "Pending Receipt" }
     ];
 
     private static List<SupplierDto> GetMockSuppliers() =>
@@ -414,6 +424,7 @@ public sealed class MockNetSuiteService : INetSuiteService
                     CustomerName = "Bouwbedrijf Jansen",
                     TransactionDate = Today.AddDays(-1),
                     QuantityOpen = 40,
+                    Amount = 39_500m,
                     Status = "Pending Fulfillment"
                 }
             ]

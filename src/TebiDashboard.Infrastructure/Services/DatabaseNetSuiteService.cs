@@ -44,13 +44,19 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
                 && t.TransactionDate >= filter.From
                 && t.TransactionDate <= filter.To)
             .GroupBy(t => t.CustomerId!)
-            .Select(g => new { CustomerId = g.Key, Count = g.Count() })
+            .Select(g => new
+            {
+                CustomerId = g.Key,
+                Total = g.Sum(t => t.Amount),
+                Count = g.Count()
+            })
             .ToDictionaryAsync(x => x.CustomerId, cancellationToken);
 
         return customers.Select(customer =>
         {
             var revenue = revenueByCustomer.GetValueOrDefault(customer.CustomerId);
             var salesOrders = salesOrdersByCustomer.GetValueOrDefault(customer.CustomerId);
+            var orderTotal = salesOrders?.Total ?? 0m;
 
             return new CustomerOverviewDto
             {
@@ -58,7 +64,8 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
                 Name = customer.Name,
                 City = customer.City,
                 ContactEmail = customer.ContactEmail,
-                TotalSpent = revenue?.Total ?? 0m,
+                // Total spent follows sales order amounts; demo data keeps revenue in sync.
+                TotalSpent = orderTotal > 0 ? orderTotal : revenue?.Total ?? 0m,
                 RevenueEntryCount = revenue?.Count ?? 0,
                 SalesOrderCount = salesOrders?.Count ?? 0
             };
@@ -104,13 +111,21 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
                 .ToDictionaryAsync(i => i.ItemId, i => i.ItemName, cancellationToken);
 
         var customerNames = new Dictionary<string, string> { [customer.CustomerId] = customer.Name };
+        var salesOrders = salesOrderRows
+            .Select(t => MapOpenTransaction(
+                t,
+                itemNames.GetValueOrDefault(t.ItemId, t.ItemId),
+                customerNames,
+                new Dictionary<string, string>()))
+            .ToList();
+        var orderTotal = salesOrders.Sum(order => order.Amount);
 
         return new CustomerDetailDto
         {
             Customer = MapCustomer(customer),
             PeriodFrom = filter.From,
             PeriodTo = filter.To,
-            TotalSpent = revenue.Sum(r => r.Amount),
+            TotalSpent = orderTotal > 0 ? orderTotal : revenue.Sum(r => r.Amount),
             Revenue = revenue.Select(r => new RevenueDto
             {
                 Id = r.Id,
@@ -120,13 +135,7 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
                 CustomerName = r.CustomerName,
                 ProductGroupId = r.ProductGroupId
             }).ToList(),
-            SalesOrders = salesOrderRows
-                .Select(t => MapOpenTransaction(
-                    t,
-                    itemNames.GetValueOrDefault(t.ItemId, t.ItemId),
-                    customerNames,
-                    new Dictionary<string, string>()))
-                .ToList()
+            SalesOrders = salesOrders
         };
     }
 
@@ -164,19 +173,18 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
                 && t.TransactionDate <= filter.To)
             .ToListAsync(cancellationToken);
 
-        var purchaseOrderCounts = purchaseOrdersBySupplier
-            .GroupBy(t => t.SupplierId!)
-            .ToDictionary(g => g.Key, g => g.Count());
-
-        var purchasedItemCounts = purchaseOrdersBySupplier
+        var purchaseOrderTotals = purchaseOrdersBySupplier
             .GroupBy(t => t.SupplierId!)
             .ToDictionary(
                 g => g.Key,
-                g => g.Select(t => t.ItemId).Distinct().Count());
+                g => new { Count = g.Count(), Total = g.Sum(t => t.Amount), Items = g.Select(t => t.ItemId).Distinct().Count() });
 
         return suppliers.Select(supplier =>
         {
             var expenses = expensesBySupplier.GetValueOrDefault(supplier.SupplierId);
+            var purchaseOrders = purchaseOrderTotals.GetValueOrDefault(supplier.SupplierId);
+            var expenseTotal = expenses?.Total ?? 0m;
+            var purchaseOrderTotal = purchaseOrders?.Total ?? 0m;
 
             return new SupplierOverviewDto
             {
@@ -184,10 +192,10 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
                 Name = supplier.Name,
                 City = supplier.City,
                 ContactEmail = supplier.ContactEmail,
-                TotalPurchased = expenses?.Total ?? 0m,
+                TotalPurchased = expenseTotal + purchaseOrderTotal,
                 ExpenseEntryCount = expenses?.Count ?? 0,
-                PurchaseOrderCount = purchaseOrderCounts.GetValueOrDefault(supplier.SupplierId),
-                PurchasedItemCount = purchasedItemCounts.GetValueOrDefault(supplier.SupplierId)
+                PurchaseOrderCount = purchaseOrders?.Count ?? 0,
+                PurchasedItemCount = purchaseOrders?.Items ?? 0
             };
         }).ToList();
     }
@@ -244,12 +252,20 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .OrderBy(item => item.ItemName)
             .ToList();
 
+        var purchaseOrders = purchaseOrderRows
+            .Select(t => MapOpenTransaction(
+                t,
+                itemNames.GetValueOrDefault(t.ItemId, t.ItemId),
+                customerNames,
+                supplierNames))
+            .ToList();
+
         return new SupplierDetailDto
         {
             Supplier = MapSupplier(supplier),
             PeriodFrom = filter.From,
             PeriodTo = filter.To,
-            TotalPurchased = expenseRows.Sum(e => e.Amount),
+            TotalPurchased = expenseRows.Sum(e => e.Amount) + purchaseOrders.Sum(order => order.Amount),
             Expenses = expenseRows.Select(e => new ExpenseDto
             {
                 Id = e.Id,
@@ -259,13 +275,7 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
                 VendorName = e.VendorName,
                 SupplierId = e.SupplierId
             }).ToList(),
-            PurchaseOrders = purchaseOrderRows
-                .Select(t => MapOpenTransaction(
-                    t,
-                    itemNames.GetValueOrDefault(t.ItemId, t.ItemId),
-                    customerNames,
-                    supplierNames))
-                .ToList(),
+            PurchaseOrders = purchaseOrders,
             PurchasedItems = purchasedItems
         };
     }
@@ -622,6 +632,7 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             : supplierNames.GetValueOrDefault(record.SupplierId, record.SupplierId),
         TransactionDate = record.TransactionDate,
         QuantityOpen = record.QuantityOpen,
+        Amount = record.Amount,
         Status = record.Status
     };
 

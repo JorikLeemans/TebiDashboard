@@ -43,6 +43,8 @@
             <article class="supplier-detail__kpi">
                 <h2>Total purchased</h2>
                 <p>@EuroFormatting.FormatWhole(_detail.TotalPurchased)</p>
+                @* Total purchased combines expense entries and purchase order amounts. *@
+                <p class="supplier-detail__kpi-hint">Expenses + purchase order amounts</p>
             </article>
             <article class="supplier-detail__kpi">
                 <h2>Expense entries</h2>
@@ -105,6 +107,7 @@
                             <th scope="col">Order</th>
                             <th scope="col">Item</th>
                             <th scope="col">Qty open</th>
+                            <th scope="col">Amount</th>
                             <th scope="col">Status</th>
                         </tr>
                     </thead>
@@ -116,10 +119,21 @@
                                 <td><code>@order.TransactionId</code></td>
                                 <td>@order.ItemName</td>
                                 <td>@order.QuantityOpen.ToString("N0")</td>
+                                <td>@EuroFormatting.FormatWhole(order.Amount)</td>
                                 <td>@order.Status</td>
                             </tr>
                         }
                     </tbody>
+                    @if (_detail.PurchaseOrders.Count > 0)
+                    {
+                        <tfoot>
+                            <tr>
+                                <th scope="row" colspan="4">Total</th>
+                                <td>@EuroFormatting.FormatWhole(PurchaseOrdersTotal)</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    }
                 </table>
             }
         </section>
@@ -150,6 +164,15 @@
                             </tr>
                         }
                     </tbody>
+                    @if (_detail.Expenses.Count > 0)
+                    {
+                        <tfoot>
+                            <tr>
+                                <th scope="row" colspan="2">Total</th>
+                                <td>@EuroFormatting.FormatWhole(ExpensesTotal)</td>
+                            </tr>
+                        </tfoot>
+                    }
                 </table>
             }
         </section>
@@ -163,6 +186,10 @@
     private SupplierDetailDto? _detail;
     private bool _isLoading = true;
     private string? _error;
+
+    // Footer totals show how expenses and purchase orders add up to Total purchased.
+    private decimal ExpensesTotal => _detail?.Expenses.Sum(row => row.Amount) ?? 0m;
+    private decimal PurchaseOrdersTotal => _detail?.PurchaseOrders.Sum(order => order.Amount) ?? 0m;
 
     protected override async Task OnInitializedAsync()
     {
