@@ -21,6 +21,6 @@ public sealed class DashboardService(INetSuiteService netSuiteService) : IDashbo
     public async Task<IReadOnlyList<GoalDto>> GetGoalsWithProgressAsync(int year, string? period = null, CancellationToken cancellationToken = default)
     {
         var goals = await netSuiteService.GetGoalsAsync(year, period, cancellationToken);
-        return goals.Select(GoalCalculator.WithProgress).ToList();
+        return goals.Select(goal => GoalCalculator.WithProgress(goal)).ToList();
     }
 }

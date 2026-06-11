@@ -38,6 +38,8 @@
 
     private static string FormatStatus(string status) => status switch
     {
+        "achieved" => "Achieved",
+        "not-achieved" => "Not achieved",
         "on-track" => "On track",
         "at-risk" => "At risk",
         "off-track" => "Off track",

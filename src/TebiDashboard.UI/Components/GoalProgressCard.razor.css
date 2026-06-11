@@ -5,6 +5,7 @@
   padding: 1rem;
 }
 
+.goal-card--achieved,
 .goal-card--on-track,
 .goal-card--ahead {
   border-left: 4px solid #2a8a4a;
@@ -14,6 +15,7 @@
   border-left: 4px solid #d98a00;
 }
 
+.goal-card--not-achieved,
 .goal-card--off-track,
 .goal-card--behind {
   border-left: 4px solid #c62828;
@@ -60,6 +62,14 @@
   height: 100%;
   background: linear-gradient(90deg, #2a8a4a 0%, #3cb371 100%);
   border-radius: 999px;
+}
+
+.goal-card--achieved .goal-card__progress-fill {
+  background: linear-gradient(90deg, #2a8a4a 0%, #3cb371 100%);
+}
+
+.goal-card--not-achieved .goal-card__progress-fill {
+  background: linear-gradient(90deg, #c62828 0%, #e53935 100%);
 }
 
 .goal-card--at-risk .goal-card__progress-fill {

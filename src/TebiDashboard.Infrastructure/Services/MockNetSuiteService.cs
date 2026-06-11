@@ -157,10 +157,18 @@ public sealed class MockNetSuiteService : INetSuiteService
     private static List<RevenueDto> GetMockRevenue() =>
     [
         new() { Id = "1", Date = Today.AddDays(-30), Amount = 42000m, CustomerId = "c1", CustomerName = "Bouwbedrijf Jansen", ProductGroupId = "pg1" },
-        new() { Id = "2", Date = Today.AddDays(-15), Amount = 38500m, CustomerId = "c2", CustomerName = "Gemeente Utrecht", ProductGroupId = "pg2" },
-        new() { Id = "3", Date = Today.AddDays(-7), Amount = 51200m, CustomerId = "c3", CustomerName = "Stratenmakers BV", ProductGroupId = "pg1" },
-        new() { Id = "4", Date = Today.AddDays(-2), Amount = 39500m, CustomerId = "c1", CustomerName = "Bouwbedrijf Jansen", ProductGroupId = "pg1" },
-        new() { Id = "5", Date = Today.AddDays(-1), Amount = 27800m, CustomerId = "c4", CustomerName = "Woningbouw De Vliet", ProductGroupId = "pg2" }
+        new() { Id = "2", Date = Today.AddDays(-25), Amount = 8200m, CustomerId = "c2", CustomerName = "Gemeente Utrecht", ProductGroupId = "pg2" },
+        new() { Id = "3", Date = Today.AddDays(-22), Amount = 15600m, CustomerId = "c3", CustomerName = "Stratenmakers BV", ProductGroupId = "pg1" },
+        new() { Id = "4", Date = Today.AddDays(-20), Amount = 6800m, CustomerId = "c1", CustomerName = "Bouwbedrijf Jansen", ProductGroupId = "pg1" },
+        new() { Id = "5", Date = Today.AddDays(-18), Amount = 22400m, CustomerId = "c4", CustomerName = "Woningbouw De Vliet", ProductGroupId = "pg2" },
+        new() { Id = "6", Date = Today.AddDays(-15), Amount = 38500m, CustomerId = "c2", CustomerName = "Gemeente Utrecht", ProductGroupId = "pg2" },
+        new() { Id = "7", Date = Today.AddDays(-12), Amount = 14300m, CustomerId = "c3", CustomerName = "Stratenmakers BV", ProductGroupId = "pg1" },
+        new() { Id = "8", Date = Today.AddDays(-10), Amount = 9400m, CustomerId = "c5", CustomerName = "Aannemer Noord", ProductGroupId = "pg1" },
+        new() { Id = "9", Date = Today.AddDays(-7), Amount = 51200m, CustomerId = "c3", CustomerName = "Stratenmakers BV", ProductGroupId = "pg1" },
+        new() { Id = "10", Date = Today.AddDays(-5), Amount = 11200m, CustomerId = "c2", CustomerName = "Gemeente Utrecht", ProductGroupId = "pg2" },
+        new() { Id = "11", Date = Today.AddDays(-4), Amount = 8700m, CustomerId = "c4", CustomerName = "Woningbouw De Vliet", ProductGroupId = "pg2" },
+        new() { Id = "12", Date = Today.AddDays(-2), Amount = 39500m, CustomerId = "c1", CustomerName = "Bouwbedrijf Jansen", ProductGroupId = "pg1" },
+        new() { Id = "13", Date = Today.AddDays(-1), Amount = 27800m, CustomerId = "c4", CustomerName = "Woningbouw De Vliet", ProductGroupId = "pg2" }
     ];
 
     public Task<IReadOnlyList<GoalDto>> GetGoalsAsync(int year, string? period = null, CancellationToken cancellationToken = default)
