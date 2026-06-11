@@ -72,7 +72,19 @@
                         {
                             <tr>
                                 <td>@row.Date.ToString("d")</td>
-                                <td>@row.CustomerName</td>
+                                <td>
+                                    @if (string.IsNullOrWhiteSpace(row.CustomerId))
+                                    {
+                                        @row.CustomerName
+                                    }
+                                    else
+                                    {
+                                        <a class="dashboard-table__customer-link"
+                                           href="@($"/customers/{Uri.EscapeDataString(row.CustomerId)}")">
+                                            @row.CustomerName
+                                        </a>
+                                    }
+                                </td>
                                 <td>@EuroFormatting.FormatWhole(row.Amount)</td>
                             </tr>
                         }
@@ -124,7 +136,7 @@
                         <tr>
                             <th>Date</th>
                             <th>Type</th>
-                            <th>Customer</th>
+                            <th>Customer / Supplier</th>
                             <th>Item</th>
                             <th>Qty open</th>
                             <th>Status</th>
@@ -136,7 +148,26 @@
                             <tr class="dashboard-table__link" @onclick="() => OpenItem(row.ItemId)" tabindex="0">
                                 <td>@row.TransactionDate.ToString("d")</td>
                                 <td>@row.Type</td>
-                                <td>@(string.IsNullOrWhiteSpace(row.CustomerName) ? "—" : row.CustomerName)</td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(row.CustomerId))
+                                    {
+                                        <a class="dashboard-table__customer-link"
+                                           href="@($"/customers/{Uri.EscapeDataString(row.CustomerId)}")">
+                                            @row.CustomerName
+                                        </a>
+                                    }
+                                    else if (!string.IsNullOrWhiteSpace(row.SupplierId))
+                                    {
+                                        <a class="dashboard-table__customer-link"
+                                           href="@($"/suppliers/{Uri.EscapeDataString(row.SupplierId)}")">
+                                            @row.SupplierName
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        @:—
+                                    }
+                                </td>
                                 <td>@row.ItemName</td>
                                 <td>@row.QuantityOpen.ToString("N0")</td>
                                 <td>@row.Status</td>
@@ -170,7 +201,19 @@
                             <tr>
                                 <td>@row.Date.ToString("d")</td>
                                 <td>@row.Category</td>
-                                <td>@row.VendorName</td>
+                                <td>
+                                    @if (string.IsNullOrWhiteSpace(row.SupplierId))
+                                    {
+                                        @row.VendorName
+                                    }
+                                    else
+                                    {
+                                        <a class="dashboard-table__customer-link"
+                                           href="@($"/suppliers/{Uri.EscapeDataString(row.SupplierId)}")">
+                                            @row.VendorName
+                                        </a>
+                                    }
+                                </td>
                                 <td>@EuroFormatting.FormatWhole(row.Amount)</td>
                             </tr>
                         }

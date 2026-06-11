@@ -29,14 +29,18 @@ public static class DemoDataSeeder
                 new UserEntity { Email = "inventory@tebi.nl", Password = "inventory1", Role = Roles.Inventory });
         }
 
-        // Backfill customer master data when the table was added after an existing deployment.
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        // Backfill master data when tables were added after an existing deployment.
         await EnsureDemoCustomersAsync(dbContext, cancellationToken);
         await BackfillSalesOrderCustomersAsync(dbContext, cancellationToken);
-
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        await EnsureDemoSuppliersAsync(dbContext, cancellationToken);
+        await BackfillPurchaseOrderSuppliersAsync(dbContext, cancellationToken);
+        await BackfillExpenseSuppliersAsync(dbContext, cancellationToken);
         await EnsureDemoGoalsForYearAsync(dbContext, today, today.Year - 1, cancellationToken);
         await EnsureDemoRevenueSpreadAsync(dbContext, today, cancellationToken);
         await EnsureDemoSalesOrderSpreadAsync(dbContext, today, cancellationToken);
+        await EnsureDemoPurchaseOrderSpreadAsync(dbContext, today, cancellationToken);
 
         if (await dbContext.RevenueRecords.AnyAsync(cancellationToken))
         {
@@ -77,14 +81,14 @@ public static class DemoDataSeeder
         dbContext.OpenTransactions.AddRange(BuildDemoOpenTransactions(today));
 
         dbContext.Expenses.AddRange(
-            CreateExpense("e1", today.AddDays(-80), "Transport", 12500m, "Logistics Partner BV"),
-            CreateExpense("e2", today.AddDays(-65), "Utilities", 4200m, "Energiebedrijf NL"),
-            CreateExpense("e3", today.AddDays(-50), "Maintenance", 6800m, "Technische Dienst BV"),
-            CreateExpense("e4", today.AddDays(-40), "Transport", 9800m, "Logistics Partner BV"),
-            CreateExpense("e5", today.AddDays(-28), "Marketing", 3500m, "Media Studio Utrecht"),
-            CreateExpense("e6", today.AddDays(-18), "Utilities", 4100m, "Energiebedrijf NL"),
-            CreateExpense("e7", today.AddDays(-12), "Insurance", 7200m, "Verzekeraar NL"),
-            CreateExpense("e8", today.AddDays(-5), "Maintenance", 2950m, "Technische Dienst BV"));
+            CreateExpense("e1", today.AddDays(-80), "Transport", 12500m, "Logistics Partner BV", "s3"),
+            CreateExpense("e2", today.AddDays(-65), "Utilities", 4200m, "Energiebedrijf NL", "s4"),
+            CreateExpense("e3", today.AddDays(-50), "Maintenance", 6800m, "Technische Dienst BV", "s5"),
+            CreateExpense("e4", today.AddDays(-40), "Transport", 9800m, "Logistics Partner BV", "s3"),
+            CreateExpense("e5", today.AddDays(-28), "Marketing", 3500m, "Media Studio Utrecht", "s7"),
+            CreateExpense("e6", today.AddDays(-18), "Utilities", 4100m, "Energiebedrijf NL", "s4"),
+            CreateExpense("e7", today.AddDays(-12), "Insurance", 7200m, "Verzekeraar NL", "s8"),
+            CreateExpense("e8", today.AddDays(-5), "Maintenance", 2950m, "Technische Dienst BV", "s5"));
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -100,6 +104,7 @@ public static class DemoDataSeeder
         dbContext.Goals.RemoveRange(dbContext.Goals);
         dbContext.RevenueRecords.RemoveRange(dbContext.RevenueRecords);
         dbContext.Customers.RemoveRange(dbContext.Customers);
+        dbContext.Suppliers.RemoveRange(dbContext.Suppliers);
         dbContext.InventoryItems.RemoveRange(dbContext.InventoryItems);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -187,13 +192,22 @@ public static class DemoDataSeeder
 
     private static OpenTransactionRecord[] BuildDemoOpenTransactions(DateOnly today) =>
     [
-        CreateTransaction("t1", "Sales Order", "i1", today.AddDays(-1), 40, "Pending Fulfillment", "c1"),
+        CreateTransaction("t1", "Sales Order", "i1", today.AddDays(-1), 40, "Pending Fulfillment", customerId: "c1"),
         CreateTransaction("t2", "Transfer Order", "i1", today.AddDays(-2), 20, "Pending Receipt"),
-        CreateTransaction("t3", "Sales Order", "i2", today.AddDays(-5), 55, "Pending Fulfillment", "c3"),
-        CreateTransaction("t4", "Purchase Order", "i4", today.AddDays(-12), 120, "Pending Receipt"),
-        CreateTransaction("t5", "Sales Order", "i3", today.AddDays(-3), 30, "Pending Fulfillment", "c2"),
+        CreateTransaction("t3", "Sales Order", "i2", today.AddDays(-5), 55, "Pending Fulfillment", customerId: "c3"),
+        CreateTransaction("t4", "Purchase Order", "i4", today.AddDays(-12), 120, "Pending Receipt", supplierId: "s1"),
+        CreateTransaction("t5", "Sales Order", "i3", today.AddDays(-3), 30, "Pending Fulfillment", customerId: "c2"),
         CreateTransaction("t6", "Transfer Order", "i6", today.AddDays(-18), 45, "In Transit"),
-        ..BuildDemoSalesOrderSpread(today)
+        ..BuildDemoSalesOrderSpread(today),
+        ..BuildDemoPurchaseOrderSpread(today)
+    ];
+
+    private static OpenTransactionRecord[] BuildDemoPurchaseOrderSpread(DateOnly today) =>
+    [
+        CreateTransaction("t15", "Purchase Order", "i2", today.AddDays(-20), 80, "Pending Receipt", supplierId: "s2"),
+        CreateTransaction("t16", "Purchase Order", "i6", today.AddDays(-8), 200, "Pending Receipt", supplierId: "s1"),
+        CreateTransaction("t17", "Purchase Order", "i3", today.AddDays(-25), 95, "Pending Receipt", supplierId: "s6"),
+        CreateTransaction("t18", "Purchase Order", "i8", today.AddDays(-14), 60, "Pending Receipt", supplierId: "s6")
     ];
 
     private static OpenTransactionRecord[] BuildDemoSalesOrderSpread(DateOnly today) =>
@@ -381,6 +395,125 @@ public static class DemoDataSeeder
     /// <summary>
     /// Links known demo sales orders to customers when CustomerId was not stored yet.
     /// </summary>
+    private static SupplierRecord[] GetDemoSuppliers() =>
+    [
+        CreateSupplier("s1", "BetonCentrale Midden-NL", "Nieuwegein", "inkoop@betoncentrale.nl"),
+        CreateSupplier("s2", "Klinker Import BV", "Rotterdam", "orders@klinkerimport.nl"),
+        CreateSupplier("s3", "Logistics Partner BV", "Utrecht", "transport@logistics.nl"),
+        CreateSupplier("s4", "Energiebedrijf NL", "Arnhem", "zakelijk@energie.nl"),
+        CreateSupplier("s5", "Technische Dienst BV", "Amersfoort", "service@technisch.nl"),
+        CreateSupplier("s6", "TegelGroothandel BV", "Utrecht", "handel@tegelgroothandel.nl"),
+        CreateSupplier("s7", "Media Studio Utrecht", "Utrecht", "info@mediautrecht.nl"),
+        CreateSupplier("s8", "Verzekeraar NL", "Den Haag", "zakelijk@verzekeraar.nl")
+    ];
+
+    /// <summary>
+    /// Inserts demo suppliers when the Suppliers table is empty on an already-seeded database.
+    /// </summary>
+    private static async Task EnsureDemoSuppliersAsync(
+        TebiDashboardDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        if (await dbContext.Suppliers.AnyAsync(cancellationToken))
+        {
+            return;
+        }
+
+        dbContext.Suppliers.AddRange(GetDemoSuppliers());
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Links known demo purchase orders to suppliers when SupplierId was not stored yet.
+    /// </summary>
+    private static async Task BackfillPurchaseOrderSuppliersAsync(
+        TebiDashboardDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var purchaseOrderSupplierLinks = new Dictionary<string, string>
+        {
+            ["t4"] = "s1",
+            ["t15"] = "s2",
+            ["t16"] = "s1",
+            ["t17"] = "s6",
+            ["t18"] = "s6"
+        };
+
+        var purchaseOrders = await dbContext.OpenTransactions
+            .Where(t => t.Type == "Purchase Order" && t.SupplierId == null)
+            .ToListAsync(cancellationToken);
+
+        var updated = false;
+
+        foreach (var order in purchaseOrders)
+        {
+            if (purchaseOrderSupplierLinks.TryGetValue(order.TransactionId, out var supplierId))
+            {
+                order.SupplierId = supplierId;
+                updated = true;
+            }
+        }
+
+        if (updated)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Links expense rows to supplier master data based on vendor name.
+    /// </summary>
+    private static async Task BackfillExpenseSuppliersAsync(
+        TebiDashboardDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var vendorToSupplier = new Dictionary<string, string>
+        {
+            ["Logistics Partner BV"] = "s3",
+            ["Energiebedrijf NL"] = "s4",
+            ["Technische Dienst BV"] = "s5",
+            ["Media Studio Utrecht"] = "s7",
+            ["Verzekeraar NL"] = "s8"
+        };
+
+        var expenses = await dbContext.Expenses
+            .Where(e => e.SupplierId == null)
+            .ToListAsync(cancellationToken);
+
+        var updated = false;
+
+        foreach (var expense in expenses)
+        {
+            if (vendorToSupplier.TryGetValue(expense.VendorName, out var supplierId))
+            {
+                expense.SupplierId = supplierId;
+                updated = true;
+            }
+        }
+
+        if (updated)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Adds extra purchase orders spread across recent days for supplier charts and lists.
+    /// </summary>
+    private static async Task EnsureDemoPurchaseOrderSpreadAsync(
+        TebiDashboardDbContext dbContext,
+        DateOnly today,
+        CancellationToken cancellationToken)
+    {
+        if (await dbContext.OpenTransactions.AnyAsync(transaction => transaction.TransactionId == "t15", cancellationToken))
+        {
+            return;
+        }
+
+        dbContext.OpenTransactions.AddRange(BuildDemoPurchaseOrderSpread(today));
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     private static async Task BackfillSalesOrderCustomersAsync(
         TebiDashboardDbContext dbContext,
         CancellationToken cancellationToken)
@@ -425,6 +558,18 @@ public static class DemoDataSeeder
         ContactEmail = contactEmail
     };
 
+    private static SupplierRecord CreateSupplier(
+        string supplierId,
+        string name,
+        string city,
+        string contactEmail) => new()
+    {
+        SupplierId = supplierId,
+        Name = name,
+        City = city,
+        ContactEmail = contactEmail
+    };
+
     private static OpenTransactionRecord CreateTransaction(
         string transactionId,
         string type,
@@ -432,23 +577,32 @@ public static class DemoDataSeeder
         DateOnly transactionDate,
         decimal quantityOpen,
         string status,
-        string? customerId = null) => new()
+        string? customerId = null,
+        string? supplierId = null) => new()
     {
         TransactionId = transactionId,
         Type = type,
         ItemId = itemId,
         CustomerId = customerId,
+        SupplierId = supplierId,
         TransactionDate = transactionDate,
         QuantityOpen = quantityOpen,
         Status = status
     };
 
-    private static ExpenseRecord CreateExpense(string id, DateOnly date, string category, decimal amount, string vendor) => new()
+    private static ExpenseRecord CreateExpense(
+        string id,
+        DateOnly date,
+        string category,
+        decimal amount,
+        string vendor,
+        string? supplierId = null) => new()
     {
         Id = id,
         Date = date,
         Category = category,
         Amount = amount,
-        VendorName = vendor
+        VendorName = vendor,
+        SupplierId = supplierId
     };
 }

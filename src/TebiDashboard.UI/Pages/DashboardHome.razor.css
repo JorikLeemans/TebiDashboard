@@ -99,6 +99,16 @@
   background: #f0f7f2;
 }
 
+.dashboard-table__customer-link {
+  color: #2a8a4a;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.dashboard-table__customer-link:hover {
+  text-decoration: underline;
+}
+
 .dashboard-empty {
   color: #666;
   margin: 0;

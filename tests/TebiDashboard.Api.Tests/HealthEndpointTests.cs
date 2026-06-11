@@ -65,6 +65,16 @@ public class HealthEndpointTests : IClassFixture<TebiWebApplicationFactory>
     }
 
     [Fact]
+    public async Task SuppliersOverview_ReturnsSuppliers_WithMockData()
+    {
+        var response = await _client.GetAsync("/api/suppliers/overview");
+        var content = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("BetonCentrale Midden-NL", content);
+    }
+
+    [Fact]
     public async Task Goals_ReturnsOk_WithPeriodFilter()
     {
         var response = await _client.GetAsync("/api/goals?year=2026&period=Q2");

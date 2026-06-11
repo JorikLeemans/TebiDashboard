@@ -121,8 +121,152 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
                 ProductGroupId = r.ProductGroupId
             }).ToList(),
             SalesOrders = salesOrderRows
-                .Select(t => MapOpenTransaction(t, itemNames.GetValueOrDefault(t.ItemId, t.ItemId), customerNames))
+                .Select(t => MapOpenTransaction(
+                    t,
+                    itemNames.GetValueOrDefault(t.ItemId, t.ItemId),
+                    customerNames,
+                    new Dictionary<string, string>()))
                 .ToList()
+        };
+    }
+
+    public async Task<IReadOnlyList<SupplierDto>> GetSuppliersAsync(CancellationToken cancellationToken = default)
+    {
+        var rows = await dbContext.Suppliers
+            .AsNoTracking()
+            .OrderBy(s => s.Name)
+            .ToListAsync(cancellationToken);
+
+        return rows.Select(MapSupplier).ToList();
+    }
+
+    public async Task<IReadOnlyList<SupplierOverviewDto>> GetSuppliersOverviewAsync(
+        DateRangeFilter filter,
+        CancellationToken cancellationToken = default)
+    {
+        var suppliers = await dbContext.Suppliers
+            .AsNoTracking()
+            .OrderBy(s => s.Name)
+            .ToListAsync(cancellationToken);
+
+        var expensesBySupplier = await dbContext.Expenses
+            .AsNoTracking()
+            .Where(e => e.SupplierId != null && e.Date >= filter.From && e.Date <= filter.To)
+            .GroupBy(e => e.SupplierId!)
+            .Select(g => new { SupplierId = g.Key, Total = g.Sum(e => e.Amount), Count = g.Count() })
+            .ToDictionaryAsync(x => x.SupplierId, cancellationToken);
+
+        var purchaseOrdersBySupplier = await dbContext.OpenTransactions
+            .AsNoTracking()
+            .Where(t => t.Type == "Purchase Order"
+                && t.SupplierId != null
+                && t.TransactionDate >= filter.From
+                && t.TransactionDate <= filter.To)
+            .ToListAsync(cancellationToken);
+
+        var purchaseOrderCounts = purchaseOrdersBySupplier
+            .GroupBy(t => t.SupplierId!)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        var purchasedItemCounts = purchaseOrdersBySupplier
+            .GroupBy(t => t.SupplierId!)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(t => t.ItemId).Distinct().Count());
+
+        return suppliers.Select(supplier =>
+        {
+            var expenses = expensesBySupplier.GetValueOrDefault(supplier.SupplierId);
+
+            return new SupplierOverviewDto
+            {
+                SupplierId = supplier.SupplierId,
+                Name = supplier.Name,
+                City = supplier.City,
+                ContactEmail = supplier.ContactEmail,
+                TotalPurchased = expenses?.Total ?? 0m,
+                ExpenseEntryCount = expenses?.Count ?? 0,
+                PurchaseOrderCount = purchaseOrderCounts.GetValueOrDefault(supplier.SupplierId),
+                PurchasedItemCount = purchasedItemCounts.GetValueOrDefault(supplier.SupplierId)
+            };
+        }).ToList();
+    }
+
+    public async Task<SupplierDetailDto?> GetSupplierDetailAsync(
+        string supplierId,
+        DateRangeFilter filter,
+        CancellationToken cancellationToken = default)
+    {
+        var supplier = await dbContext.Suppliers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.SupplierId == supplierId, cancellationToken);
+
+        if (supplier is null)
+        {
+            return null;
+        }
+
+        var expenseRows = await dbContext.Expenses
+            .AsNoTracking()
+            .Where(e => e.SupplierId == supplierId && e.Date >= filter.From && e.Date <= filter.To)
+            .OrderByDescending(e => e.Date)
+            .ToListAsync(cancellationToken);
+
+        var purchaseOrderRows = await dbContext.OpenTransactions
+            .AsNoTracking()
+            .Where(t => t.Type == "Purchase Order"
+                && t.SupplierId == supplierId
+                && t.TransactionDate >= filter.From
+                && t.TransactionDate <= filter.To)
+            .OrderByDescending(t => t.TransactionDate)
+            .ThenBy(t => t.TransactionId)
+            .ToListAsync(cancellationToken);
+
+        var itemIds = purchaseOrderRows.Select(r => r.ItemId).Distinct().ToList();
+        var itemNames = itemIds.Count == 0
+            ? new Dictionary<string, string>()
+            : await dbContext.InventoryItems
+                .AsNoTracking()
+                .Where(i => itemIds.Contains(i.ItemId))
+                .ToDictionaryAsync(i => i.ItemId, i => i.ItemName, cancellationToken);
+
+        var customerNames = await LoadCustomerNamesAsync(purchaseOrderRows, cancellationToken);
+        var supplierNames = new Dictionary<string, string> { [supplier.SupplierId] = supplier.Name };
+
+        var purchasedItems = purchaseOrderRows
+            .GroupBy(t => t.ItemId)
+            .Select(group => new SupplierPurchasedItemDto
+            {
+                ItemId = group.Key,
+                ItemName = itemNames.GetValueOrDefault(group.Key, group.Key),
+                TotalQuantityOpen = group.Sum(t => t.QuantityOpen)
+            })
+            .OrderBy(item => item.ItemName)
+            .ToList();
+
+        return new SupplierDetailDto
+        {
+            Supplier = MapSupplier(supplier),
+            PeriodFrom = filter.From,
+            PeriodTo = filter.To,
+            TotalPurchased = expenseRows.Sum(e => e.Amount),
+            Expenses = expenseRows.Select(e => new ExpenseDto
+            {
+                Id = e.Id,
+                Date = e.Date,
+                Category = e.Category,
+                Amount = e.Amount,
+                VendorName = e.VendorName,
+                SupplierId = e.SupplierId
+            }).ToList(),
+            PurchaseOrders = purchaseOrderRows
+                .Select(t => MapOpenTransaction(
+                    t,
+                    itemNames.GetValueOrDefault(t.ItemId, t.ItemId),
+                    customerNames,
+                    supplierNames))
+                .ToList(),
+            PurchasedItems = purchasedItems
         };
     }
 
@@ -239,11 +383,13 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .ToDictionaryAsync(i => i.ItemId, i => i.ItemName, cancellationToken);
 
         var customerNames = await LoadCustomerNamesAsync(rows, cancellationToken);
+        var supplierNames = await LoadSupplierNamesAsync(rows, cancellationToken);
 
         return rows.Select(t => MapOpenTransaction(
             t,
             itemNames.GetValueOrDefault(t.ItemId, t.ItemId),
-            customerNames)).ToList();
+            customerNames,
+            supplierNames)).ToList();
     }
 
     public async Task<IReadOnlyList<RevenueDto>> GetRevenueAsync(DateRangeFilter filter, CancellationToken cancellationToken = default)
@@ -358,8 +504,9 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .FirstOrDefaultAsync(cancellationToken) ?? itemId;
 
         var customerNames = await LoadCustomerNamesAsync(rows, cancellationToken);
+        var supplierNames = await LoadSupplierNamesAsync(rows, cancellationToken);
 
-        return rows.Select(t => MapOpenTransaction(t, itemName, customerNames)).ToList();
+        return rows.Select(t => MapOpenTransaction(t, itemName, customerNames, supplierNames)).ToList();
     }
 
     public async Task<IReadOnlyList<ExpenseDto>> GetExpensesAsync(DateRangeFilter filter, CancellationToken cancellationToken = default)
@@ -376,7 +523,8 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             Date = e.Date,
             Category = e.Category,
             Amount = e.Amount,
-            VendorName = e.VendorName
+            VendorName = e.VendorName,
+            SupplierId = e.SupplierId
         }).ToList();
     }
 
@@ -433,10 +581,32 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .ToDictionaryAsync(c => c.CustomerId, c => c.Name, cancellationToken);
     }
 
+    private async Task<Dictionary<string, string>> LoadSupplierNamesAsync(
+        IReadOnlyList<Data.Entities.OpenTransactionRecord> rows,
+        CancellationToken cancellationToken)
+    {
+        var supplierIds = rows
+            .Where(t => !string.IsNullOrWhiteSpace(t.SupplierId))
+            .Select(t => t.SupplierId!)
+            .Distinct()
+            .ToList();
+
+        if (supplierIds.Count == 0)
+        {
+            return [];
+        }
+
+        return await dbContext.Suppliers
+            .AsNoTracking()
+            .Where(s => supplierIds.Contains(s.SupplierId))
+            .ToDictionaryAsync(s => s.SupplierId, s => s.Name, cancellationToken);
+    }
+
     private static OpenTransactionDto MapOpenTransaction(
         Data.Entities.OpenTransactionRecord record,
         string itemName,
-        IReadOnlyDictionary<string, string> customerNames) => new()
+        IReadOnlyDictionary<string, string> customerNames,
+        IReadOnlyDictionary<string, string> supplierNames) => new()
     {
         TransactionId = record.TransactionId,
         Type = record.Type,
@@ -446,6 +616,10 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
         CustomerName = record.CustomerId is null
             ? string.Empty
             : customerNames.GetValueOrDefault(record.CustomerId, record.CustomerId),
+        SupplierId = record.SupplierId,
+        SupplierName = record.SupplierId is null
+            ? string.Empty
+            : supplierNames.GetValueOrDefault(record.SupplierId, record.SupplierId),
         TransactionDate = record.TransactionDate,
         QuantityOpen = record.QuantityOpen,
         Status = record.Status
@@ -457,6 +631,14 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
         Name = customer.Name,
         City = customer.City,
         ContactEmail = customer.ContactEmail
+    };
+
+    private static SupplierDto MapSupplier(Data.Entities.SupplierRecord supplier) => new()
+    {
+        SupplierId = supplier.SupplierId,
+        Name = supplier.Name,
+        City = supplier.City,
+        ContactEmail = supplier.ContactEmail
     };
 
     private static InventoryItemDto MapInventoryItem(Data.Entities.InventoryItemRecord item) => new()

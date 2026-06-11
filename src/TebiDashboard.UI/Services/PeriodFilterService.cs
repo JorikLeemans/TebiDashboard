@@ -23,6 +23,7 @@ public sealed class PeriodFilterService : IPeriodFilterService
             PeriodFilterPreset.Last7Days => (Today.AddDays(-7), Today),
             PeriodFilterPreset.Last30Days => (Today.AddDays(-30), Today),
             PeriodFilterPreset.ThisMonth => (new DateOnly(Today.Year, Today.Month, 1), Today),
+            PeriodFilterPreset.ThisYear => (new DateOnly(Today.Year, 1, 1), Today),
             _ => (Today.AddDays(-2), Today)
         };
 

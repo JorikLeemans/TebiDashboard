@@ -101,7 +101,7 @@
                             <th scope="col">Date</th>
                             <th scope="col">Transaction</th>
                             <th scope="col">Type</th>
-                            <th scope="col">Customer</th>
+                            <th scope="col">Customer / Supplier</th>
                             <th scope="col">Quantity open</th>
                             <th scope="col">Status</th>
                         </tr>
@@ -113,7 +113,20 @@
                                 <td>@transaction.TransactionDate.ToString("d")</td>
                                 <td><code>@transaction.TransactionId</code></td>
                                 <td>@transaction.Type</td>
-                                <td>@(string.IsNullOrWhiteSpace(transaction.CustomerName) ? "—" : transaction.CustomerName)</td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(transaction.CustomerId))
+                                    {
+                                        <a href="@($"/customers/{Uri.EscapeDataString(transaction.CustomerId)}")">@transaction.CustomerName</a>
+                                    }
+                                    else if (!string.IsNullOrWhiteSpace(transaction.SupplierId))
+                                    {
+                                        <a href="@($"/suppliers/{Uri.EscapeDataString(transaction.SupplierId)}")">@transaction.SupplierName</a>
+                                    }
+                                    else
+                                    {
+                                        @:—
+                                    }
+                                </td>
                                 <td>@transaction.QuantityOpen.ToString("N0")</td>
                                 <td>@transaction.Status</td>
                             </tr>

@@ -17,6 +17,11 @@ public sealed class OpenTransactionRecord
     public string? CustomerId { get; set; }
 
     /// <summary>
+    /// Linked supplier for purchase orders; null for sales/transfer orders.
+    /// </summary>
+    public string? SupplierId { get; set; }
+
+    /// <summary>
     /// Date the transaction was created or last updated (used for period filtering).
     /// </summary>
     public DateOnly TransactionDate { get; set; }

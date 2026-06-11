@@ -1,0 +1,222 @@
+@page "/suppliers/{SupplierId}"
+@layout DashboardLayout
+@using TebiDashboard.Shared.Dtos
+@inject DashboardApiClient ApiClient
+@inject IPeriodFilterService PeriodFilter
+@inject IAuthStateService AuthState
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>@(_detail?.Supplier.Name ?? "Supplier detail") — TEBI Dashboard</PageTitle>
+
+<div class="supplier-detail">
+    <nav class="supplier-detail__nav">
+        <a href="/suppliers" class="supplier-detail__back">← Back to suppliers</a>
+    </nav>
+
+    @if (_isLoading)
+    {
+        <p class="supplier-detail__status">Loading supplier details...</p>
+    }
+    else if (_error is not null)
+    {
+        <p class="error" role="alert">@_error</p>
+    }
+    else if (_detail is null)
+    {
+        <p class="supplier-detail__status">Supplier not found.</p>
+    }
+    else
+    {
+        <header class="supplier-detail__header">
+            <div>
+                <h1>@_detail.Supplier.Name</h1>
+                <p class="supplier-detail__meta">
+                    <span>ID: <code>@_detail.Supplier.SupplierId</code></span>
+                    <span>City: @_detail.Supplier.City</span>
+                    <span>Contact: @_detail.Supplier.ContactEmail</span>
+                </p>
+            </div>
+        </header>
+
+        <section class="supplier-detail__kpi-grid" aria-label="Supplier summary">
+            <article class="supplier-detail__kpi">
+                <h2>Total purchased</h2>
+                <p>@EuroFormatting.FormatWhole(_detail.TotalPurchased)</p>
+            </article>
+            <article class="supplier-detail__kpi">
+                <h2>Expense entries</h2>
+                <p>@_detail.Expenses.Count</p>
+            </article>
+            <article class="supplier-detail__kpi">
+                <h2>Purchase orders</h2>
+                <p>@_detail.PurchaseOrders.Count</p>
+            </article>
+            <article class="supplier-detail__kpi">
+                <h2>Purchased items</h2>
+                <p>@_detail.PurchasedItems.Count</p>
+            </article>
+            <article class="supplier-detail__kpi">
+                <h2>Period</h2>
+                <p>@_detail.PeriodFrom.ToString("d") – @_detail.PeriodTo.ToString("d")</p>
+            </article>
+        </section>
+
+        <section class="supplier-detail__section">
+            <h2>Purchased items in period</h2>
+            @if (_detail.PurchasedItems.Count == 0)
+            {
+                <p class="supplier-detail__empty">No purchased items linked to this supplier in the selected period.</p>
+            }
+            else
+            {
+                <table class="supplier-detail__table" aria-label="Purchased items">
+                    <thead>
+                        <tr>
+                            <th scope="col">Item</th>
+                            <th scope="col">Total qty open</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in _detail.PurchasedItems)
+                        {
+                            <tr class="supplier-detail__link-row" @onclick="() => OpenItem(item.ItemId)" tabindex="0">
+                                <td>@item.ItemName</td>
+                                <td>@item.TotalQuantityOpen.ToString("N0")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+
+        <section class="supplier-detail__section">
+            <h2>Purchase orders in period</h2>
+            @if (_detail.PurchaseOrders.Count == 0)
+            {
+                <p class="supplier-detail__empty">No open purchase orders linked to this supplier in the selected period.</p>
+            }
+            else
+            {
+                <table class="supplier-detail__table" aria-label="Supplier purchase orders">
+                    <thead>
+                        <tr>
+                            <th scope="col">Date</th>
+                            <th scope="col">Order</th>
+                            <th scope="col">Item</th>
+                            <th scope="col">Qty open</th>
+                            <th scope="col">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var order in _detail.PurchaseOrders)
+                        {
+                            <tr class="supplier-detail__link-row" @onclick="() => OpenItem(order.ItemId)" tabindex="0">
+                                <td>@order.TransactionDate.ToString("d")</td>
+                                <td><code>@order.TransactionId</code></td>
+                                <td>@order.ItemName</td>
+                                <td>@order.QuantityOpen.ToString("N0")</td>
+                                <td>@order.Status</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+
+        <section class="supplier-detail__section">
+            <h2>Expenses in period</h2>
+            @if (_detail.Expenses.Count == 0)
+            {
+                <p class="supplier-detail__empty">No expenses recorded for this supplier in the selected period.</p>
+            }
+            else
+            {
+                <table class="supplier-detail__table" aria-label="Supplier expenses">
+                    <thead>
+                        <tr>
+                            <th scope="col">Date</th>
+                            <th scope="col">Category</th>
+                            <th scope="col">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var expense in _detail.Expenses)
+                        {
+                            <tr>
+                                <td>@expense.Date.ToString("d")</td>
+                                <td>@expense.Category</td>
+                                <td>@EuroFormatting.FormatWhole(expense.Amount)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string SupplierId { get; set; } = string.Empty;
+
+    private SupplierDetailDto? _detail;
+    private bool _isLoading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthState.InitializeAsync();
+
+        if (!AuthState.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        PeriodFilter.OnChanged += OnPeriodChanged;
+        await LoadDetailAsync();
+    }
+
+    private void OnPeriodChanged()
+    {
+        _ = ReloadDetailAsync();
+    }
+
+    private async Task ReloadDetailAsync()
+    {
+        await LoadDetailAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadDetailAsync()
+    {
+        _isLoading = true;
+        _error = null;
+
+        try
+        {
+            _detail = await ApiClient.GetSupplierDetailAsync(SupplierId, PeriodFilter.From, PeriodFilter.To);
+
+            if (_detail is null)
+            {
+                _error = $"No supplier found with id '{SupplierId}'.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load supplier details: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenItem(string itemId) => Navigation.NavigateTo($"/inventory/{Uri.EscapeDataString(itemId)}");
+
+    public void Dispose()
+    {
+        PeriodFilter.OnChanged -= OnPeriodChanged;
+    }
+}
