@@ -1,6 +1,7 @@
 @page "/goals"
 @layout DashboardLayout
 @using TebiDashboard.Shared.Dtos
+@using TebiDashboard.Shared.Goals
 @using TebiDashboard.Shared.Periods
 @inject DashboardApiClient ApiClient
 @inject IAuthStateService AuthState
@@ -10,8 +11,14 @@
 
 <div class="goals-page">
     <header class="goals-page__header">
-        <h1>Goals</h1>
-        <p class="goals-page__subtitle">Track company and item targets per quarter</p>
+        <div>
+            <h1>Goals</h1>
+            <p class="goals-page__subtitle">Track company and item targets per quarter</p>
+        </div>
+        @if (AuthState.CanManageGoals())
+        {
+            <a href="/goals/settings" class="goals-page__settings-link">Set goals</a>
+        }
     </header>
 
     <section class="goals-page__filters" aria-label="Goal period filters">
@@ -78,7 +85,7 @@
                     @foreach (var goal in _companyGoals)
                     {
                         <GoalProgressCard Goal="goal"
-                                          Title="@($"{goal.Period} {goal.Year} revenue")"
+                                          Title="@($"{GoalIdHelper.FormatPeriodLabel(goal.Period)} {goal.Year} revenue")"
                                           UseCurrency="true" />
                     }
                 </div>
@@ -212,7 +219,7 @@
         var itemLabel = goal.ItemName ?? goal.ItemId ?? "Item";
 
         return _showQuarterOnItemGoals
-            ? $"{itemLabel} ({goal.Period} {goal.Year})"
+            ? $"{itemLabel} ({GoalIdHelper.FormatPeriodLabel(goal.Period)} {goal.Year})"
             : itemLabel;
     }
 }

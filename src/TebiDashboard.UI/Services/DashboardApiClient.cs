@@ -108,6 +108,15 @@ public sealed class DashboardApiClient(HttpClient httpClient)
         return await httpClient.GetFromJsonAsync<IReadOnlyList<GoalDto>>(url, cancellationToken) ?? [];
     }
 
+    public async Task<IReadOnlyList<GoalDto>> SaveGoalsAsync(
+        SaveGoalsRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await httpClient.PutAsJsonAsync("api/goals", request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<IReadOnlyList<GoalDto>>(cancellationToken) ?? [];
+    }
+
     public async Task<IReadOnlyList<InventoryItemDto>> GetLowStockAsync(CancellationToken cancellationToken = default)
         => await httpClient.GetFromJsonAsync<IReadOnlyList<InventoryItemDto>>("api/inventory/low-stock", cancellationToken) ?? [];
 

@@ -70,6 +70,8 @@ public class AdminDashboardPageTests
 
         public bool CanAccessAdminDashboard() => isAdmin;
 
+        public bool CanManageGoals() => isAdmin;
+
         public Task InitializeAsync() => Task.CompletedTask;
 
         public Task SignInAsync(LoginResponseDto response) => Task.CompletedTask;

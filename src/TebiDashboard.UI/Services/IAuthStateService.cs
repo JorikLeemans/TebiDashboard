@@ -20,6 +20,8 @@ public interface IAuthStateService
 
     bool CanAccessAdminDashboard();
 
+    bool CanManageGoals();
+
     Task InitializeAsync();
 
     Task SignInAsync(LoginResponseDto response);

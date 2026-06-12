@@ -108,6 +108,8 @@ public class InventoryPageTests
 
         public bool CanAccessAdminDashboard() => isAuthenticated && Role == Roles.Admin;
 
+        public bool CanManageGoals() => isAuthenticated && Role == Roles.Management;
+
         public Task InitializeAsync() => Task.CompletedTask;
 
         public Task SignInAsync(LoginResponseDto response) => Task.CompletedTask;
