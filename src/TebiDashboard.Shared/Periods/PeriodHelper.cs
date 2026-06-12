@@ -33,6 +33,11 @@ public static class PeriodHelper
     /// </summary>
     public static bool IsPeriodCompleted(int year, string period, DateOnly referenceDate)
     {
+        if (string.Equals(period, Goals.GoalPeriods.Year, StringComparison.OrdinalIgnoreCase))
+        {
+            return year < referenceDate.Year;
+        }
+
         var periodIndex = GetQuarterIndex(period);
         if (periodIndex == 0)
         {

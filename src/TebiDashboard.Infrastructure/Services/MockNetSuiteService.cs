@@ -262,7 +262,7 @@ public sealed class MockNetSuiteService : INetSuiteService
 
     public Task<IReadOnlyList<GoalDto>> GetGoalsAsync(int year, string? period = null, CancellationToken cancellationToken = default)
     {
-        var query = GetMockGoals().Where(goal => goal.Year == year);
+        var query = MockGoalData.GetAll().Where(goal => goal.Year == year);
 
         if (!string.IsNullOrWhiteSpace(period))
         {
@@ -272,7 +272,7 @@ public sealed class MockNetSuiteService : INetSuiteService
         return Task.FromResult<IReadOnlyList<GoalDto>>(query.ToList());
     }
 
-    private static List<GoalDto> GetMockGoals()
+    internal static List<GoalDto> CreateInitialGoals()
     {
         var currentYear = Today.Year;
         var previousYear = currentYear - 1;
@@ -291,6 +291,9 @@ public sealed class MockNetSuiteService : INetSuiteService
             new() { Id = $"g-{currentYear}-i1-q2", Year = currentYear, Period = "Q2", Type = "Revenue", ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", TargetValue = 1200m, ActualValue = 980m, Percentage = 0, Status = "on-track" }
         ];
     }
+
+    internal static string GetItemName(string itemId) =>
+        GetMockInventory().FirstOrDefault(item => item.ItemId == itemId)?.ItemName ?? itemId;
 
     public Task<IReadOnlyList<InventoryItemDto>> GetLowStockItemsAsync(bool highSalesOnly, CancellationToken cancellationToken = default)
         => Task.FromResult<IReadOnlyList<InventoryItemDto>>(GetMockLowStock());

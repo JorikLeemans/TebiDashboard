@@ -53,6 +53,19 @@ public class GoalsPageTests
     }
 
     [Fact]
+    public void GoalsPage_ShowsSetGoalsLink_ForManagementRole()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        SetupGoals(mockHttp, []);
+
+        var cut = ctx.Render<GoalsPage>();
+        cut.WaitForElement(".goals-page__settings-link", TimeSpan.FromSeconds(5));
+
+        Assert.Contains("Set goals", cut.Markup);
+        Assert.Contains("/goals/settings", cut.Markup);
+    }
+
+    [Fact]
     public void GoalsPage_ShowsQuarterOnItemGoals_WhenAllQuartersSelected()
     {
         using var ctx = CreateAuthenticatedContext(out var mockHttp);
@@ -121,6 +134,8 @@ public class GoalsPageTests
         public event Action? OnChange;
 
         public bool CanAccessAdminDashboard() => isAuthenticated && Role == Roles.Admin;
+
+        public bool CanManageGoals() => isAuthenticated && RoleAuthorization.CanManageGoals(Role);
 
         public Task InitializeAsync() => Task.CompletedTask;
 

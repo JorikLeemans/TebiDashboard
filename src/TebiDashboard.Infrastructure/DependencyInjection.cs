@@ -28,6 +28,7 @@ public static class DependencyInjection
         {
             // Fast in-memory mode for automated tests.
             services.AddScoped<INetSuiteService, MockNetSuiteService>();
+            services.AddScoped<IGoalStore, InMemoryGoalStore>();
             services.AddSingleton<IUserStore, InMemoryUserStore>();
             services.AddSingleton<IDemoDataAdminService, NullDemoDataAdminService>();
             return services;
@@ -51,6 +52,7 @@ public static class DependencyInjection
         });
 
         services.AddScoped<INetSuiteService, DatabaseNetSuiteService>();
+        services.AddScoped<IGoalStore, EfGoalStore>();
         services.AddScoped<IUserStore, EfUserStore>();
         services.AddScoped<IDemoDataAdminService, DatabaseDemoDataAdminService>();
         services.AddHostedService<DatabaseMigrationHostedService>();

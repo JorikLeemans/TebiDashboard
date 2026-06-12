@@ -24,6 +24,8 @@ public sealed class AuthStateService(IJSRuntime jsRuntime) : IAuthStateService
 
     public bool CanAccessAdminDashboard() => RoleAuthorization.CanAccessAdminDashboard(Role);
 
+    public bool CanManageGoals() => RoleAuthorization.CanManageGoals(Role);
+
     public async Task InitializeAsync()
     {
         try

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace TebiDashboard.Api.Tests;
@@ -94,6 +95,26 @@ public class HealthEndpointTests : IClassFixture<TebiWebApplicationFactory>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("Q1", content);
         Assert.Contains("Q4", content);
+    }
+
+    [Fact]
+    public async Task Goals_Save_ReturnsOk_ForValidTargets()
+    {
+        var year = DateTime.UtcNow.Year;
+        var response = await _client.PutAsJsonAsync("/api/goals", new
+        {
+            year,
+            targets = new[]
+            {
+                new { period = "YEAR", itemId = (string?)null, targetValue = 2_050_000m },
+                new { period = "Q3", itemId = "i1", targetValue = 1300m }
+            }
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("YEAR", content);
+        Assert.Contains("i1", content);
     }
 
     [Fact]

@@ -93,6 +93,8 @@ public class LoginPageTests
 
         public bool CanAccessAdminDashboard() => false;
 
+        public bool CanManageGoals() => false;
+
         public Task InitializeAsync() => Task.CompletedTask;
 
         public Task SignInAsync(LoginResponseDto response)

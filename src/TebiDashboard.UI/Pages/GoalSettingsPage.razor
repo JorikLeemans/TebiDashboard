@@ -1,0 +1,361 @@
+@page "/goals/settings"
+@layout DashboardLayout
+@using TebiDashboard.Shared.Constants
+@using TebiDashboard.Shared.Dtos
+@using TebiDashboard.Shared.Goals
+@inject DashboardApiClient ApiClient
+@inject IAuthStateService AuthState
+@inject NavigationManager Navigation
+
+<PageTitle>Set goals — TEBI Dashboard</PageTitle>
+
+<div class="goal-settings">
+    <header class="goal-settings__header">
+        <div>
+            <h1>Set goals</h1>
+            <p class="goal-settings__subtitle">
+                Configure company revenue targets per quarter and year, plus item volume targets.
+            </p>
+        </div>
+        <a href="/goals" class="goal-settings__back">← Back to goals</a>
+    </header>
+
+    @if (_accessDenied)
+    {
+        <p class="error" role="alert">You do not have permission to manage goals. Management or Admin access is required.</p>
+    }
+    else if (_isLoading)
+    {
+        <p class="goal-settings__status">Loading goal settings...</p>
+    }
+    else
+    {
+        <section class="goal-settings__filters" aria-label="Goal year filter">
+            <label class="goal-settings__filter">
+                <span>Year</span>
+                <select @bind="_selectedYear" @bind:after="LoadPageAsync">
+                    @foreach (var year in _yearOptions)
+                    {
+                        <option value="@year">@year</option>
+                    }
+                </select>
+            </label>
+        </section>
+
+        @if (!string.IsNullOrWhiteSpace(_statusMessage))
+        {
+            <p class="goal-settings__success" role="status">@_statusMessage</p>
+        }
+
+        @if (_error is not null)
+        {
+            <p class="error" role="alert">@_error</p>
+        }
+
+        <section class="goal-settings__section">
+            <h2>Company revenue targets (@_selectedYear)</h2>
+            <p class="goal-settings__hint">Set quarterly targets and the full-year total in euros.</p>
+            <table class="goal-settings__table" aria-label="Company goal targets">
+                <thead>
+                    <tr>
+                        <th scope="col">Period</th>
+                        <th scope="col">Target (€)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var period in GoalPeriods.CompanyPeriods)
+                    {
+                        <tr>
+                            <th scope="row">@GoalIdHelper.FormatPeriodLabel(period)</th>
+                            <td>
+                                <input type="number"
+                                       min="0"
+                                       step="1000"
+                                       class="goal-settings__input"
+                                       @bind="_companyTargets[period]"
+                                       aria-label="@($"{GoalIdHelper.FormatPeriodLabel(period)} company target")" />
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+
+        <section class="goal-settings__section">
+            <div class="goal-settings__section-header">
+                <div>
+                    <h2>Item volume targets (@_selectedYear)</h2>
+                    <p class="goal-settings__hint">Targets are tracked in sold units per quarter and for the full year.</p>
+                </div>
+                <div class="goal-settings__add-item">
+                    <label>
+                        <span class="goal-settings__sr-only">Add item</span>
+                        <select @bind="_itemToAdd">
+                            <option value="">Add item...</option>
+                            @foreach (var item in _availableItems)
+                            {
+                                <option value="@item.ItemId">@item.ItemName</option>
+                            }
+                        </select>
+                    </label>
+                    <button type="button" class="goal-settings__btn" @onclick="AddItemRow" disabled="@string.IsNullOrWhiteSpace(_itemToAdd)">
+                        Add
+                    </button>
+                </div>
+            </div>
+
+            @if (_itemRows.Count == 0)
+            {
+                <p class="goal-settings__empty">No item goals yet. Add an item to set quarterly and yearly volume targets.</p>
+            }
+            else
+            {
+                <div class="goal-settings__table-wrap">
+                    <table class="goal-settings__table goal-settings__table--items" aria-label="Item goal targets">
+                        <thead>
+                            <tr>
+                                <th scope="col">Item</th>
+                                @foreach (var period in GoalPeriods.ItemPeriods)
+                                {
+                                    <th scope="col">@GoalIdHelper.FormatPeriodLabel(period)</th>
+                                }
+                                <th scope="col"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in _itemRows)
+                            {
+                                <tr>
+                                    <th scope="row">@row.ItemName</th>
+                                    @foreach (var period in GoalPeriods.ItemPeriods)
+                                    {
+                                        <td>
+                                            <input type="number"
+                                                   min="0"
+                                                   step="1"
+                                                   class="goal-settings__input goal-settings__input--compact"
+                                                   @bind="row.Targets[period]"
+                                                   aria-label="@($"{row.ItemName} {GoalIdHelper.FormatPeriodLabel(period)} target")" />
+                                        </td>
+                                    }
+                                    <td>
+                                        <button type="button"
+                                                class="goal-settings__btn goal-settings__btn--ghost"
+                                                @onclick="() => RemoveItemRow(row.ItemId)">
+                                            Remove
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+
+        <div class="goal-settings__actions">
+            <button type="button" class="goal-settings__btn goal-settings__btn--primary" @onclick="SaveGoalsAsync" disabled="@_isSaving">
+                @(_isSaving ? "Saving..." : "Save goals")
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    private static readonly DateOnly Today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+    private readonly IReadOnlyList<int> _yearOptions =
+    [
+        Today.Year - 1,
+        Today.Year,
+        Today.Year + 1
+    ];
+
+    // Company targets keyed by quarter or YEAR.
+    private readonly Dictionary<string, decimal?> _companyTargets =
+        GoalPeriods.CompanyPeriods.ToDictionary(period => period, _ => (decimal?)null);
+
+    private readonly List<ItemGoalRow> _itemRows = [];
+    private IReadOnlyList<InventoryItemDto> _inventoryItems = [];
+
+    private int _selectedYear = Today.Year;
+    private string _itemToAdd = string.Empty;
+    private bool _accessDenied;
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private string? _error;
+    private string? _statusMessage;
+
+    private IEnumerable<InventoryItemDto> _availableItems =>
+        _inventoryItems.Where(item => _itemRows.All(row => row.ItemId != item.ItemId));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthState.InitializeAsync();
+
+        if (!AuthState.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        if (!AuthState.CanManageGoals())
+        {
+            _accessDenied = true;
+            _isLoading = false;
+            return;
+        }
+
+        await LoadPageAsync();
+    }
+
+    private async Task LoadPageAsync()
+    {
+        _isLoading = true;
+        _error = null;
+        _statusMessage = null;
+
+        try
+        {
+            _inventoryItems = await ApiClient.GetInventoryItemsAsync();
+            var goals = await ApiClient.GetGoalsAsync(_selectedYear);
+
+            ResetCompanyTargets();
+            _itemRows.Clear();
+
+            foreach (var goal in goals.Where(goal => string.IsNullOrWhiteSpace(goal.ItemId)))
+            {
+                if (_companyTargets.ContainsKey(goal.Period))
+                {
+                    _companyTargets[goal.Period] = goal.TargetValue;
+                }
+            }
+
+            foreach (var group in goals.Where(goal => !string.IsNullOrWhiteSpace(goal.ItemId)).GroupBy(goal => goal.ItemId!))
+            {
+                var first = group.First();
+                var row = new ItemGoalRow(first.ItemId!, first.ItemName ?? first.ItemId!);
+                foreach (var goal in group)
+                {
+                    if (row.Targets.ContainsKey(goal.Period))
+                    {
+                        row.Targets[goal.Period] = goal.TargetValue;
+                    }
+                }
+
+                _itemRows.Add(row);
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load goal settings: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ResetCompanyTargets()
+    {
+        foreach (var period in GoalPeriods.CompanyPeriods)
+        {
+            _companyTargets[period] = null;
+        }
+    }
+
+    private void AddItemRow()
+    {
+        if (string.IsNullOrWhiteSpace(_itemToAdd))
+        {
+            return;
+        }
+
+        var item = _inventoryItems.FirstOrDefault(entry => entry.ItemId == _itemToAdd);
+        if (item is null || _itemRows.Any(row => row.ItemId == item.ItemId))
+        {
+            _itemToAdd = string.Empty;
+            return;
+        }
+
+        _itemRows.Add(new ItemGoalRow(item.ItemId, item.ItemName));
+        _itemRows.Sort((left, right) => string.Compare(left.ItemName, right.ItemName, StringComparison.OrdinalIgnoreCase));
+        _itemToAdd = string.Empty;
+    }
+
+    private void RemoveItemRow(string itemId) => _itemRows.RemoveAll(row => row.ItemId == itemId);
+
+    private async Task SaveGoalsAsync()
+    {
+        _isSaving = true;
+        _error = null;
+        _statusMessage = null;
+
+        try
+        {
+            var targets = new List<GoalTargetEntryDto>();
+
+            foreach (var period in GoalPeriods.CompanyPeriods)
+            {
+                if (_companyTargets[period] is > 0)
+                {
+                    targets.Add(new GoalTargetEntryDto
+                    {
+                        Period = period,
+                        TargetValue = _companyTargets[period]!.Value
+                    });
+                }
+            }
+
+            foreach (var row in _itemRows)
+            {
+                foreach (var period in GoalPeriods.ItemPeriods)
+                {
+                    if (row.Targets[period] is > 0)
+                    {
+                        targets.Add(new GoalTargetEntryDto
+                        {
+                            Period = period,
+                            ItemId = row.ItemId,
+                            TargetValue = row.Targets[period]!.Value
+                        });
+                    }
+                }
+            }
+
+            await ApiClient.SaveGoalsAsync(new SaveGoalsRequestDto
+            {
+                Year = _selectedYear,
+                Targets = targets
+            });
+
+            _statusMessage = $"Goals for {_selectedYear} saved successfully.";
+            await LoadPageAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to save goals: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    // Editable item row with one target field per supported period.
+    private sealed class ItemGoalRow
+    {
+        public ItemGoalRow(string itemId, string itemName)
+        {
+            ItemId = itemId;
+            ItemName = itemName;
+        }
+
+        public string ItemId { get; }
+
+        public string ItemName { get; }
+
+        public Dictionary<string, decimal?> Targets { get; } =
+            GoalPeriods.ItemPeriods.ToDictionary(period => period, _ => (decimal?)null);
+    }
+}
