@@ -52,6 +52,7 @@ coverage*.xml
 
 # User secrets (never commit credentials)
 **/secrets.json
+secrets/
 appsettings.Development.json
 appsettings.Local.json
 
