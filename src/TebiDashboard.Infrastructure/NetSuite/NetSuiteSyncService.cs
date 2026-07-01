@@ -77,11 +77,16 @@ public sealed class NetSuiteSyncService(
         await dbContext.InventoryItems.ExecuteDeleteAsync(cancellationToken);
         await dbContext.Suppliers.ExecuteDeleteAsync(cancellationToken);
         await dbContext.Customers.ExecuteDeleteAsync(cancellationToken);
+
+        // Ensure no stale tracked entities remain after bulk deletes.
+        dbContext.ChangeTracker.Clear();
     }
 
     private async Task<int> SyncCustomersAsync(int pageSize, CancellationToken cancellationToken)
     {
-        var rows = await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.Customers(), pageSize, cancellationToken);
+        var rows = NetSuiteSuiteQlRowDeduplicator.ByField(
+            await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.Customers(), pageSize, cancellationToken),
+            "id");
         foreach (var row in rows)
         {
             dbContext.Customers.Add(new CustomerRecord
@@ -99,7 +104,9 @@ public sealed class NetSuiteSyncService(
 
     private async Task<int> SyncSuppliersAsync(int pageSize, CancellationToken cancellationToken)
     {
-        var rows = await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.Vendors(), pageSize, cancellationToken);
+        var rows = NetSuiteSuiteQlRowDeduplicator.ByField(
+            await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.Vendors(), pageSize, cancellationToken),
+            "id");
         foreach (var row in rows)
         {
             dbContext.Suppliers.Add(new SupplierRecord
@@ -117,7 +124,9 @@ public sealed class NetSuiteSyncService(
 
     private async Task<int> SyncInventoryItemsAsync(int pageSize, CancellationToken cancellationToken)
     {
-        var rows = await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.InventoryItems(), pageSize, cancellationToken);
+        var rows = NetSuiteSuiteQlRowDeduplicator.ByField(
+            await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.InventoryItems(), pageSize, cancellationToken),
+            "id");
         foreach (var row in rows)
         {
             var quantityOnHand = NetSuiteSuiteQlRowReader.GetDecimal(row, "quantityonhand");
@@ -140,7 +149,10 @@ public sealed class NetSuiteSyncService(
 
     private async Task<int> SyncStockLocationsAsync(int pageSize, CancellationToken cancellationToken)
     {
-        var rows = await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.StockLocations(), pageSize, cancellationToken);
+        var rows = NetSuiteSuiteQlRowDeduplicator.ByFields(
+            await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.StockLocations(), pageSize, cancellationToken),
+            "item",
+            "location");
         foreach (var row in rows)
         {
             dbContext.StockLocations.Add(new StockLocationRecord
@@ -157,7 +169,9 @@ public sealed class NetSuiteSyncService(
 
     private async Task<int> SyncRevenueAsync(DateOnly fromDate, int pageSize, CancellationToken cancellationToken)
     {
-        var rows = await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.Invoices(fromDate), pageSize, cancellationToken);
+        var rows = NetSuiteSuiteQlRowDeduplicator.ByField(
+            await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.Invoices(fromDate), pageSize, cancellationToken),
+            "id");
         foreach (var row in rows)
         {
             dbContext.RevenueRecords.Add(new RevenueRecord
@@ -176,7 +190,9 @@ public sealed class NetSuiteSyncService(
 
     private async Task<int> SyncExpensesAsync(DateOnly fromDate, int pageSize, CancellationToken cancellationToken)
     {
-        var rows = await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.VendorBills(fromDate), pageSize, cancellationToken);
+        var rows = NetSuiteSuiteQlRowDeduplicator.ByField(
+            await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.VendorBills(fromDate), pageSize, cancellationToken),
+            "id");
         foreach (var row in rows)
         {
             dbContext.Expenses.Add(new ExpenseRecord
@@ -195,10 +211,13 @@ public sealed class NetSuiteSyncService(
 
     private async Task<int> SyncOpenTransactionsAsync(DateOnly fromDate, int pageSize, CancellationToken cancellationToken)
     {
-        var salesRows = await restClient.QuerySuiteQlAsync(
-            NetSuiteSuiteQlQueries.OpenSalesOrderLines(fromDate),
-            pageSize,
-            cancellationToken);
+        var salesRows = NetSuiteSuiteQlRowDeduplicator.ByFields(
+            await restClient.QuerySuiteQlAsync(
+                NetSuiteSuiteQlQueries.OpenSalesOrderLines(fromDate),
+                pageSize,
+                cancellationToken),
+            "transaction",
+            "lineid");
 
         foreach (var row in salesRows)
         {
@@ -209,10 +228,13 @@ public sealed class NetSuiteSyncService(
                 supplierId: null));
         }
 
-        var purchaseRows = await restClient.QuerySuiteQlAsync(
-            NetSuiteSuiteQlQueries.OpenPurchaseOrderLines(fromDate),
-            pageSize,
-            cancellationToken);
+        var purchaseRows = NetSuiteSuiteQlRowDeduplicator.ByFields(
+            await restClient.QuerySuiteQlAsync(
+                NetSuiteSuiteQlQueries.OpenPurchaseOrderLines(fromDate),
+                pageSize,
+                cancellationToken),
+            "transaction",
+            "lineid");
 
         foreach (var row in purchaseRows)
         {
