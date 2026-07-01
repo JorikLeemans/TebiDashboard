@@ -34,18 +34,40 @@ public sealed class NetSuiteSyncService(
         {
             if (settings.ClearDashboardDataOnSync)
             {
-                await ClearDashboardTablesAsync(cancellationToken);
+                await RunStepAsync("clear dashboard tables", () => ClearDashboardTablesAsync(cancellationToken));
             }
 
-            var customers = await SyncCustomersAsync(pageSize, cancellationToken);
-            var suppliers = await SyncSuppliersAsync(pageSize, cancellationToken);
-            var inventoryItems = await SyncInventoryItemsAsync(pageSize, cancellationToken);
-            var stockLocations = await SyncStockLocationsAsync(pageSize, cancellationToken);
-            var revenue = await SyncRevenueAsync(lookbackFrom, pageSize, cancellationToken);
-            var expenses = await SyncExpensesAsync(lookbackFrom, pageSize, cancellationToken);
-            var openTransactions = await SyncOpenTransactionsAsync(lookbackFrom, pageSize, cancellationToken);
+            var customers = await RunStepAsync("customers", SyncCustomersAsync, pageSize, cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
 
-            await ApplyRecentSalesVolumeAsync(lookbackFrom, pageSize, cancellationToken);
+            var suppliers = await RunStepAsync("suppliers", SyncSuppliersAsync, pageSize, cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            var inventoryItems = await RunStepAsync("inventory items", SyncInventoryItemsAsync, pageSize, cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            var stockLocations = await RunStepAsync("stock locations", SyncStockLocationsAsync, pageSize, cancellationToken);
+            await ApplyInventoryQuantitiesFromStockLocationsAsync(cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            var revenue = await RunStepAsync("invoices", SyncRevenueAsync, lookbackFrom, pageSize, cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            var expenses = await RunStepAsync("vendor bills", SyncExpensesAsync, lookbackFrom, pageSize, cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            var openTransactions = await RunStepAsync(
+                "open sales and purchase orders",
+                SyncOpenTransactionsAsync,
+                lookbackFrom,
+                pageSize,
+                cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            await RunStepAsync(
+                "recent item sales",
+                ct => ApplyRecentSalesVolumeAsync(lookbackFrom, pageSize, ct),
+                cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
 
             return new NetSuiteSyncResult(
@@ -63,9 +85,62 @@ public sealed class NetSuiteSyncService(
         catch (Exception ex)
         {
             logger.LogError(ex, "NetSuite dashboard sync failed.");
-            return Failed(ex.Message);
+            var message = ex.InnerException?.Message ?? ex.Message;
+            return Failed(message);
         }
     }
+
+    private async Task<int> RunStepAsync(string stepName, Func<Task<int>> step)
+    {
+        try
+        {
+            logger.LogInformation("NetSuite sync step started: {StepName}", stepName);
+            var count = await step();
+            logger.LogInformation("NetSuite sync step completed: {StepName} ({Count} rows)", stepName, count);
+            return count;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "NetSuite sync step failed: {StepName}", stepName);
+            throw new InvalidOperationException($"Sync step '{stepName}' failed: {ex.Message}", ex);
+        }
+    }
+
+    private async Task RunStepAsync(string stepName, Func<Task> step)
+    {
+        try
+        {
+            logger.LogInformation("NetSuite sync step started: {StepName}", stepName);
+            await step();
+            logger.LogInformation("NetSuite sync step completed: {StepName}", stepName);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "NetSuite sync step failed: {StepName}", stepName);
+            throw new InvalidOperationException($"Sync step '{stepName}' failed: {ex.Message}", ex);
+        }
+    }
+
+    private Task<int> RunStepAsync(
+        string stepName,
+        Func<int, CancellationToken, Task<int>> step,
+        int pageSize,
+        CancellationToken cancellationToken) =>
+        RunStepAsync(stepName, () => step(pageSize, cancellationToken));
+
+    private Task<int> RunStepAsync(
+        string stepName,
+        Func<DateOnly, int, CancellationToken, Task<int>> step,
+        DateOnly fromDate,
+        int pageSize,
+        CancellationToken cancellationToken) =>
+        RunStepAsync(stepName, () => step(fromDate, pageSize, cancellationToken));
+
+    private Task RunStepAsync(
+        string stepName,
+        Func<CancellationToken, Task> step,
+        CancellationToken cancellationToken) =>
+        RunStepAsync(stepName, () => step(cancellationToken));
 
     private async Task ClearDashboardTablesAsync(CancellationToken cancellationToken)
     {
@@ -129,7 +204,6 @@ public sealed class NetSuiteSyncService(
             "id");
         foreach (var row in rows)
         {
-            var quantityOnHand = NetSuiteSuiteQlRowReader.GetDecimal(row, "quantityonhand");
             var reorderPoint = NetSuiteSuiteQlRowReader.GetDecimal(row, "reorderpoint");
 
             dbContext.InventoryItems.Add(new InventoryItemRecord
@@ -137,10 +211,10 @@ public sealed class NetSuiteSyncService(
                 ItemId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id"),
                 ItemName = NetSuiteSuiteQlRowReader.GetString(row, "displayname") ?? "Unknown item",
                 Barcode = NetSuiteSuiteQlRowReader.GetString(row, "upccode") ?? string.Empty,
-                QuantityOnHand = quantityOnHand,
+                QuantityOnHand = 0m,
                 ReorderPoint = reorderPoint,
                 RecentSalesVolume = 0m,
-                IsLowStock = reorderPoint > 0 && quantityOnHand <= reorderPoint
+                IsLowStock = false
             });
         }
 
@@ -159,7 +233,9 @@ public sealed class NetSuiteSyncService(
             {
                 ItemId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "item"),
                 LocationId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "location"),
-                LocationName = NetSuiteSuiteQlRowReader.GetString(row, "locationname") ?? "Unknown location",
+                LocationName = NetSuiteSuiteQlRowReader.GetString(row, "locationname")
+                    ?? NetSuiteSuiteQlRowReader.GetString(row, "location")
+                    ?? "Unknown location",
                 QuantityOnHand = NetSuiteSuiteQlRowReader.GetDecimal(row, "quantityonhand")
             });
         }
@@ -272,12 +348,31 @@ public sealed class NetSuiteSyncService(
         };
     }
 
+    private async Task ApplyInventoryQuantitiesFromStockLocationsAsync(CancellationToken cancellationToken)
+    {
+        var quantitiesByItem = await dbContext.StockLocations
+            .AsNoTracking()
+            .GroupBy(location => location.ItemId)
+            .Select(group => new { ItemId = group.Key, Quantity = group.Sum(location => location.QuantityOnHand) })
+            .ToDictionaryAsync(x => x.ItemId, x => x.Quantity, cancellationToken);
+
+        var items = await dbContext.InventoryItems.ToListAsync(cancellationToken);
+        foreach (var item in items)
+        {
+            var quantityOnHand = quantitiesByItem.GetValueOrDefault(item.ItemId);
+            item.QuantityOnHand = quantityOnHand;
+            item.IsLowStock = item.ReorderPoint > 0 && quantityOnHand <= item.ReorderPoint;
+        }
+    }
+
     private async Task ApplyRecentSalesVolumeAsync(DateOnly fromDate, int pageSize, CancellationToken cancellationToken)
     {
-        var rows = await restClient.QuerySuiteQlAsync(
-            NetSuiteSuiteQlQueries.RecentItemSales(fromDate),
-            pageSize,
-            cancellationToken);
+        var rows = NetSuiteSuiteQlRowDeduplicator.ByField(
+            await restClient.QuerySuiteQlAsync(
+                NetSuiteSuiteQlQueries.RecentItemSales(fromDate),
+                pageSize,
+                cancellationToken),
+            "itemid");
 
         if (rows.Count == 0)
         {
