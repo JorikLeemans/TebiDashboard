@@ -23,7 +23,7 @@ public sealed class NetSuiteConnectionService(
             return new NetSuiteConnectionResult(
                 IsConfigured: false,
                 IsConnected: false,
-                Message: "NetSuite is not fully configured. Set AccountId, ClientId, CertificateId, PrivateKeyPath, and Enabled=true.");
+                Message: "NetSuite is not fully configured. Set AccountId, ClientId, CertificateId, PrivateKeyPem or PrivateKeyPath, and Enabled=true.");
         }
 
         string? tokenPreview = null;

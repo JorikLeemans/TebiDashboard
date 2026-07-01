@@ -32,7 +32,7 @@ public sealed class NetSuiteOAuth2TokenProvider(
         if (!settings.IsConfigured)
         {
             throw new InvalidOperationException(
-                "NetSuite is not configured. Set NetSuite:AccountId, ClientId, CertificateId, PrivateKeyPath, and Enabled=true.");
+                "NetSuite is not configured. Set AccountId, ClientId, CertificateId, PrivateKeyPem or PrivateKeyPath, and Enabled=true.");
         }
 
         if (memoryCache.TryGetValue(TokenCacheKey, out string? cachedToken) && !string.IsNullOrWhiteSpace(cachedToken))
@@ -78,7 +78,7 @@ public sealed class NetSuiteOAuth2TokenProvider(
 
     private static string CreateClientAssertion(NetSuiteOptions settings, string tokenEndpoint)
     {
-        var privateKeyPem = File.ReadAllText(ResolvePrivateKeyPath(settings.PrivateKeyPath));
+        var privateKeyPem = NetSuitePrivateKeyResolver.ResolvePem(settings);
         using var rsa = RSA.Create();
         rsa.ImportFromPem(privateKeyPem);
 
@@ -109,16 +109,6 @@ public sealed class NetSuiteOAuth2TokenProvider(
         }
 
         return assertion;
-    }
-
-    private static string ResolvePrivateKeyPath(string configuredPath)
-    {
-        if (Path.IsPathRooted(configuredPath))
-        {
-            return configuredPath;
-        }
-
-        return Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, configuredPath));
     }
 
     internal static string BuildTokenEndpoint(string accountId) =>
