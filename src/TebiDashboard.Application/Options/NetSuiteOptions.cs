@@ -75,4 +75,43 @@ public sealed class NetSuiteOptions
     /// </summary>
     public bool HasPrivateKey =>
         !string.IsNullOrWhiteSpace(PrivateKeyPem) || !string.IsNullOrWhiteSpace(PrivateKeyPath);
+
+    /// <summary>
+    /// Lists missing settings so admins can fix configuration without exposing secrets.
+    /// </summary>
+    public IReadOnlyList<string> GetMissingConfigurationKeys()
+    {
+        var missing = new List<string>();
+        if (!Enabled)
+        {
+            missing.Add("Enabled");
+        }
+
+        if (string.IsNullOrWhiteSpace(AccountId))
+        {
+            missing.Add("AccountId");
+        }
+
+        if (string.IsNullOrWhiteSpace(ClientId))
+        {
+            missing.Add("ClientId");
+        }
+
+        if (string.IsNullOrWhiteSpace(CertificateId))
+        {
+            missing.Add("CertificateId");
+        }
+
+        if (!HasPrivateKey)
+        {
+            missing.Add("PrivateKeyPem or PrivateKeyPath");
+        }
+
+        return missing;
+    }
+
+    public string DescribeMissingConfiguration() =>
+        GetMissingConfigurationKeys().Count == 0
+            ? string.Empty
+            : $"Missing NetSuite settings: {string.Join(", ", GetMissingConfigurationKeys())}.";
 }

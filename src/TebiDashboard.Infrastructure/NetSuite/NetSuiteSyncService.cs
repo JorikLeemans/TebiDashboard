@@ -23,7 +23,8 @@ public sealed class NetSuiteSyncService(
         var settings = options.Value;
         if (!settings.IsConfigured)
         {
-            return Failed("NetSuite is not configured. Set AccountId, ClientId, CertificateId, PrivateKeyPem or PrivateKeyPath, and Enabled=true.");
+            return Failed(settings.DescribeMissingConfiguration()
+                + " Set NetSuite environment variables on the API service (e.g. NetSuite__Enabled=true).");
         }
 
         var lookbackFrom = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-Math.Max(settings.SyncLookbackDays, 1)));
