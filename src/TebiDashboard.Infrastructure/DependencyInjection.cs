@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using TebiDashboard.Application.Interfaces;
 using TebiDashboard.Application.Options;
 using TebiDashboard.Infrastructure.Data;
+using TebiDashboard.Infrastructure.NetSuite;
 using TebiDashboard.Infrastructure.Services;
 
 namespace TebiDashboard.Infrastructure;
@@ -18,6 +19,11 @@ public static class DependencyInjection
     {
         services.Configure<NetSuiteOptions>(configuration.GetSection(NetSuiteOptions.SectionName));
         services.Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SectionName));
+
+        services.AddMemoryCache();
+        services.AddHttpClient(NetSuiteHttpClientNames.Api);
+        services.AddSingleton<INetSuiteTokenProvider, NetSuiteOAuth2TokenProvider>();
+        services.AddScoped<INetSuiteConnectionService, NetSuiteConnectionService>();
 
         var databaseOptions = configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>() ?? new DatabaseOptions();
         var provider = ConnectionStringResolver.UsesPostgres(configuration)
