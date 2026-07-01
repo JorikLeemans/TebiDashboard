@@ -42,6 +42,21 @@ public sealed class NetSuiteOptions
     /// </summary>
     public string[] Scopes { get; set; } = ["rest_webservices"];
 
+    /// <summary>
+    /// How many days of invoices, bills, and open orders to pull during sync.
+    /// </summary>
+    public int SyncLookbackDays { get; set; } = 365;
+
+    /// <summary>
+    /// SuiteQL page size used while paging through NetSuite result sets.
+    /// </summary>
+    public int SyncPageSize { get; set; } = 200;
+
+    /// <summary>
+    /// When true, dashboard tables are cleared before importing NetSuite data (users and goals are kept).
+    /// </summary>
+    public bool ClearDashboardDataOnSync { get; set; } = true;
+
     public bool IsConfigured =>
         Enabled
         && !string.IsNullOrWhiteSpace(AccountId)
