@@ -88,7 +88,8 @@ public sealed class NetSuiteSyncService(
             {
                 CustomerId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id"),
                 Name = NetSuiteSuiteQlRowReader.GetString(row, "companyname") ?? "Unknown customer",
-                City = NetSuiteSuiteQlRowReader.GetString(row, "city") ?? string.Empty,
+                // City lives on NetSuite address subrecords; left empty until a dedicated address query is added.
+                City = string.Empty,
                 ContactEmail = NetSuiteSuiteQlRowReader.GetString(row, "email") ?? string.Empty
             });
         }
@@ -105,7 +106,8 @@ public sealed class NetSuiteSyncService(
             {
                 SupplierId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id"),
                 Name = NetSuiteSuiteQlRowReader.GetString(row, "companyname") ?? "Unknown supplier",
-                City = NetSuiteSuiteQlRowReader.GetString(row, "city") ?? string.Empty,
+                // City lives on NetSuite address subrecords; left empty until a dedicated address query is added.
+                City = string.Empty,
                 ContactEmail = NetSuiteSuiteQlRowReader.GetString(row, "email") ?? string.Empty
             });
         }
