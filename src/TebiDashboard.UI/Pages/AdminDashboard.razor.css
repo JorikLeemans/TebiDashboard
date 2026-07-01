@@ -150,8 +150,64 @@
   color: #9b1c1c;
 }
 
+.btn-admin--secondary {
+  background: #fff;
+  border: 1px solid #c9d8cf;
+  color: #145c32;
+}
+
+.admin-netsuite {
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid #dde3ea;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(20, 92, 50, 0.08);
+}
+
+.admin-netsuite__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.admin-netsuite__header h2 {
+  margin: 0;
+  color: #145c32;
+  font-size: 1.2rem;
+}
+
+.admin-netsuite__intro {
+  margin: 0.35rem 0 0;
+  color: #5a6b62;
+  max-width: 52rem;
+}
+
+.admin-netsuite__actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.admin-netsuite__status {
+  margin: 0 0 0.75rem;
+  color: #5a6b62;
+}
+
+.admin-netsuite__counts {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+  color: #2f4f3d;
+}
+
 @media (max-width: 768px) {
   .admin-dashboard__header {
+    flex-direction: column;
+  }
+
+  .admin-netsuite__header {
     flex-direction: column;
   }
 }

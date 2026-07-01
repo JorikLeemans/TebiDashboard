@@ -39,6 +39,7 @@ public class AdminDashboardPageTests
         cut.WaitForAssertion(() => Assert.Contains("admin@tebi.nl", cut.Markup), TimeSpan.FromSeconds(5));
 
         Assert.Contains("Administrator dashboard", cut.Markup);
+        Assert.Contains("NetSuite data sync", cut.Markup);
         Assert.Contains("sales@tebi.nl", cut.Markup);
     }
 

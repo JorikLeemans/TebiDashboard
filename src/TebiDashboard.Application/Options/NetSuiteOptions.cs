@@ -38,6 +38,12 @@ public sealed class NetSuiteOptions
     public string PrivateKeyPath { get; set; } = string.Empty;
 
     /// <summary>
+    /// Inline PEM private key for hosted environments (e.g. Railway multiline variable NetSuite__PrivateKeyPem).
+    /// Takes precedence over <see cref="PrivateKeyPath"/> when set.
+    /// </summary>
+    public string PrivateKeyPem { get; set; } = string.Empty;
+
+    /// <summary>
     /// OAuth scopes requested in the client assertion JWT.
     /// </summary>
     public string[] Scopes { get; set; } = ["rest_webservices"];
@@ -62,5 +68,11 @@ public sealed class NetSuiteOptions
         && !string.IsNullOrWhiteSpace(AccountId)
         && !string.IsNullOrWhiteSpace(ClientId)
         && !string.IsNullOrWhiteSpace(CertificateId)
-        && !string.IsNullOrWhiteSpace(PrivateKeyPath);
+        && HasPrivateKey;
+
+    /// <summary>
+    /// True when either inline PEM content or a key file path is configured.
+    /// </summary>
+    public bool HasPrivateKey =>
+        !string.IsNullOrWhiteSpace(PrivateKeyPem) || !string.IsNullOrWhiteSpace(PrivateKeyPath);
 }

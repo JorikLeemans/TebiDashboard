@@ -12,7 +12,7 @@
     <header class="admin-dashboard__header">
         <div>
             <h1>Administrator dashboard</h1>
-            <p class="admin-dashboard__subtitle">Manage registered accounts, roles and passwords.</p>
+            <p class="admin-dashboard__subtitle">Manage accounts and import live NetSuite dashboard data.</p>
         </div>
         <a href="/dashboard" class="admin-dashboard__back">← Back to dashboard</a>
     </header>
@@ -37,6 +37,67 @@
         {
             <div class="admin-dashboard__alert admin-dashboard__alert--success" role="status">@_statusMessage</div>
         }
+
+        <section class="admin-netsuite" aria-labelledby="admin-netsuite-title">
+            <div class="admin-netsuite__header">
+                <div>
+                    <h2 id="admin-netsuite-title">NetSuite data sync</h2>
+                    <p class="admin-netsuite__intro">
+                        Test OAuth connectivity and import customers, inventory, revenue, and orders from NetSuite into the dashboard database.
+                    </p>
+                </div>
+                <div class="admin-netsuite__actions">
+                    <button type="button"
+                            class="btn-admin btn-admin--secondary"
+                            disabled="@_netSuiteBusy"
+                            @onclick="TestNetSuiteConnectionAsync">
+                        Test connection
+                    </button>
+                    <button type="button"
+                            class="btn-admin btn-admin--primary"
+                            disabled="@_netSuiteBusy"
+                            @onclick="SyncNetSuiteDataAsync">
+                        Sync NetSuite data
+                    </button>
+                </div>
+            </div>
+
+            @if (_netSuiteBusy)
+            {
+                <p class="admin-netsuite__status">Working with NetSuite…</p>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_netSuiteError))
+            {
+                <div class="admin-dashboard__alert admin-dashboard__alert--error" role="alert">@_netSuiteError</div>
+            }
+
+            @if (_netSuiteConnection is not null)
+            {
+                <div class="admin-dashboard__alert @(_netSuiteConnection.IsConnected ? "admin-dashboard__alert--success" : "admin-dashboard__alert--error")" role="status">
+                    <strong>Connection:</strong> @_netSuiteConnection.Message
+                </div>
+            }
+
+            @if (_netSuiteSync is not null)
+            {
+                <div class="admin-dashboard__alert @(_netSuiteSync.Success ? "admin-dashboard__alert--success" : "admin-dashboard__alert--error")" role="status">
+                    <strong>Sync:</strong> @_netSuiteSync.Message
+                </div>
+                @if (_netSuiteSync.Success)
+                {
+                    <ul class="admin-netsuite__counts">
+                        <li>Customers: @_netSuiteSync.CustomersSynced</li>
+                        <li>Suppliers: @_netSuiteSync.SuppliersSynced</li>
+                        <li>Inventory items: @_netSuiteSync.InventoryItemsSynced</li>
+                        <li>Stock locations: @_netSuiteSync.StockLocationsSynced</li>
+                        <li>Revenue records: @_netSuiteSync.RevenueRecordsSynced</li>
+                        <li>Expenses: @_netSuiteSync.ExpenseRecordsSynced</li>
+                        <li>Open transactions: @_netSuiteSync.OpenTransactionsSynced</li>
+                    </ul>
+                }
+            }
+        </section>
 
         @if (_users.Count == 0)
         {
@@ -125,6 +186,10 @@
   private bool _accessDenied;
   private string? _pageError;
   private string? _statusMessage;
+  private bool _netSuiteBusy;
+  private string? _netSuiteError;
+  private NetSuiteConnectionResultDto? _netSuiteConnection;
+  private NetSuiteSyncResultDto? _netSuiteSync;
 
   protected override async Task OnInitializedAsync()
   {
@@ -254,6 +319,51 @@
     finally
     {
       edit.IsBusy = false;
+    }
+  }
+
+  private async Task TestNetSuiteConnectionAsync()
+  {
+    _netSuiteBusy = true;
+    _netSuiteError = null;
+    _netSuiteConnection = null;
+
+    try
+    {
+      _netSuiteConnection = await AdminApi.TestNetSuiteConnectionAsync();
+    }
+    catch (Exception ex)
+    {
+      _netSuiteError = ex.Message;
+    }
+    finally
+    {
+      _netSuiteBusy = false;
+    }
+  }
+
+  private async Task SyncNetSuiteDataAsync()
+  {
+    _netSuiteBusy = true;
+    _netSuiteError = null;
+    _netSuiteSync = null;
+    _statusMessage = null;
+
+    try
+    {
+      _netSuiteSync = await AdminApi.SyncNetSuiteDataAsync();
+      if (_netSuiteSync.Success)
+      {
+        _statusMessage = "NetSuite data imported successfully.";
+      }
+    }
+    catch (Exception ex)
+    {
+      _netSuiteError = ex.Message;
+    }
+    finally
+    {
+      _netSuiteBusy = false;
     }
   }
 

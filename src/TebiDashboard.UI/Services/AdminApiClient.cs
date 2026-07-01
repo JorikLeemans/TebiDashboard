@@ -58,6 +58,53 @@ public sealed class AdminApiClient(HttpClient httpClient, IAuthStateService auth
         return await ReadResultAsync(response, cancellationToken);
     }
 
+    /// <summary>
+    /// Verifies NetSuite OAuth credentials from the admin dashboard.
+    /// </summary>
+    public async Task<NetSuiteConnectionResultDto> TestNetSuiteConnectionAsync(CancellationToken cancellationToken = default)
+    {
+        using var request = CreateAuthorizedRequest(HttpMethod.Get, "api/netsuite/connection-test");
+        var response = await httpClient.SendAsync(request, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException($"NetSuite connection test failed (HTTP {(int)response.StatusCode}).");
+        }
+
+        return await response.Content.ReadFromJsonAsync<NetSuiteConnectionResultDto>(cancellationToken)
+            ?? new NetSuiteConnectionResultDto { Message = "Empty response from connection test." };
+    }
+
+    /// <summary>
+    /// Imports NetSuite data into the dashboard database (admin only).
+    /// </summary>
+    public async Task<NetSuiteSyncResultDto> SyncNetSuiteDataAsync(CancellationToken cancellationToken = default)
+    {
+        using var request = CreateAuthorizedRequest(HttpMethod.Post, "api/netsuite/sync");
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        var body = await response.Content.ReadFromJsonAsync<NetSuiteSyncResultDto>(cancellationToken);
+        if (body is null)
+        {
+            return new NetSuiteSyncResultDto { Message = "Empty response from sync endpoint." };
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return new NetSuiteSyncResultDto
+            {
+                Success = false,
+                Message = string.IsNullOrWhiteSpace(body.Message)
+                    ? response.StatusCode == System.Net.HttpStatusCode.Forbidden
+                        ? "You do not have permission to sync NetSuite data."
+                        : $"Sync failed (HTTP {(int)response.StatusCode})."
+                    : body.Message,
+                CompletedAt = body.CompletedAt
+            };
+        }
+
+        return body;
+    }
+
     private HttpRequestMessage CreateAuthorizedRequest(HttpMethod method, string relativeUrl)
     {
         var request = new HttpRequestMessage(method, relativeUrl);
