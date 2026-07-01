@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.AddHttpClient(NetSuiteHttpClientNames.Api);
         services.AddSingleton<INetSuiteTokenProvider, NetSuiteOAuth2TokenProvider>();
         services.AddScoped<INetSuiteConnectionService, NetSuiteConnectionService>();
+        services.AddScoped<INetSuiteRestClient, NetSuiteRestClient>();
 
         var databaseOptions = configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>() ?? new DatabaseOptions();
         var provider = ConnectionStringResolver.UsesPostgres(configuration)
@@ -34,6 +35,7 @@ public static class DependencyInjection
         {
             // Fast in-memory mode for automated tests.
             services.AddScoped<INetSuiteService, MockNetSuiteService>();
+            services.AddScoped<INetSuiteSyncService, NullNetSuiteSyncService>();
             services.AddScoped<IGoalStore, InMemoryGoalStore>();
             services.AddSingleton<IUserStore, InMemoryUserStore>();
             services.AddSingleton<IDemoDataAdminService, NullDemoDataAdminService>();
@@ -58,6 +60,7 @@ public static class DependencyInjection
         });
 
         services.AddScoped<INetSuiteService, DatabaseNetSuiteService>();
+        services.AddScoped<INetSuiteSyncService, NetSuiteSyncService>();
         services.AddScoped<IGoalStore, EfGoalStore>();
         services.AddScoped<IUserStore, EfUserStore>();
         services.AddScoped<IDemoDataAdminService, DatabaseDemoDataAdminService>();
