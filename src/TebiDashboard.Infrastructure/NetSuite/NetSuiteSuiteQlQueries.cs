@@ -7,7 +7,7 @@ internal static class NetSuiteSuiteQlQueries
 {
     public static string Customers() =>
         """
-        SELECT id, companyname, email, city
+        SELECT id, companyname, email
         FROM customer
         WHERE isinactive = 'F'
         ORDER BY companyname
@@ -15,7 +15,7 @@ internal static class NetSuiteSuiteQlQueries
 
     public static string Vendors() =>
         """
-        SELECT id, companyname, email, city
+        SELECT id, companyname, email
         FROM vendor
         WHERE isinactive = 'F'
         ORDER BY companyname
