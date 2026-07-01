@@ -29,8 +29,7 @@ internal static class NetSuiteSuiteQlQueries
         SELECT
             id,
             displayname,
-            upccode,
-            NVL(reorderpoint, 0) AS reorderpoint
+            upccode
         FROM item
         WHERE isinactive = 'F'
           AND itemtype IN ('InvtPart', 'Assembly')

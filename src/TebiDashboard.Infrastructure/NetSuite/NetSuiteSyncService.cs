@@ -204,15 +204,14 @@ public sealed class NetSuiteSyncService(
             "id");
         foreach (var row in rows)
         {
-            var reorderPoint = NetSuiteSuiteQlRowReader.GetDecimal(row, "reorderpoint");
-
             dbContext.InventoryItems.Add(new InventoryItemRecord
             {
                 ItemId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id"),
                 ItemName = NetSuiteSuiteQlRowReader.GetString(row, "displayname") ?? "Unknown item",
                 Barcode = NetSuiteSuiteQlRowReader.GetString(row, "upccode") ?? string.Empty,
                 QuantityOnHand = 0m,
-                ReorderPoint = reorderPoint,
+                // Reorder point is account-specific in NetSuite; default to 0 until mapped from a custom field.
+                ReorderPoint = 0m,
                 RecentSalesVolume = 0m,
                 IsLowStock = false
             });
