@@ -2,13 +2,12 @@ namespace TebiDashboard.Infrastructure.NetSuite;
 
 /// <summary>
 /// SuiteQL statements used to populate dashboard tables from NetSuite.
-/// Field names follow the TEBI Records Browser mappingSummary (see inline comments per query).
+/// Field names follow the TEBI Records Browser mapping where SuiteQL supports them.
 /// </summary>
 internal static class NetSuiteSuiteQlQueries
 {
     /// <summary>
     /// Customer: entityid (code), companyname, email; internal id for FK joins.
-    /// defaultaddress exists in Records Browser but is not queryable via SuiteQL on customer.
     /// </summary>
     public static string Customers() =>
         """
@@ -60,40 +59,38 @@ internal static class NetSuiteSuiteQlQueries
         """;
 
     /// <summary>
-    /// Invoice revenue (omzet bron): tranid, trandate, subtotal excl. BTW, customer entity, subsidiary.
-    /// Internal transaction id is kept as primary key for stable upserts.
+    /// Invoice revenue (omzet bron): trandate, subsidiary, customer entity.
+    /// TEBI subtotal is not queryable on transaction; sum non-tax line amounts for excl. BTW.
     /// </summary>
     public static string Invoices(DateOnly fromDate) =>
         $"""
         SELECT
             t.id,
-            t.tranid,
             t.trandate,
-            NVL(t.subtotal, 0) AS amount,
             t.entity AS customerid,
-            c.companyname AS customername,
-            t.subsidiary AS productgroupid
+            t.subsidiary AS productgroupid,
+            NVL(SUM(tl.amount), 0) AS amount
         FROM transaction t
-        LEFT JOIN customer c ON c.id = t.entity
+        INNER JOIN transactionline tl ON tl.transaction = t.id
         WHERE t.type = 'CustInvc'
+          AND tl.mainline = 'F'
+          AND tl.taxline = 'F'
           AND t.trandate >= TO_DATE('{fromDate:yyyy-MM-dd}', 'YYYY-MM-DD')
+        GROUP BY t.id, t.trandate, t.entity, t.subsidiary
         ORDER BY t.trandate DESC
         """;
 
     /// <summary>
-    /// Vendor bill expenses: tranid, trandate, total, vendor entity.
+    /// Vendor bill expenses: trandate, vendor entity, foreigntotal (transaction.total is not SuiteQL-safe).
     /// </summary>
     public static string VendorBills(DateOnly fromDate) =>
         $"""
         SELECT
             t.id,
-            t.tranid,
             t.trandate,
-            NVL(t.total, 0) AS amount,
-            t.entity AS supplierid,
-            v.companyname AS vendorname
+            NVL(t.foreigntotal, 0) AS amount,
+            t.entity AS supplierid
         FROM transaction t
-        LEFT JOIN vendor v ON v.id = t.entity
         WHERE t.type = 'VendBill'
           AND t.trandate >= TO_DATE('{fromDate:yyyy-MM-dd}', 'YYYY-MM-DD')
         ORDER BY t.trandate DESC
@@ -101,14 +98,12 @@ internal static class NetSuiteSuiteQlQueries
 
     /// <summary>
     /// Open sales order lines: header entity (customer), line item, open quantity, line amount.
-    /// Lines live on transactionline joined to transaction (type SalesOrd).
     /// </summary>
     public static string OpenSalesOrderLines(DateOnly fromDate) =>
         $"""
         SELECT
             tl.transaction,
             tl.id AS lineid,
-            t.tranid,
             t.trandate,
             t.entity AS customerid,
             tl.item AS itemid,
@@ -132,7 +127,6 @@ internal static class NetSuiteSuiteQlQueries
         SELECT
             tl.transaction,
             tl.id AS lineid,
-            t.tranid,
             t.trandate,
             t.entity AS supplierid,
             tl.item AS itemid,

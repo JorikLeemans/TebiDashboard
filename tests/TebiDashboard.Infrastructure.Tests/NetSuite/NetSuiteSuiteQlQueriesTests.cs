@@ -24,22 +24,23 @@ public sealed class NetSuiteSuiteQlQueriesTests
     }
 
     [Fact]
-    public void Invoices_UsesSubtotalExclVatAndSubsidiary()
+    public void Invoices_SumsNonTaxLineAmountsExclVat()
     {
         var sql = NetSuiteSuiteQlQueries.Invoices(new DateOnly(2026, 1, 1));
 
-        Assert.Contains("subtotal", sql);
+        Assert.Contains("tl.taxline = 'F'", sql);
         Assert.Contains("subsidiary", sql);
-        Assert.DoesNotContain("foreigntotal", sql);
+        Assert.DoesNotContain("subtotal", sql);
+        Assert.DoesNotContain("LEFT JOIN customer", sql, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void VendorBills_UsesTotalAmount()
+    public void VendorBills_UsesForeignTotalWithoutJoin()
     {
         var sql = NetSuiteSuiteQlQueries.VendorBills(new DateOnly(2026, 1, 1));
 
-        Assert.Contains("total", sql);
-        Assert.DoesNotContain("foreigntotal", sql);
+        Assert.Contains("foreigntotal", sql);
+        Assert.DoesNotContain("LEFT JOIN vendor", sql, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

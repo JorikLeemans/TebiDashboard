@@ -85,7 +85,10 @@ public sealed class NetSuiteSyncService(
         catch (Exception ex)
         {
             logger.LogError(ex, "NetSuite dashboard sync failed.");
-            var message = ex.InnerException?.Message ?? ex.Message;
+            // Keep the sync step name in the message shown to admins (inner exception hides it).
+            var message = ex.Message.StartsWith("Sync step '", StringComparison.Ordinal)
+                ? ex.Message
+                : ex.InnerException?.Message ?? ex.Message;
             return Failed(message);
         }
     }
@@ -246,18 +249,23 @@ public sealed class NetSuiteSyncService(
 
     private async Task<int> SyncRevenueAsync(DateOnly fromDate, int pageSize, CancellationToken cancellationToken)
     {
+        var customerNames = await dbContext.Customers
+            .AsNoTracking()
+            .ToDictionaryAsync(customer => customer.CustomerId, customer => customer.Name, cancellationToken);
+
         var rows = NetSuiteSuiteQlRowDeduplicator.ByField(
             await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.Invoices(fromDate), pageSize, cancellationToken),
             "id");
         foreach (var row in rows)
         {
+            var customerId = NetSuiteSuiteQlRowReader.GetString(row, "customerid") ?? string.Empty;
             dbContext.RevenueRecords.Add(new RevenueRecord
             {
                 Id = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id"),
                 Date = NetSuiteSuiteQlRowReader.GetDate(row, "trandate"),
                 Amount = NetSuiteSuiteQlRowReader.GetDecimal(row, "amount"),
-                CustomerId = NetSuiteSuiteQlRowReader.GetString(row, "customerid") ?? string.Empty,
-                CustomerName = NetSuiteSuiteQlRowReader.GetString(row, "customername") ?? string.Empty,
+                CustomerId = customerId,
+                CustomerName = customerNames.GetValueOrDefault(customerId) ?? string.Empty,
                 ProductGroupId = NetSuiteSuiteQlRowReader.GetString(row, "productgroupid") ?? string.Empty
             });
         }
@@ -267,19 +275,26 @@ public sealed class NetSuiteSyncService(
 
     private async Task<int> SyncExpensesAsync(DateOnly fromDate, int pageSize, CancellationToken cancellationToken)
     {
+        var supplierNames = await dbContext.Suppliers
+            .AsNoTracking()
+            .ToDictionaryAsync(supplier => supplier.SupplierId, supplier => supplier.Name, cancellationToken);
+
         var rows = NetSuiteSuiteQlRowDeduplicator.ByField(
             await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.VendorBills(fromDate), pageSize, cancellationToken),
             "id");
         foreach (var row in rows)
         {
+            var supplierId = NetSuiteSuiteQlRowReader.GetString(row, "supplierid");
             dbContext.Expenses.Add(new ExpenseRecord
             {
                 Id = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id"),
                 Date = NetSuiteSuiteQlRowReader.GetDate(row, "trandate"),
                 Amount = NetSuiteSuiteQlRowReader.GetDecimal(row, "amount"),
                 Category = "Vendor Bill",
-                VendorName = NetSuiteSuiteQlRowReader.GetString(row, "vendorname") ?? string.Empty,
-                SupplierId = NetSuiteSuiteQlRowReader.GetString(row, "supplierid")
+                VendorName = supplierId is null
+                    ? string.Empty
+                    : supplierNames.GetValueOrDefault(supplierId) ?? string.Empty,
+                SupplierId = supplierId
             });
         }
 
