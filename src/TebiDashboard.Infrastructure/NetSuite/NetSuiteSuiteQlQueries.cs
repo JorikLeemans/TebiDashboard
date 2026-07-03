@@ -7,12 +7,12 @@ namespace TebiDashboard.Infrastructure.NetSuite;
 internal static class NetSuiteSuiteQlQueries
 {
     /// <summary>
-    /// Customer: entityid (code), companyname, email, defaultaddress (full address text), internal id for FK joins.
-    /// custentity_tebi_primaire_dochtermaatsch is omitted until subsidiary filtering is required.
+    /// Customer: entityid (code), companyname, email; internal id for FK joins.
+    /// defaultaddress exists in Records Browser but is not queryable via SuiteQL on customer.
     /// </summary>
     public static string Customers() =>
         """
-        SELECT DISTINCT id, entityid, companyname, email, defaultaddress
+        SELECT DISTINCT id, entityid, companyname, email
         FROM customer
         WHERE isinactive = 'F'
         ORDER BY companyname

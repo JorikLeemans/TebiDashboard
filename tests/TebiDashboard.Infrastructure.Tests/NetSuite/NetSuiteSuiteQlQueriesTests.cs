@@ -10,8 +10,8 @@ public sealed class NetSuiteSuiteQlQueriesTests
         var sql = NetSuiteSuiteQlQueries.Customers();
 
         Assert.Contains("entityid", sql);
-        Assert.Contains("defaultaddress", sql);
         Assert.Contains("companyname", sql);
+        Assert.DoesNotContain("defaultaddress", sql);
     }
 
     [Fact]
