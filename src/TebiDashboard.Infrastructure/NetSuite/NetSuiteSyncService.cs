@@ -169,8 +169,8 @@ public sealed class NetSuiteSyncService(
                 // Internal id matches invoice.entity; entityid is the human-readable customer code in NetSuite.
                 CustomerId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id"),
                 Name = NetSuiteSuiteQlRowReader.GetString(row, "companyname") ?? "Unknown customer",
-                // defaultaddress holds the full default address text (not just city).
-                City = NetSuiteSuiteQlRowReader.GetString(row, "defaultaddress") ?? string.Empty,
+                // Address fields (defaultaddress/city) are not exposed on the customer SuiteQL table.
+                City = string.Empty,
                 ContactEmail = NetSuiteSuiteQlRowReader.GetString(row, "email") ?? string.Empty
             });
         }
