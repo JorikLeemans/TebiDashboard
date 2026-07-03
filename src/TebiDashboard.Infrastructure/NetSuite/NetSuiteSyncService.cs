@@ -166,10 +166,11 @@ public sealed class NetSuiteSyncService(
         {
             dbContext.Customers.Add(new CustomerRecord
             {
+                // Internal id matches invoice.entity; entityid is the human-readable customer code in NetSuite.
                 CustomerId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id"),
                 Name = NetSuiteSuiteQlRowReader.GetString(row, "companyname") ?? "Unknown customer",
-                // City lives on NetSuite address subrecords; left empty until a dedicated address query is added.
-                City = string.Empty,
+                // defaultaddress holds the full default address text (not just city).
+                City = NetSuiteSuiteQlRowReader.GetString(row, "defaultaddress") ?? string.Empty,
                 ContactEmail = NetSuiteSuiteQlRowReader.GetString(row, "email") ?? string.Empty
             });
         }
@@ -204,15 +205,15 @@ public sealed class NetSuiteSyncService(
             "id");
         foreach (var row in rows)
         {
-            var reorderPoint = NetSuiteSuiteQlRowReader.GetDecimal(row, "reorderpoint");
-
             dbContext.InventoryItems.Add(new InventoryItemRecord
             {
                 ItemId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id"),
-                ItemName = NetSuiteSuiteQlRowReader.GetString(row, "displayname") ?? "Unknown item",
+                // TEBI uses itemid (SKU) as display name instead of displayname.
+                ItemName = NetSuiteSuiteQlRowReader.GetString(row, "itemid") ?? "Unknown item",
                 Barcode = NetSuiteSuiteQlRowReader.GetString(row, "upccode") ?? string.Empty,
                 QuantityOnHand = 0m,
-                ReorderPoint = reorderPoint,
+                // Reorder point is account-specific in NetSuite; default to 0 until mapped from a custom field.
+                ReorderPoint = 0m,
                 RecentSalesVolume = 0m,
                 IsLowStock = false
             });
@@ -236,7 +237,7 @@ public sealed class NetSuiteSyncService(
                 LocationName = NetSuiteSuiteQlRowReader.GetString(row, "locationname")
                     ?? NetSuiteSuiteQlRowReader.GetString(row, "location")
                     ?? "Unknown location",
-                QuantityOnHand = NetSuiteSuiteQlRowReader.GetDecimal(row, "quantityonhand")
+                QuantityOnHand = NetSuiteSuiteQlRowReader.GetDecimal(row, "quantity", "quantityonhand")
             });
         }
 
