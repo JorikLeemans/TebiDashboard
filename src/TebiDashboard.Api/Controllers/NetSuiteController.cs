@@ -1,7 +1,7 @@
-using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.Mvc;
 using TebiDashboard.Api.Authorization;
 using TebiDashboard.Application.Interfaces;
+using TebiDashboard.Infrastructure.NetSuite;
 
 namespace TebiDashboard.Api.Controllers;
 
@@ -12,7 +12,7 @@ namespace TebiDashboard.Api.Controllers;
 [Route("api/[controller]")]
 public class NetSuiteController(
     INetSuiteConnectionService connectionService,
-    INetSuiteSyncService syncService) : ControllerBase
+    INetSuiteSyncCoordinator syncCoordinator) : ControllerBase
 {
     /// <summary>
     /// Verifies OAuth 2.0 credentials by requesting a token and calling the REST metadata catalog.
@@ -25,18 +25,35 @@ public class NetSuiteController(
     }
 
     /// <summary>
-    /// Imports NetSuite master and transactional data into the dashboard database.
+    /// Starts importing NetSuite data in the background (admin only).
     /// </summary>
     [HttpPost("sync")]
-    [RequestTimeout("NetSuiteSync")]
-    public async Task<IActionResult> SyncDashboardData(CancellationToken cancellationToken)
+    public IActionResult StartSyncDashboardData()
     {
         if (!AdminRequestContext.IsAdmin(Request))
         {
             return StatusCode(StatusCodes.Status403Forbidden);
         }
 
-        var result = await syncService.SyncDashboardDataAsync(cancellationToken);
-        return result.Success ? Ok(result) : BadRequest(result);
+        if (!syncCoordinator.TryStart())
+        {
+            return Conflict(syncCoordinator.GetStatus().ToStatusDto());
+        }
+
+        return Accepted(syncCoordinator.GetStatus().ToStatusDto());
+    }
+
+    /// <summary>
+    /// Returns the current or last background NetSuite sync status (admin only).
+    /// </summary>
+    [HttpGet("sync/status")]
+    public IActionResult GetSyncDashboardDataStatus()
+    {
+        if (!AdminRequestContext.IsAdmin(Request))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden);
+        }
+
+        return Ok(syncCoordinator.GetStatus().ToStatusDto());
     }
 }

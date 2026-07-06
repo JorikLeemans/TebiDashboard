@@ -351,15 +351,41 @@
 
     try
     {
-      _netSuiteSync = await AdminApi.SyncNetSuiteDataAsync();
-      if (_netSuiteSync.Success)
+      var start = await AdminApi.StartNetSuiteSyncAsync();
+      if (start.State == "Failed" && start.Result is null)
       {
-        _statusMessage = "NetSuite data imported successfully.";
+        _netSuiteError = start.Message;
+        return;
+      }
+
+      _statusMessage = "NetSuite sync gestart. Dit kan bij de eerste import enkele minuten duren…";
+
+      while (true)
+      {
+        var status = await AdminApi.GetNetSuiteSyncStatusAsync();
+        if (status.State is not "Running")
+        {
+          _netSuiteSync = status.Result ?? new NetSuiteSyncResultDto
+          {
+            Success = false,
+            Message = status.Message,
+            CompletedAt = status.CompletedAt ?? DateTimeOffset.UtcNow
+          };
+
+          if (_netSuiteSync.Success)
+          {
+            _statusMessage = "NetSuite data imported successfully.";
+          }
+
+          break;
+        }
+
+        await Task.Delay(TimeSpan.FromSeconds(3));
       }
     }
     catch (TaskCanceledException ex) when (!ex.CancellationToken.IsCancellationRequested)
     {
-      _netSuiteError = "De sync duurde te lang (time-out). Wacht even en probeer opnieuw, of verlaag NetSuite__SyncLookbackDays op de API.";
+      _netSuiteError = "De verbinding met de API werd verbroken (time-out). De sync kan nog op de achtergrond draaien; vernieuw de pagina over een paar minuten.";
     }
     catch (Exception ex)
     {

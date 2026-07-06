@@ -33,6 +33,7 @@ public static class DependencyInjection
         services.AddSingleton<INetSuiteTokenProvider, NetSuiteOAuth2TokenProvider>();
         services.AddScoped<INetSuiteConnectionService, NetSuiteConnectionService>();
         services.AddScoped<INetSuiteRestClient, NetSuiteRestClient>();
+        services.AddSingleton<INetSuiteSyncCoordinator, NetSuiteSyncCoordinator>();
 
         var databaseOptions = configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>() ?? new DatabaseOptions();
         var provider = ConnectionStringResolver.UsesPostgres(configuration)

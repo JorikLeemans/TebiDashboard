@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using TebiDashboard.Shared.Dtos;
 
 namespace TebiDashboard.Api.Tests;
 
@@ -20,7 +21,7 @@ public sealed class NetSuiteSyncEndpointTests
     }
 
     [Fact]
-    public async Task Sync_ReturnsBadRequest_WhenNetSuiteIsNotConfigured()
+    public async Task Sync_StartsInBackground_AndEventuallyFails_WhenNetSuiteIsNotConfigured()
     {
         await using var factory = new TebiWebApplicationFactory();
         using var client = factory.CreateClient();
@@ -28,17 +29,25 @@ public sealed class NetSuiteSyncEndpointTests
 
         var response = await client.PostAsync("/api/netsuite/sync", content: null);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<SyncResponse>();
-        Assert.NotNull(body);
-        Assert.False(body.Success);
-        Assert.Contains("PostgreSQL", body.Message, StringComparison.OrdinalIgnoreCase);
-    }
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
 
-    private sealed class SyncResponse
-    {
-        public bool Success { get; init; }
+        NetSuiteSyncStatusDto? finalStatus = null;
+        for (var attempt = 0; attempt < 30; attempt++)
+        {
+            var statusResponse = await client.GetAsync("/api/netsuite/sync/status");
+            finalStatus = await statusResponse.Content.ReadFromJsonAsync<NetSuiteSyncStatusDto>();
+            Assert.NotNull(finalStatus);
 
-        public string Message { get; init; } = string.Empty;
+            if (finalStatus.State is not "Running")
+            {
+                break;
+            }
+
+            await Task.Delay(100);
+        }
+
+        Assert.NotNull(finalStatus);
+        Assert.Equal("Failed", finalStatus.State);
+        Assert.Contains("PostgreSQL", finalStatus.Message, StringComparison.OrdinalIgnoreCase);
     }
 }
