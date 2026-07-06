@@ -1,131 +1,186 @@
-@page "/suppliers"
-@layout DashboardLayout
-@using TebiDashboard.Shared.Dtos
-@inject DashboardApiClient ApiClient
-@inject IPeriodFilterService PeriodFilter
-@inject IAuthStateService AuthState
-@inject NavigationManager Navigation
-@implements IDisposable
-
-<PageTitle>Suppliers — TEBI Dashboard</PageTitle>
-
-<div class="suppliers-page">
-    <header class="suppliers-page__header">
-        <h1>Suppliers</h1>
-        <p class="suppliers-page__subtitle">
-            All suppliers with spend, purchase orders, and purchased items for @PeriodFilter.From.ToString("d") – @PeriodFilter.To.ToString("d")
-        </p>
-    </header>
-
-    @if (_isLoading)
-    {
-        <p class="suppliers-page__status">Loading suppliers...</p>
-    }
-    else if (_error is not null)
-    {
-        <p class="error" role="alert">@_error</p>
-    }
-    else if (_suppliers.Count == 0)
-    {
-        <p class="suppliers-page__status">No suppliers found.</p>
-    }
-    else
-    {
-        <div class="suppliers-table-wrap">
-            <table class="suppliers-table" aria-label="All suppliers">
-                <thead>
-                    <tr>
-                        <th scope="col">Supplier</th>
-                        <th scope="col">City</th>
-                        <th scope="col">Total purchased</th>
-                        <th scope="col">Expense entries</th>
-                        <th scope="col">Purchase orders</th>
-                        <th scope="col">Purchased items</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var supplier in _suppliers)
-                    {
-                        <tr class="suppliers-table__row"
-                            @onclick="() => OpenSupplier(supplier.SupplierId)"
-                            tabindex="0"
-                            @onkeydown="(e) => HandleRowKeyDown(e, supplier.SupplierId)">
-                            <td class="suppliers-table__name">@supplier.Name</td>
-                            <td>@supplier.City</td>
-                            <td>@EuroFormatting.FormatWhole(supplier.TotalPurchased)</td>
-                            <td>@supplier.ExpenseEntryCount</td>
-                            <td>@supplier.PurchaseOrderCount</td>
-                            <td>@supplier.PurchasedItemCount</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    }
-</div>
-
-@code {
-    private IReadOnlyList<SupplierOverviewDto> _suppliers = [];
-    private bool _isLoading = true;
-    private string? _error;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await AuthState.InitializeAsync();
-
-        if (!AuthState.IsAuthenticated)
-        {
-            Navigation.NavigateTo("/login");
-            return;
-        }
-
-        PeriodFilter.OnChanged += OnPeriodChanged;
-        await LoadSuppliersAsync();
-    }
-
-    private void OnPeriodChanged()
-    {
-        _ = ReloadSuppliersAsync();
-    }
-
-    private async Task ReloadSuppliersAsync()
-    {
-        await LoadSuppliersAsync();
-        await InvokeAsync(StateHasChanged);
-    }
-
-    private async Task LoadSuppliersAsync()
-    {
-        _isLoading = true;
-        _error = null;
-
-        try
-        {
-            _suppliers = await ApiClient.GetSuppliersOverviewAsync(PeriodFilter.From, PeriodFilter.To);
-        }
-        catch (Exception ex)
-        {
-            _error = $"Failed to load suppliers: {ex.Message}";
-        }
-        finally
-        {
-            _isLoading = false;
-        }
-    }
-
-    private void OpenSupplier(string supplierId) =>
-        Navigation.NavigateTo($"/suppliers/{Uri.EscapeDataString(supplierId)}");
-
-    private void HandleRowKeyDown(KeyboardEventArgs args, string supplierId)
-    {
-        if (args.Key is "Enter" or " ")
-        {
-            OpenSupplier(supplierId);
-        }
-    }
-
-    public void Dispose()
-    {
-        PeriodFilter.OnChanged -= OnPeriodChanged;
-    }
-}
+@page "/suppliers"
+@layout DashboardLayout
+@using TebiDashboard.Shared.Dtos
+@using TebiDashboard.UI.Helpers
+@inject DashboardApiClient ApiClient
+@inject IPeriodFilterService PeriodFilter
+@inject IAuthStateService AuthState
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>Suppliers — TEBI Dashboard</PageTitle>
+
+<div class="suppliers-page">
+    <header class="suppliers-page__header">
+        <h1>Suppliers</h1>
+        <p class="suppliers-page__subtitle">
+            All suppliers with spend, purchase orders, and purchased items for @PeriodFilter.From.ToString("d") – @PeriodFilter.To.ToString("d")
+        </p>
+    </header>
+
+    @if (_isLoading)
+    {
+        <p class="suppliers-page__status">Loading suppliers...</p>
+    }
+    else if (_error is not null)
+    {
+        <p class="error" role="alert">@_error</p>
+    }
+    else if (_suppliers.Count == 0)
+    {
+        <p class="suppliers-page__status">No suppliers found.</p>
+    }
+    else
+    {
+        <ListSearchBar Placeholder="Name, city, email, or ID"
+                       SearchText="@_searchText"
+                       SearchTextChanged="OnSearchTextChanged"
+                       FilteredCount="@FilteredSuppliers.Count"
+                       TotalCount="@_suppliers.Count"
+                       ShowClear="@HasActiveFilters"
+                       OnClear="ClearFilters">
+            <AdditionalFilters>
+                <label class="list-search__checkbox">
+                    <input type="checkbox" checked="@_activityOnly" @onchange="OnActivityOnlyChanged" />
+                    With activity in period
+                </label>
+            </AdditionalFilters>
+        </ListSearchBar>
+
+        @if (FilteredSuppliers.Count == 0)
+        {
+            <p class="suppliers-page__status">No suppliers match your filters.</p>
+        }
+        else
+        {
+            <div class="suppliers-table-wrap">
+                <table class="suppliers-table" aria-label="All suppliers">
+                    <thead>
+                        <tr>
+                            <th scope="col">Supplier</th>
+                            <th scope="col">City</th>
+                            <th scope="col">Total purchased</th>
+                            <th scope="col">Expense entries</th>
+                            <th scope="col">Purchase orders</th>
+                            <th scope="col">Purchased items</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var supplier in FilteredSuppliers)
+                        {
+                            <tr class="suppliers-table__row"
+                                @onclick="() => OpenSupplier(supplier.SupplierId)"
+                                tabindex="0"
+                                @onkeydown="(e) => HandleRowKeyDown(e, supplier.SupplierId)">
+                                <td class="suppliers-table__name">@supplier.Name</td>
+                                <td>@supplier.City</td>
+                                <td>@EuroFormatting.FormatWhole(supplier.TotalPurchased)</td>
+                                <td>@supplier.ExpenseEntryCount</td>
+                                <td>@supplier.PurchaseOrderCount</td>
+                                <td>@supplier.PurchasedItemCount</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private IReadOnlyList<SupplierOverviewDto> _suppliers = [];
+    private string _searchText = string.Empty;
+    private bool _activityOnly;
+    private bool _isLoading = true;
+    private string? _error;
+
+    private List<SupplierOverviewDto> FilteredSuppliers => _suppliers.Where(MatchesFilters).ToList();
+
+    private bool HasActiveFilters =>
+        !string.IsNullOrWhiteSpace(_searchText) || _activityOnly;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthState.InitializeAsync();
+
+        if (!AuthState.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        PeriodFilter.OnChanged += OnPeriodChanged;
+        await LoadSuppliersAsync();
+    }
+
+    private void OnPeriodChanged()
+    {
+        _ = ReloadSuppliersAsync();
+    }
+
+    private async Task ReloadSuppliersAsync()
+    {
+        await LoadSuppliersAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadSuppliersAsync()
+    {
+        _isLoading = true;
+        _error = null;
+
+        try
+        {
+            _suppliers = await ApiClient.GetSuppliersOverviewAsync(PeriodFilter.From, PeriodFilter.To);
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load suppliers: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private bool MatchesFilters(SupplierOverviewDto supplier) =>
+        EntityListFilters.MatchesSearch(_searchText, supplier.Name, supplier.City, supplier.ContactEmail, supplier.SupplierId)
+        && (!_activityOnly
+            || supplier.TotalPurchased > 0
+            || supplier.PurchaseOrderCount > 0
+            || supplier.ExpenseEntryCount > 0
+            || supplier.PurchasedItemCount > 0);
+
+    private void OnSearchTextChanged(string value)
+    {
+        _searchText = value;
+    }
+
+    private void OnActivityOnlyChanged(ChangeEventArgs args)
+    {
+        _activityOnly = args.Value is bool enabled && enabled;
+    }
+
+    private void ClearFilters()
+    {
+        _searchText = string.Empty;
+        _activityOnly = false;
+    }
+
+    private void OpenSupplier(string supplierId) =>
+        Navigation.NavigateTo($"/suppliers/{Uri.EscapeDataString(supplierId)}");
+
+    private void HandleRowKeyDown(KeyboardEventArgs args, string supplierId)
+    {
+        if (args.Key is "Enter" or " ")
+        {
+            OpenSupplier(supplierId);
+        }
+    }
+
+    public void Dispose()
+    {
+        PeriodFilter.OnChanged -= OnPeriodChanged;
+    }
+}
+

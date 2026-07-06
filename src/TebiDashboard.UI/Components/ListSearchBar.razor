@@ -1,0 +1,59 @@
+<section class="list-search" aria-label="List filters">
+    <div class="list-search__row">
+        <label class="list-search__field">
+            <span class="list-search__label">Search</span>
+            <input type="search"
+                   class="list-search__input"
+                   placeholder="@Placeholder"
+                   value="@SearchText"
+                   @oninput="OnInput" />
+        </label>
+
+        @if (AdditionalFilters is not null)
+        {
+            <div class="list-search__extras">
+                @AdditionalFilters
+            </div>
+        }
+    </div>
+
+    @if (TotalCount > 0)
+    {
+        <p class="list-search__meta" role="status">
+            Showing <strong>@FilteredCount</strong> of <strong>@TotalCount</strong>
+            @if (ShowClear)
+            {
+                <button type="button" class="list-search__clear" @onclick="OnClear">Clear filters</button>
+            }
+        </p>
+    }
+</section>
+
+@code {
+    [Parameter]
+    public string Placeholder { get; set; } = "Search…";
+
+    [Parameter]
+    public string SearchText { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> SearchTextChanged { get; set; }
+
+    [Parameter]
+    public int FilteredCount { get; set; }
+
+    [Parameter]
+    public int TotalCount { get; set; }
+
+    [Parameter]
+    public bool ShowClear { get; set; }
+
+    [Parameter]
+    public EventCallback OnClear { get; set; }
+
+    [Parameter]
+    public RenderFragment? AdditionalFilters { get; set; }
+
+    private async Task OnInput(ChangeEventArgs args) =>
+        await SearchTextChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+}

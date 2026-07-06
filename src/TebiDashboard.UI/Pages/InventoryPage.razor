@@ -1,6 +1,7 @@
 @page "/inventory"
 @layout DashboardLayout
 @using TebiDashboard.Shared.Dtos
+@using TebiDashboard.UI.Helpers
 @inject DashboardApiClient ApiClient
 @inject IAuthStateService AuthState
 @inject NavigationManager Navigation
@@ -27,50 +28,83 @@
     }
     else
     {
-        <div class="inventory-table-wrap">
-            <table class="inventory-table" aria-label="Inventory items">
-                <thead>
-                    <tr>
-                        <th scope="col">Item</th>
-                        <th scope="col">Barcode</th>
-                        <th scope="col">On hand</th>
-                        <th scope="col">Reorder point</th>
-                        <th scope="col">Recent sales</th>
-                        <th scope="col">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var item in _items)
-                    {
-                        <tr class="inventory-table__row" @onclick="() => OpenItem(item.ItemId)" tabindex="0"
-                            @onkeydown="(e) => HandleRowKeyDown(e, item.ItemId)">
-                            <td class="inventory-table__name">@item.ItemName</td>
-                            <td><code>@item.Barcode</code></td>
-                            <td>@item.QuantityOnHand.ToString("N0")</td>
-                            <td>@(item.ReorderPoint?.ToString("N0") ?? "—")</td>
-                            <td>@item.RecentSalesVolume.ToString("N0")</td>
-                            <td>
-                                @if (item.IsLowStock)
-                                {
-                                    <span class="inventory-badge inventory-badge--alert">Low stock</span>
-                                }
-                                else
-                                {
-                                    <span class="inventory-badge inventory-badge--ok">OK</span>
-                                }
-                            </td>
+        <ListSearchBar Placeholder="Name, barcode, or item ID"
+                       SearchText="@_searchText"
+                       SearchTextChanged="OnSearchTextChanged"
+                       FilteredCount="@FilteredItems.Count"
+                       TotalCount="@_items.Count"
+                       ShowClear="@HasActiveFilters"
+                       OnClear="ClearFilters">
+            <AdditionalFilters>
+                <label class="list-search__filter">
+                    <span class="list-search__label">Stock status</span>
+                    <select class="list-search__select" value="@_stockFilter" @onchange="OnStockFilterChanged">
+                        <option value="all">All items</option>
+                        <option value="low">Low stock only</option>
+                        <option value="ok">OK stock only</option>
+                    </select>
+                </label>
+            </AdditionalFilters>
+        </ListSearchBar>
+
+        @if (FilteredItems.Count == 0)
+        {
+            <p class="inventory-page__status">No items match your filters.</p>
+        }
+        else
+        {
+            <div class="inventory-table-wrap">
+                <table class="inventory-table" aria-label="Inventory items">
+                    <thead>
+                        <tr>
+                            <th scope="col">Item</th>
+                            <th scope="col">Barcode</th>
+                            <th scope="col">On hand</th>
+                            <th scope="col">Reorder point</th>
+                            <th scope="col">Recent sales</th>
+                            <th scope="col">Status</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in FilteredItems)
+                        {
+                            <tr class="inventory-table__row" @onclick="() => OpenItem(item.ItemId)" tabindex="0"
+                                @onkeydown="(e) => HandleRowKeyDown(e, item.ItemId)">
+                                <td class="inventory-table__name">@item.ItemName</td>
+                                <td><code>@item.Barcode</code></td>
+                                <td>@item.QuantityOnHand.ToString("N0")</td>
+                                <td>@(item.ReorderPoint?.ToString("N0") ?? "—")</td>
+                                <td>@item.RecentSalesVolume.ToString("N0")</td>
+                                <td>
+                                    @if (item.IsLowStock)
+                                    {
+                                        <span class="inventory-badge inventory-badge--alert">Low stock</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="inventory-badge inventory-badge--ok">OK</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
     }
 </div>
 
 @code {
     private IReadOnlyList<InventoryItemDto> _items = [];
+    private string _searchText = string.Empty;
+    private string _stockFilter = "all";
     private bool _isLoading = true;
     private string? _error;
+
+    private List<InventoryItemDto> FilteredItems => _items.Where(MatchesFilters).ToList();
+
+    private bool HasActiveFilters =>
+        !string.IsNullOrWhiteSpace(_searchText) || _stockFilter != "all";
 
     protected override async Task OnInitializedAsync()
     {
@@ -94,6 +128,37 @@
         {
             _isLoading = false;
         }
+    }
+
+    private bool MatchesFilters(InventoryItemDto item)
+    {
+        if (!EntityListFilters.MatchesSearch(_searchText, item.ItemName, item.Barcode, item.ItemId))
+        {
+            return false;
+        }
+
+        return _stockFilter switch
+        {
+            "low" => item.IsLowStock,
+            "ok" => !item.IsLowStock,
+            _ => true
+        };
+    }
+
+    private void OnSearchTextChanged(string value)
+    {
+        _searchText = value;
+    }
+
+    private void OnStockFilterChanged(ChangeEventArgs args)
+    {
+        _stockFilter = args.Value?.ToString() ?? "all";
+    }
+
+    private void ClearFilters()
+    {
+        _searchText = string.Empty;
+        _stockFilter = "all";
     }
 
     private void OpenItem(string itemId) => Navigation.NavigateTo($"/inventory/{Uri.EscapeDataString(itemId)}");
