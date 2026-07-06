@@ -366,7 +366,7 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             Expenses = expenses,
             Transactions = transactions,
             LowStockItems = lowStock,
-            InventoryWithActivity = inventoryWithActivity.Select(MapInventoryItem).ToList()
+            InventoryWithActivity = inventoryWithActivity.Select(item => MapInventoryItem(item)).ToList()
         };
     }
 
@@ -458,17 +458,31 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
 
         var rows = await query.OrderByDescending(i => i.RecentSalesVolume).ToListAsync(cancellationToken);
 
-        return rows.Select(MapInventoryItem).ToList();
+        return rows.Select(item => MapInventoryItem(item)).ToList();
     }
 
-    public async Task<IReadOnlyList<InventoryItemDto>> GetInventoryItemsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<InventoryItemDto>> GetInventoryItemsAsync(
+        DateRangeFilter filter,
+        CancellationToken cancellationToken = default)
     {
         var rows = await dbContext.InventoryItems
             .AsNoTracking()
             .OrderBy(i => i.ItemName)
             .ToListAsync(cancellationToken);
 
-        return rows.Select(MapInventoryItem).ToList();
+        // Derive recent sales volume for the selected period from synced open sales orders in Postgres.
+        var salesByItem = await dbContext.OpenTransactions
+            .AsNoTracking()
+            .Where(t => t.Type == "Sales Order"
+                && t.TransactionDate >= filter.From
+                && t.TransactionDate <= filter.To)
+            .GroupBy(t => t.ItemId)
+            .Select(g => new { ItemId = g.Key, Volume = g.Sum(t => t.QuantityOpen) })
+            .ToDictionaryAsync(x => x.ItemId, x => x.Volume, cancellationToken);
+
+        return rows
+            .Select(item => MapInventoryItem(item, salesByItem.GetValueOrDefault(item.ItemId)))
+            .ToList();
     }
 
     public async Task<IReadOnlyList<InventoryItemDto>> GetTopSellingItemsAsync(DateRangeFilter filter, int limit, CancellationToken cancellationToken = default)
@@ -479,7 +493,7 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .Take(limit)
             .ToListAsync(cancellationToken);
 
-        return rows.Select(MapInventoryItem).ToList();
+        return rows.Select(item => MapInventoryItem(item)).ToList();
     }
 
     public async Task<IReadOnlyList<StockLocationDto>> GetItemLocationsAsync(string itemId, CancellationToken cancellationToken = default)
@@ -652,14 +666,19 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
         ContactEmail = supplier.ContactEmail
     };
 
-    private static InventoryItemDto MapInventoryItem(Data.Entities.InventoryItemRecord item) => new()
+    private static InventoryItemDto MapInventoryItem(Data.Entities.InventoryItemRecord item) =>
+        MapInventoryItem(item, recentSalesVolume: null);
+
+    private static InventoryItemDto MapInventoryItem(
+        Data.Entities.InventoryItemRecord item,
+        decimal? recentSalesVolume) => new()
     {
         ItemId = item.ItemId,
         ItemName = item.ItemName,
         Barcode = item.Barcode,
         QuantityOnHand = item.QuantityOnHand,
         ReorderPoint = item.ReorderPoint,
-        RecentSalesVolume = item.RecentSalesVolume,
+        RecentSalesVolume = recentSalesVolume ?? item.RecentSalesVolume,
         IsLowStock = item.IsLowStock
     };
 }

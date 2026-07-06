@@ -311,7 +311,9 @@ public sealed class MockNetSuiteService : INetSuiteService
         new() { ItemId = "i3", ItemName = "Tegels 60x60 Grijs", Barcode = "8712345000035", QuantityOnHand = 210, ReorderPoint = 50, RecentSalesVolume = 760, IsLowStock = false }
     ];
 
-    public Task<IReadOnlyList<InventoryItemDto>> GetInventoryItemsAsync(CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<InventoryItemDto>> GetInventoryItemsAsync(
+        DateRangeFilter filter,
+        CancellationToken cancellationToken = default)
         => Task.FromResult<IReadOnlyList<InventoryItemDto>>(GetMockInventory());
 
     public Task<IReadOnlyList<InventoryItemDto>> GetTopSellingItemsAsync(DateRangeFilter filter, int limit, CancellationToken cancellationToken = default)

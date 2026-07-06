@@ -12,7 +12,7 @@
 <div class="dashboard">
     <h1>TEBI Dashboard</h1>
 
-    @if (_isLoading)
+    @if (_isInitialLoad && _isLoading)
     {
         <p>Loading dashboard...</p>
     }
@@ -45,7 +45,7 @@
         </div>
 
         <section class="dashboard-section">
-            <h2>Revenue chart (@_overview.Revenue.Count)</h2>
+            <h2>Revenue chart (@_revenueChartItems.Count days)</h2>
             <BarChart Items="_revenueChartItems"
                       AriaLabel="Revenue per day in selected period"
                       EmptyMessage="No revenue records in this period to chart." />
@@ -260,13 +260,20 @@
 
     private IPeriodFilterService PeriodFilter => CascadedPeriodFilter ?? InjectedPeriodFilter;
 
+    private readonly PeriodFilterSubscription _periodSubscription = new();
     private readonly PeriodFilterReload _periodReload = new();
     private PeriodOverviewDto? _overview;
     private IReadOnlyList<ChartBarItem> _revenueChartItems = [];
     private decimal _quarterGoalPercentage;
     private string _goalPeriodLabel = string.Empty;
     private bool _isLoading = true;
+    private bool _isInitialLoad = true;
     private string? _error;
+
+    protected override void OnParametersSet()
+    {
+        _periodSubscription.Bind(CascadedPeriodFilter, InjectedPeriodFilter, OnPeriodChanged);
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -278,8 +285,7 @@
             return;
         }
 
-        PeriodFilter.OnChanged += OnPeriodChanged;
-        await LoadOverviewAsync();
+        await LoadOverviewAsync(_periodReload.BeginReload(), showLoadingSpinner: true);
     }
 
     private void OnPeriodChanged()
@@ -289,73 +295,74 @@
 
     private async Task ReloadOverviewAsync()
     {
-        var generation = _periodReload.BeginReload(out var cancellationToken);
+        var generation = _periodReload.BeginReload();
+        await LoadOverviewAsync(generation, showLoadingSpinner: false);
+
+        if (!_periodReload.IsCurrent(generation))
+        {
+            return;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task LoadOverviewAsync(int generation, bool showLoadingSpinner)
+    {
+        var from = PeriodFilter.From;
+        var to = PeriodFilter.To;
+
+        if (showLoadingSpinner)
+        {
+            _isLoading = true;
+            _error = null;
+        }
 
         try
         {
-            await LoadOverviewAsync(cancellationToken);
+            var overview = await ApiClient.GetPeriodOverviewAsync(from, to);
 
             if (!_periodReload.IsCurrent(generation))
             {
                 return;
             }
-        }
-        catch (OperationCanceledException)
-        {
-            return;
-        }
 
-        await InvokeAsync(StateHasChanged);
-    }
-
-    private async Task LoadOverviewAsync(CancellationToken cancellationToken = default)
-    {
-        var from = PeriodFilter.From;
-        var to = PeriodFilter.To;
-        _isLoading = true;
-        _error = null;
-
-        try
-        {
-            _overview = await ApiClient.GetPeriodOverviewAsync(from, to, cancellationToken);
-            if (_overview is null)
+            if (overview is null)
             {
                 _error = "No overview data returned from the API.";
                 return;
             }
 
-            _revenueChartItems = _overview.Revenue
-                .OrderBy(row => row.Date)
-                .Select(row => new ChartBarItem
-                {
-                    Label = row.Date.ToString("d"),
-                    Value = row.Amount
-                })
-                .ToList();
+            _overview = overview;
+            _revenueChartItems = RevenueChartItems.FromDailyTotals(_overview.Revenue);
 
-            await LoadQuarterGoalAsync(cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
+            await LoadQuarterGoalAsync();
         }
         catch (Exception ex)
         {
+            if (!_periodReload.IsCurrent(generation))
+            {
+                return;
+            }
+
             _error = $"Failed to load dashboard: {ex.Message}";
         }
         finally
         {
-            _isLoading = false;
+            if (showLoadingSpinner)
+            {
+                _isLoading = false;
+                _isInitialLoad = false;
+            }
         }
     }
 
-    private async Task LoadQuarterGoalAsync(CancellationToken cancellationToken = default)
+    private async Task LoadQuarterGoalAsync()
     {
         var periodEnd = PeriodFilter.To;
         var quarter = PeriodHelper.GetQuarter(periodEnd);
         _goalPeriodLabel = $"{quarter} {periodEnd.Year}";
 
-        var goals = await ApiClient.GetGoalsAsync(periodEnd.Year, quarter, cancellationToken);
+        var goals = await ApiClient.GetGoalsAsync(periodEnd.Year, quarter);
         var companyGoal = goals.FirstOrDefault(goal => string.IsNullOrWhiteSpace(goal.ItemId));
 
         _quarterGoalPercentage = companyGoal?.Percentage ?? _overview?.Summary.GoalPercentage ?? 0m;
@@ -365,7 +372,6 @@
 
     public void Dispose()
     {
-        PeriodFilter.OnChanged -= OnPeriodChanged;
-        _periodReload.Dispose();
+        _periodSubscription.Dispose();
     }
 }

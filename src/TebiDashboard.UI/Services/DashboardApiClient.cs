@@ -120,8 +120,13 @@ public sealed class DashboardApiClient(HttpClient httpClient)
     public async Task<IReadOnlyList<InventoryItemDto>> GetLowStockAsync(CancellationToken cancellationToken = default)
         => await httpClient.GetFromJsonAsync<IReadOnlyList<InventoryItemDto>>("api/inventory/low-stock", cancellationToken) ?? [];
 
-    public async Task<IReadOnlyList<InventoryItemDto>> GetInventoryItemsAsync(CancellationToken cancellationToken = default)
-        => await httpClient.GetFromJsonAsync<IReadOnlyList<InventoryItemDto>>("api/inventory/items", cancellationToken) ?? [];
+    public async Task<IReadOnlyList<InventoryItemDto>> GetInventoryItemsAsync(
+        DateOnly from,
+        DateOnly to,
+        CancellationToken cancellationToken = default)
+        => await httpClient.GetFromJsonAsync<IReadOnlyList<InventoryItemDto>>(
+            $"api/inventory/items?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
+            cancellationToken) ?? [];
 
     public Task<ItemDetailDto?> GetItemByIdAsync(string itemId, CancellationToken cancellationToken = default)
     {
