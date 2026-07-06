@@ -85,7 +85,10 @@ public sealed class NetSuiteSyncService(
         catch (Exception ex)
         {
             logger.LogError(ex, "NetSuite dashboard sync failed.");
-            var message = ex.InnerException?.Message ?? ex.Message;
+            // Keep the sync step name in the message shown to admins (inner exception hides it).
+            var message = ex.Message.StartsWith("Sync step '", StringComparison.Ordinal)
+                ? ex.Message
+                : ex.InnerException?.Message ?? ex.Message;
             return Failed(message);
         }
     }
@@ -166,11 +169,13 @@ public sealed class NetSuiteSyncService(
         {
             dbContext.Customers.Add(new CustomerRecord
             {
-                // Internal id matches invoice.entity; entityid is the human-readable customer code in NetSuite.
+                // Internal id matches invoice.entity; entityId is the human-readable customer code in NetSuite.
                 CustomerId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id"),
-                Name = NetSuiteSuiteQlRowReader.GetString(row, "companyname") ?? "Unknown customer",
-                // Address fields (defaultaddress/city) are not exposed on the customer SuiteQL table.
-                City = string.Empty,
+                Name = NetSuiteSuiteQlRowReader.GetString(row, "companyname", "companyName") ?? "Unknown customer",
+                // defaultBillingAddress holds the billing address text when available in SuiteQL.
+                City = NetSuiteSuiteQlRowReader.GetString(row, "defaultbillingaddress", "defaultBillingAddress")
+                    ?? NetSuiteSuiteQlRowReader.GetString(row, "defaultshippingaddress", "defaultShippingAddress")
+                    ?? string.Empty,
                 ContactEmail = NetSuiteSuiteQlRowReader.GetString(row, "email") ?? string.Empty
             });
         }
@@ -187,10 +192,12 @@ public sealed class NetSuiteSyncService(
         {
             dbContext.Suppliers.Add(new SupplierRecord
             {
+                // Internal id matches vendor bill entity; entityId is the human-readable vendor code in NetSuite.
                 SupplierId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id"),
-                Name = NetSuiteSuiteQlRowReader.GetString(row, "companyname") ?? "Unknown supplier",
-                // City lives on NetSuite address subrecords; left empty until a dedicated address query is added.
-                City = string.Empty,
+                Name = NetSuiteSuiteQlRowReader.GetString(row, "companyname", "companyName") ?? "Unknown supplier",
+                City = NetSuiteSuiteQlRowReader.GetString(row, "defaultbillingaddress", "defaultBillingAddress")
+                    ?? NetSuiteSuiteQlRowReader.GetString(row, "defaultshippingaddress", "defaultShippingAddress")
+                    ?? string.Empty,
                 ContactEmail = NetSuiteSuiteQlRowReader.GetString(row, "email") ?? string.Empty
             });
         }
@@ -208,12 +215,13 @@ public sealed class NetSuiteSyncService(
             dbContext.InventoryItems.Add(new InventoryItemRecord
             {
                 ItemId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id"),
-                // TEBI uses itemid (SKU) as display name instead of displayname.
-                ItemName = NetSuiteSuiteQlRowReader.GetString(row, "itemid") ?? "Unknown item",
-                Barcode = NetSuiteSuiteQlRowReader.GetString(row, "upccode") ?? string.Empty,
+                // TEBI uses itemId (SKU) as display name; fall back to displayName when itemId is empty.
+                ItemName = NetSuiteSuiteQlRowReader.GetString(row, "itemid", "itemId")
+                    ?? NetSuiteSuiteQlRowReader.GetString(row, "displayname", "displayName")
+                    ?? "Unknown item",
+                Barcode = NetSuiteSuiteQlRowReader.GetString(row, "upccode", "upcCode") ?? string.Empty,
                 QuantityOnHand = 0m,
-                // Reorder point is account-specific in NetSuite; default to 0 until mapped from a custom field.
-                ReorderPoint = 0m,
+                ReorderPoint = NetSuiteSuiteQlRowReader.GetDecimal(row, "reorderpoint", "reorderPoint"),
                 RecentSalesVolume = 0m,
                 IsLowStock = false
             });
@@ -246,18 +254,23 @@ public sealed class NetSuiteSyncService(
 
     private async Task<int> SyncRevenueAsync(DateOnly fromDate, int pageSize, CancellationToken cancellationToken)
     {
+        var customerNames = await dbContext.Customers
+            .AsNoTracking()
+            .ToDictionaryAsync(customer => customer.CustomerId, customer => customer.Name, cancellationToken);
+
         var rows = NetSuiteSuiteQlRowDeduplicator.ByField(
             await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.Invoices(fromDate), pageSize, cancellationToken),
             "id");
         foreach (var row in rows)
         {
+            var customerId = NetSuiteSuiteQlRowReader.GetString(row, "customerid") ?? string.Empty;
             dbContext.RevenueRecords.Add(new RevenueRecord
             {
                 Id = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id"),
-                Date = NetSuiteSuiteQlRowReader.GetDate(row, "trandate"),
+                Date = NetSuiteSuiteQlRowReader.GetDate(row, "trandate", "tranDate"),
                 Amount = NetSuiteSuiteQlRowReader.GetDecimal(row, "amount"),
-                CustomerId = NetSuiteSuiteQlRowReader.GetString(row, "customerid") ?? string.Empty,
-                CustomerName = NetSuiteSuiteQlRowReader.GetString(row, "customername") ?? string.Empty,
+                CustomerId = customerId,
+                CustomerName = customerNames.GetValueOrDefault(customerId) ?? string.Empty,
                 ProductGroupId = NetSuiteSuiteQlRowReader.GetString(row, "productgroupid") ?? string.Empty
             });
         }
@@ -267,19 +280,26 @@ public sealed class NetSuiteSyncService(
 
     private async Task<int> SyncExpensesAsync(DateOnly fromDate, int pageSize, CancellationToken cancellationToken)
     {
+        var supplierNames = await dbContext.Suppliers
+            .AsNoTracking()
+            .ToDictionaryAsync(supplier => supplier.SupplierId, supplier => supplier.Name, cancellationToken);
+
         var rows = NetSuiteSuiteQlRowDeduplicator.ByField(
             await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.VendorBills(fromDate), pageSize, cancellationToken),
             "id");
         foreach (var row in rows)
         {
+            var supplierId = NetSuiteSuiteQlRowReader.GetString(row, "supplierid");
             dbContext.Expenses.Add(new ExpenseRecord
             {
                 Id = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id"),
                 Date = NetSuiteSuiteQlRowReader.GetDate(row, "trandate"),
                 Amount = NetSuiteSuiteQlRowReader.GetDecimal(row, "amount"),
                 Category = "Vendor Bill",
-                VendorName = NetSuiteSuiteQlRowReader.GetString(row, "vendorname") ?? string.Empty,
-                SupplierId = NetSuiteSuiteQlRowReader.GetString(row, "supplierid")
+                VendorName = supplierId is null
+                    ? string.Empty
+                    : supplierNames.GetValueOrDefault(supplierId) ?? string.Empty,
+                SupplierId = supplierId
             });
         }
 
@@ -342,7 +362,7 @@ public sealed class NetSuiteSyncService(
             ItemId = NetSuiteSuiteQlRowReader.GetString(row, "itemid") ?? string.Empty,
             CustomerId = customerId,
             SupplierId = supplierId,
-            TransactionDate = NetSuiteSuiteQlRowReader.GetDate(row, "trandate"),
+            TransactionDate = NetSuiteSuiteQlRowReader.GetDate(row, "trandate", "tranDate"),
             QuantityOpen = NetSuiteSuiteQlRowReader.GetDecimal(row, "quantityopen"),
             Amount = NetSuiteSuiteQlRowReader.GetDecimal(row, "amount"),
             Status = NetSuiteSuiteQlRowReader.GetString(row, "status") ?? "Open"

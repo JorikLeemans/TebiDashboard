@@ -5,41 +5,80 @@ namespace TebiDashboard.Infrastructure.Tests.NetSuite;
 public sealed class NetSuiteSuiteQlQueriesTests
 {
     [Fact]
-    public void Customers_IncludesTebiFieldNames()
+    public void Customers_UsesTebiSuiteQlFieldNames()
     {
         var sql = NetSuiteSuiteQlQueries.Customers();
 
-        Assert.Contains("entityid", sql);
-        Assert.Contains("companyname", sql);
-        Assert.DoesNotContain("defaultaddress", sql);
+        Assert.Contains("entityId", sql);
+        Assert.Contains("companyName", sql);
+        Assert.Contains("defaultBillingAddress", sql);
+        Assert.Contains("isInactive", sql);
+        Assert.DoesNotContain("defaultaddress", sql, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void InventoryItems_UsesItemIdInsteadOfDisplayName()
+    public void Vendors_UsesTebiSuiteQlFieldNames()
+    {
+        var sql = NetSuiteSuiteQlQueries.Vendors();
+
+        Assert.Contains("entityId", sql);
+        Assert.Contains("companyName", sql);
+        Assert.Contains("defaultBillingAddress", sql);
+        Assert.Contains("isInactive", sql);
+    }
+
+    [Fact]
+    public void InventoryItems_UsesTebiSuiteQlFieldNames()
     {
         var sql = NetSuiteSuiteQlQueries.InventoryItems();
 
-        Assert.Contains("itemid", sql);
-        Assert.DoesNotContain("displayname", sql);
+        Assert.Contains("itemId", sql);
+        Assert.Contains("upcCode", sql);
+        Assert.Contains("reorderPoint", sql);
+        Assert.DoesNotContain("displayname", sql, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Invoices_UsesSubtotalExclVatAndSubsidiary()
+    public void Invoices_UsesInvoiceTableWithExclVatAmount()
     {
         var sql = NetSuiteSuiteQlQueries.Invoices(new DateOnly(2026, 1, 1));
 
-        Assert.Contains("subtotal", sql);
+        Assert.Contains("FROM invoice", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("tranDate", sql);
+        Assert.Contains("taxTotal", sql);
         Assert.Contains("subsidiary", sql);
-        Assert.DoesNotContain("foreigntotal", sql);
+        Assert.DoesNotContain("transactionline", sql, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void VendorBills_UsesTotalAmount()
+    public void VendorBills_UsesForeignTotalWithoutJoin()
     {
         var sql = NetSuiteSuiteQlQueries.VendorBills(new DateOnly(2026, 1, 1));
 
-        Assert.Contains("total", sql);
-        Assert.DoesNotContain("foreigntotal", sql);
+        Assert.Contains("foreigntotal", sql);
+        Assert.DoesNotContain("LEFT JOIN vendor", sql, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void OpenSalesOrderLines_UsesSalesOrderTable()
+    {
+        var sql = NetSuiteSuiteQlQueries.OpenSalesOrderLines(new DateOnly(2026, 1, 1));
+
+        Assert.Contains("INNER JOIN salesorder", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("so.tranDate", sql);
+        Assert.Contains("so.entity", sql);
+        Assert.DoesNotContain("type = 'SalesOrd'", sql, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void OpenPurchaseOrderLines_UsesPurchaseOrderTable()
+    {
+        var sql = NetSuiteSuiteQlQueries.OpenPurchaseOrderLines(new DateOnly(2026, 1, 1));
+
+        Assert.Contains("INNER JOIN purchaseorder", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("po.tranDate", sql);
+        Assert.Contains("po.entity", sql);
+        Assert.DoesNotContain("type = 'PurchOrd'", sql, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
