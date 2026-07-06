@@ -217,7 +217,8 @@
 
         try
         {
-            _inventoryItems = await ApiClient.GetInventoryItemsAsync();
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            _inventoryItems = await ApiClient.GetInventoryItemsAsync(new DateOnly(today.Year, 1, 1), today);
             var goals = await ApiClient.GetGoalsAsync(_selectedYear);
 
             ResetCompanyTargets();

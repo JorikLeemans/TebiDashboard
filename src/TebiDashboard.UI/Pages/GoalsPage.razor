@@ -203,15 +203,7 @@
 
         var revenue = await ApiClient.GetRevenueAsync(from, to);
 
-        _dailyRevenueChartItems = revenue
-            .GroupBy(row => row.Date)
-            .OrderBy(group => group.Key)
-            .Select(group => new ChartBarItem
-            {
-                Label = group.Key.ToString("d"),
-                Value = group.Sum(row => row.Amount)
-            })
-            .ToList();
+        _dailyRevenueChartItems = RevenueChartItems.FromDailyTotals(revenue);
     }
 
     private string FormatItemGoalTitle(GoalDto goal)

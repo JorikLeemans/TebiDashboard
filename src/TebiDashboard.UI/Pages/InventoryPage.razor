@@ -2,19 +2,23 @@
 @layout DashboardLayout
 @using TebiDashboard.Shared.Dtos
 @using TebiDashboard.UI.Helpers
+@inject IPeriodFilterService InjectedPeriodFilter
 @inject DashboardApiClient ApiClient
 @inject IAuthStateService AuthState
 @inject NavigationManager Navigation
+@implements IDisposable
 
 <PageTitle>Inventory — TEBI Dashboard</PageTitle>
 
 <div class="inventory-page">
     <header class="inventory-page__header">
         <h1>Inventory</h1>
-        <p class="inventory-page__subtitle">All items currently in stock</p>
+        <p class="inventory-page__subtitle">
+            Stock levels and sales activity for @PeriodFilter.From.ToString("d") – @PeriodFilter.To.ToString("d")
+        </p>
     </header>
 
-    @if (_isLoading)
+    @if (_isInitialLoad && _isLoading)
     {
         <p class="inventory-page__status">Loading inventory...</p>
     }
@@ -101,12 +105,20 @@
 </div>
 
 @code {
+    [CascadingParameter(Name = "PeriodFilter")]
+    private IPeriodFilterService? CascadedPeriodFilter { get; set; }
+
+    private IPeriodFilterService PeriodFilter => CascadedPeriodFilter ?? InjectedPeriodFilter;
+
+    private readonly PeriodFilterSubscription _periodSubscription = new();
+    private readonly PeriodFilterReload _periodReload = new();
     private IReadOnlyList<InventoryItemDto> _items = [];
     private string _searchText = string.Empty;
     private string _stockFilter = "all";
     private int _pageSize = ListPagination.DefaultPageSize;
     private int _currentPage = 1;
     private bool _isLoading = true;
+    private bool _isInitialLoad = true;
     private string? _error;
 
     private List<InventoryItemDto> FilteredItems => _items.Where(MatchesFilters).ToList();
@@ -116,6 +128,11 @@
 
     private bool HasActiveFilters =>
         !string.IsNullOrWhiteSpace(_searchText) || _stockFilter != "all";
+
+    protected override void OnParametersSet()
+    {
+        _periodSubscription.Bind(CascadedPeriodFilter, InjectedPeriodFilter, OnPeriodChanged);
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -127,17 +144,66 @@
             return;
         }
 
+        await LoadInventoryAsync(_periodReload.BeginReload(), showLoadingSpinner: true);
+    }
+
+    private void OnPeriodChanged()
+    {
+        _ = InvokeAsync(ReloadInventoryAsync);
+    }
+
+    private async Task ReloadInventoryAsync()
+    {
+        var generation = _periodReload.BeginReload();
+        ResetPage();
+        await LoadInventoryAsync(generation, showLoadingSpinner: false);
+
+        if (!_periodReload.IsCurrent(generation))
+        {
+            return;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task LoadInventoryAsync(int generation, bool showLoadingSpinner)
+    {
+        var from = PeriodFilter.From;
+        var to = PeriodFilter.To;
+
+        if (showLoadingSpinner)
+        {
+            _isLoading = true;
+            _error = null;
+        }
+
         try
         {
-            _items = await ApiClient.GetInventoryItemsAsync();
+            var items = await ApiClient.GetInventoryItemsAsync(from, to);
+
+            if (!_periodReload.IsCurrent(generation))
+            {
+                return;
+            }
+
+            _items = items;
         }
         catch (Exception ex)
         {
+            if (!_periodReload.IsCurrent(generation))
+            {
+                return;
+            }
+
             _error = $"Failed to load inventory: {ex.Message}";
         }
         finally
         {
-            _isLoading = false;
+            if (showLoadingSpinner)
+            {
+                _isLoading = false;
+                _isInitialLoad = false;
+            }
         }
     }
 
@@ -205,5 +271,10 @@
         {
             OpenItem(itemId);
         }
+    }
+
+    public void Dispose()
+    {
+        _periodSubscription.Dispose();
     }
 }

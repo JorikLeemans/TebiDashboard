@@ -14,7 +14,7 @@
         <a href="/suppliers" class="supplier-detail__back">← Back to suppliers</a>
     </nav>
 
-    @if (_isLoading)
+    @if (_isInitialLoad && _isLoading)
     {
         <p class="supplier-detail__status">Loading supplier details...</p>
     }
@@ -185,6 +185,7 @@
 
     private IPeriodFilterService PeriodFilter => CascadedPeriodFilter ?? InjectedPeriodFilter;
 
+    private readonly PeriodFilterSubscription _periodSubscription = new();
     private readonly PeriodFilterReload _periodReload = new();
 
     [Parameter]
@@ -192,11 +193,17 @@
 
     private SupplierDetailDto? _detail;
     private bool _isLoading = true;
+    private bool _isInitialLoad = true;
     private string? _error;
 
     // Footer totals show how expenses and purchase orders add up to Total purchased.
     private decimal ExpensesTotal => _detail?.Expenses.Sum(row => row.Amount) ?? 0m;
     private decimal PurchaseOrdersTotal => _detail?.PurchaseOrders.Sum(order => order.Amount) ?? 0m;
+
+    protected override void OnParametersSet()
+    {
+        _periodSubscription.Bind(CascadedPeriodFilter, InjectedPeriodFilter, OnPeriodChanged);
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -208,8 +215,7 @@
             return;
         }
 
-        PeriodFilter.OnChanged += OnPeriodChanged;
-        await LoadDetailAsync();
+        await LoadDetailAsync(_periodReload.BeginReload(), showLoadingSpinner: true);
     }
 
     private void OnPeriodChanged()
@@ -219,52 +225,60 @@
 
     private async Task ReloadDetailAsync()
     {
-        var generation = _periodReload.BeginReload(out var cancellationToken);
+        var generation = _periodReload.BeginReload();
+        await LoadDetailAsync(generation, showLoadingSpinner: false);
+
+        if (!_periodReload.IsCurrent(generation))
+        {
+            return;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task LoadDetailAsync(int generation, bool showLoadingSpinner)
+    {
+        var from = PeriodFilter.From;
+        var to = PeriodFilter.To;
+
+        if (showLoadingSpinner)
+        {
+            _isLoading = true;
+            _error = null;
+        }
 
         try
         {
-            await LoadDetailAsync(cancellationToken);
+            var detail = await ApiClient.GetSupplierDetailAsync(SupplierId, from, to);
 
             if (!_periodReload.IsCurrent(generation))
             {
                 return;
             }
-        }
-        catch (OperationCanceledException)
-        {
-            return;
-        }
 
-        await InvokeAsync(StateHasChanged);
-    }
-
-    private async Task LoadDetailAsync(CancellationToken cancellationToken = default)
-    {
-        var from = PeriodFilter.From;
-        var to = PeriodFilter.To;
-        _isLoading = true;
-        _error = null;
-
-        try
-        {
-            _detail = await ApiClient.GetSupplierDetailAsync(SupplierId, from, to, cancellationToken);
+            _detail = detail;
 
             if (_detail is null)
             {
                 _error = $"No supplier found with id '{SupplierId}'.";
             }
         }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
         catch (Exception ex)
         {
+            if (!_periodReload.IsCurrent(generation))
+            {
+                return;
+            }
+
             _error = $"Failed to load supplier details: {ex.Message}";
         }
         finally
         {
-            _isLoading = false;
+            if (showLoadingSpinner)
+            {
+                _isLoading = false;
+                _isInitialLoad = false;
+            }
         }
     }
 
@@ -272,7 +286,6 @@
 
     public void Dispose()
     {
-        PeriodFilter.OnChanged -= OnPeriodChanged;
-        _periodReload.Dispose();
+        _periodSubscription.Dispose();
     }
 }

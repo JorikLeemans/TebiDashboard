@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using TebiDashboard.Application.Interfaces;
+using TebiDashboard.Shared.Filters;
 
 namespace TebiDashboard.Api.Controllers;
 
@@ -11,9 +12,18 @@ namespace TebiDashboard.Api.Controllers;
 public class InventoryController(INetSuiteService netSuiteService) : ControllerBase
 {
     [HttpGet("items")]
-    public async Task<IActionResult> GetItems(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetItems(
+        [FromQuery] DateOnly? from,
+        [FromQuery] DateOnly? to,
+        CancellationToken cancellationToken)
     {
-        var items = await netSuiteService.GetInventoryItemsAsync(cancellationToken);
+        var filter = new DateRangeFilter
+        {
+            From = from ?? DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2)),
+            To = to ?? DateOnly.FromDateTime(DateTime.UtcNow)
+        };
+
+        var items = await netSuiteService.GetInventoryItemsAsync(filter, cancellationToken);
         return Ok(items);
     }
 

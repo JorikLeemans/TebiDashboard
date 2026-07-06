@@ -9,8 +9,8 @@ public sealed class PeriodFilterReloadTests
     {
         var reload = new PeriodFilterReload();
 
-        var firstGeneration = reload.BeginReload(out _);
-        var secondGeneration = reload.BeginReload(out _);
+        var firstGeneration = reload.BeginReload();
+        var secondGeneration = reload.BeginReload();
 
         Assert.False(reload.IsCurrent(firstGeneration));
         Assert.True(reload.IsCurrent(secondGeneration));

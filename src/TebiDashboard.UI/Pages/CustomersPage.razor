@@ -18,7 +18,7 @@
         </p>
     </header>
 
-    @if (_isLoading)
+    @if (_isInitialLoad && _isLoading)
     {
         <p class="customers-page__status">Loading customers...</p>
     }
@@ -97,6 +97,7 @@
 
     private IPeriodFilterService PeriodFilter => CascadedPeriodFilter ?? InjectedPeriodFilter;
 
+    private readonly PeriodFilterSubscription _periodSubscription = new();
     private readonly PeriodFilterReload _periodReload = new();
     private IReadOnlyList<CustomerOverviewDto> _customers = [];
     private string _searchText = string.Empty;
@@ -104,6 +105,7 @@
     private int _pageSize = ListPagination.DefaultPageSize;
     private int _currentPage = 1;
     private bool _isLoading = true;
+    private bool _isInitialLoad = true;
     private string? _error;
 
     private List<CustomerOverviewDto> FilteredCustomers => _customers.Where(MatchesFilters).ToList();
@@ -113,6 +115,11 @@
 
     private bool HasActiveFilters =>
         !string.IsNullOrWhiteSpace(_searchText) || _activityOnly;
+
+    protected override void OnParametersSet()
+    {
+        _periodSubscription.Bind(CascadedPeriodFilter, InjectedPeriodFilter, OnPeriodChanged);
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -124,8 +131,7 @@
             return;
         }
 
-        PeriodFilter.OnChanged += OnPeriodChanged;
-        await LoadCustomersAsync();
+        await LoadCustomersAsync(_periodReload.BeginReload(), showLoadingSpinner: true);
     }
 
     private void OnPeriodChanged()
@@ -135,48 +141,56 @@
 
     private async Task ReloadCustomersAsync()
     {
-        var generation = _periodReload.BeginReload(out var cancellationToken);
+        var generation = _periodReload.BeginReload();
+        ResetPage();
+        await LoadCustomersAsync(generation, showLoadingSpinner: false);
+
+        if (!_periodReload.IsCurrent(generation))
+        {
+            return;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task LoadCustomersAsync(int generation, bool showLoadingSpinner)
+    {
+        var from = PeriodFilter.From;
+        var to = PeriodFilter.To;
+
+        if (showLoadingSpinner)
+        {
+            _isLoading = true;
+            _error = null;
+        }
 
         try
         {
-            ResetPage();
-            await LoadCustomersAsync(cancellationToken);
+            var customers = await ApiClient.GetCustomersOverviewAsync(from, to);
 
             if (!_periodReload.IsCurrent(generation))
             {
                 return;
             }
-        }
-        catch (OperationCanceledException)
-        {
-            return;
-        }
 
-        await InvokeAsync(StateHasChanged);
-    }
-
-    private async Task LoadCustomersAsync(CancellationToken cancellationToken = default)
-    {
-        var from = PeriodFilter.From;
-        var to = PeriodFilter.To;
-        _isLoading = true;
-        _error = null;
-
-        try
-        {
-            _customers = await ApiClient.GetCustomersOverviewAsync(from, to, cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
+            _customers = customers;
         }
         catch (Exception ex)
         {
+            if (!_periodReload.IsCurrent(generation))
+            {
+                return;
+            }
+
             _error = $"Failed to load customers: {ex.Message}";
         }
         finally
         {
-            _isLoading = false;
+            if (showLoadingSpinner)
+            {
+                _isLoading = false;
+                _isInitialLoad = false;
+            }
         }
     }
 
@@ -238,7 +252,6 @@
 
     public void Dispose()
     {
-        PeriodFilter.OnChanged -= OnPeriodChanged;
-        _periodReload.Dispose();
+        _periodSubscription.Dispose();
     }
 }
