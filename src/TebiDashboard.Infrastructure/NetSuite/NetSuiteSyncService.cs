@@ -221,7 +221,8 @@ public sealed class NetSuiteSyncService(
                     ?? "Unknown item",
                 Barcode = NetSuiteSuiteQlRowReader.GetString(row, "upccode", "upcCode") ?? string.Empty,
                 QuantityOnHand = 0m,
-                ReorderPoint = NetSuiteSuiteQlRowReader.GetDecimal(row, "reorderpoint", "reorderPoint"),
+                // reorderPoint is not queryable via SuiteQL on item; default to 0 until a custom field is mapped.
+                ReorderPoint = 0m,
                 RecentSalesVolume = 0m,
                 IsLowStock = false
             });
