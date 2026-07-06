@@ -53,6 +53,12 @@
         }
         else
         {
+            <ListPaginationBar PageSize="@_pageSize"
+                               PageSizeChanged="OnPageSizeChanged"
+                               CurrentPage="@GetSafeCurrentPage()"
+                               CurrentPageChanged="OnCurrentPageChanged"
+                               TotalItems="@FilteredItems.Count" />
+
             <div class="inventory-table-wrap">
                 <table class="inventory-table" aria-label="Inventory items">
                     <thead>
@@ -66,7 +72,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var item in FilteredItems)
+                        @foreach (var item in PagedItems)
                         {
                             <tr class="inventory-table__row" @onclick="() => OpenItem(item.ItemId)" tabindex="0"
                                 @onkeydown="(e) => HandleRowKeyDown(e, item.ItemId)">
@@ -98,10 +104,15 @@
     private IReadOnlyList<InventoryItemDto> _items = [];
     private string _searchText = string.Empty;
     private string _stockFilter = "all";
+    private int _pageSize = ListPagination.DefaultPageSize;
+    private int _currentPage = 1;
     private bool _isLoading = true;
     private string? _error;
 
     private List<InventoryItemDto> FilteredItems => _items.Where(MatchesFilters).ToList();
+
+    private List<InventoryItemDto> PagedItems =>
+        ListPagination.GetPageSlice(FilteredItems, GetSafeCurrentPage(), _pageSize);
 
     private bool HasActiveFilters =>
         !string.IsNullOrWhiteSpace(_searchText) || _stockFilter != "all";
@@ -148,17 +159,42 @@
     private void OnSearchTextChanged(string value)
     {
         _searchText = value;
+        ResetPage();
     }
 
     private void OnStockFilterChanged(ChangeEventArgs args)
     {
         _stockFilter = args.Value?.ToString() ?? "all";
+        ResetPage();
+    }
+
+    private void OnPageSizeChanged(int pageSize)
+    {
+        _pageSize = pageSize;
+        ResetPage();
+    }
+
+    private void OnCurrentPageChanged(int page)
+    {
+        _currentPage = page;
+    }
+
+    private int GetSafeCurrentPage()
+    {
+        var totalPages = ListPagination.GetTotalPages(FilteredItems.Count, _pageSize);
+        return ListPagination.ClampPage(_currentPage, totalPages);
     }
 
     private void ClearFilters()
     {
         _searchText = string.Empty;
         _stockFilter = "all";
+        ResetPage();
+    }
+
+    private void ResetPage()
+    {
+        _currentPage = 1;
     }
 
     private void OpenItem(string itemId) => Navigation.NavigateTo($"/inventory/{Uri.EscapeDataString(itemId)}");
