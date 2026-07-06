@@ -1,359 +1,216 @@
 @page "/customers"
-
 @layout DashboardLayout
-
 @using TebiDashboard.Shared.Dtos
-
 @using TebiDashboard.UI.Helpers
-
 @inject DashboardApiClient ApiClient
-
 @inject IPeriodFilterService PeriodFilter
-
 @inject IAuthStateService AuthState
-
 @inject NavigationManager Navigation
-
 @implements IDisposable
-
-
 
 <PageTitle>Customers — TEBI Dashboard</PageTitle>
 
-
-
 <div class="customers-page">
-
     <header class="customers-page__header">
-
         <h1>Customers</h1>
-
         <p class="customers-page__subtitle">
-
             All customers with spend and sales orders for @PeriodFilter.From.ToString("d") – @PeriodFilter.To.ToString("d")
-
         </p>
-
     </header>
 
-
-
     @if (_isLoading)
-
     {
-
         <p class="customers-page__status">Loading customers...</p>
-
     }
-
     else if (_error is not null)
-
     {
-
         <p class="error" role="alert">@_error</p>
-
     }
-
     else if (_customers.Count == 0)
-
     {
-
         <p class="customers-page__status">No customers found.</p>
-
     }
-
     else
-
     {
-
         <ListSearchBar Placeholder="Name, city, email, or ID"
-
                        SearchText="@_searchText"
-
                        SearchTextChanged="OnSearchTextChanged"
-
                        FilteredCount="@FilteredCustomers.Count"
-
                        TotalCount="@_customers.Count"
-
                        ShowClear="@HasActiveFilters"
-
                        OnClear="ClearFilters">
-
             <AdditionalFilters>
-
                 <label class="list-search__checkbox">
-
                     <input type="checkbox" checked="@_activityOnly" @onchange="OnActivityOnlyChanged" />
-
                     With activity in period
-
                 </label>
-
             </AdditionalFilters>
-
         </ListSearchBar>
 
-
-
         @if (FilteredCustomers.Count == 0)
-
         {
-
             <p class="customers-page__status">No customers match your filters.</p>
-
         }
-
         else
-
         {
+            <ListPaginationBar PageSize="@_pageSize"
+                               PageSizeChanged="OnPageSizeChanged"
+                               CurrentPage="@GetSafeCurrentPage()"
+                               CurrentPageChanged="OnCurrentPageChanged"
+                               TotalItems="@FilteredCustomers.Count" />
 
             <div class="customers-table-wrap">
-
                 <table class="customers-table" aria-label="All customers">
-
                     <thead>
-
                         <tr>
-
                             <th scope="col">Customer</th>
-
                             <th scope="col">City</th>
-
                             <th scope="col">Total spent</th>
-
                             <th scope="col">Revenue entries</th>
-
                             <th scope="col">Sales orders</th>
-
                         </tr>
-
                     </thead>
-
                     <tbody>
-
-                        @foreach (var customer in FilteredCustomers)
-
+                        @foreach (var customer in PagedCustomers)
                         {
-
                             <tr class="customers-table__row"
-
                                 @onclick="() => OpenCustomer(customer.CustomerId)"
-
                                 tabindex="0"
-
                                 @onkeydown="(e) => HandleRowKeyDown(e, customer.CustomerId)">
-
                                 <td class="customers-table__name">@customer.Name</td>
-
                                 <td>@customer.City</td>
-
                                 <td>@EuroFormatting.FormatWhole(customer.TotalSpent)</td>
-
                                 <td>@customer.RevenueEntryCount</td>
-
                                 <td>@customer.SalesOrderCount</td>
-
                             </tr>
-
                         }
-
                     </tbody>
-
                 </table>
-
             </div>
-
         }
-
     }
-
 </div>
 
-
-
 @code {
-
     private IReadOnlyList<CustomerOverviewDto> _customers = [];
-
     private string _searchText = string.Empty;
-
     private bool _activityOnly;
-
+    private int _pageSize = ListPagination.DefaultPageSize;
+    private int _currentPage = 1;
     private bool _isLoading = true;
-
     private string? _error;
-
-
 
     private List<CustomerOverviewDto> FilteredCustomers => _customers.Where(MatchesFilters).ToList();
 
-
+    private List<CustomerOverviewDto> PagedCustomers =>
+        ListPagination.GetPageSlice(FilteredCustomers, GetSafeCurrentPage(), _pageSize);
 
     private bool HasActiveFilters =>
-
         !string.IsNullOrWhiteSpace(_searchText) || _activityOnly;
 
-
-
     protected override async Task OnInitializedAsync()
-
     {
-
         await AuthState.InitializeAsync();
 
-
-
         if (!AuthState.IsAuthenticated)
-
         {
-
             Navigation.NavigateTo("/login");
-
             return;
-
         }
-
-
 
         PeriodFilter.OnChanged += OnPeriodChanged;
-
         await LoadCustomersAsync();
-
     }
-
-
 
     private void OnPeriodChanged()
-
     {
-
         _ = ReloadCustomersAsync();
-
     }
-
-
 
     private async Task ReloadCustomersAsync()
-
     {
-
+        ResetPage();
         await LoadCustomersAsync();
-
         await InvokeAsync(StateHasChanged);
-
     }
-
-
 
     private async Task LoadCustomersAsync()
-
     {
-
         _isLoading = true;
-
         _error = null;
 
-
-
         try
-
         {
-
             _customers = await ApiClient.GetCustomersOverviewAsync(PeriodFilter.From, PeriodFilter.To);
-
         }
-
         catch (Exception ex)
-
         {
-
             _error = $"Failed to load customers: {ex.Message}";
-
         }
-
         finally
-
         {
-
             _isLoading = false;
-
         }
-
     }
-
-
 
     private bool MatchesFilters(CustomerOverviewDto customer) =>
-
         EntityListFilters.MatchesSearch(_searchText, customer.Name, customer.City, customer.ContactEmail, customer.CustomerId)
-
         && (!_activityOnly || customer.TotalSpent > 0 || customer.SalesOrderCount > 0 || customer.RevenueEntryCount > 0);
 
-
+    private int GetSafeCurrentPage()
+    {
+        var totalPages = ListPagination.GetTotalPages(FilteredCustomers.Count, _pageSize);
+        return ListPagination.ClampPage(_currentPage, totalPages);
+    }
 
     private void OnSearchTextChanged(string value)
-
     {
-
         _searchText = value;
-
+        ResetPage();
     }
-
-
 
     private void OnActivityOnlyChanged(ChangeEventArgs args)
-
     {
-
         _activityOnly = args.Value is bool enabled && enabled;
-
+        ResetPage();
     }
 
+    private void OnPageSizeChanged(int pageSize)
+    {
+        _pageSize = pageSize;
+        ResetPage();
+    }
 
+    private void OnCurrentPageChanged(int page)
+    {
+        _currentPage = page;
+    }
 
     private void ClearFilters()
-
     {
-
         _searchText = string.Empty;
-
         _activityOnly = false;
-
+        ResetPage();
     }
 
-
+    private void ResetPage()
+    {
+        _currentPage = 1;
+    }
 
     private void OpenCustomer(string customerId) =>
-
         Navigation.NavigateTo($"/customers/{Uri.EscapeDataString(customerId)}");
 
-
-
     private void HandleRowKeyDown(KeyboardEventArgs args, string customerId)
-
     {
-
         if (args.Key is "Enter" or " ")
-
         {
-
             OpenCustomer(customerId);
-
         }
-
     }
-
-
 
     public void Dispose()
-
     {
-
         PeriodFilter.OnChanged -= OnPeriodChanged;
-
     }
-
 }
-
-

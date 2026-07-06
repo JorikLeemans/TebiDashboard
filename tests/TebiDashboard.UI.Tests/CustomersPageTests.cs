@@ -64,6 +64,36 @@ public class CustomersPageTests
         Assert.DoesNotContain("Bouwbedrijf Jansen", cut.Markup);
     }
 
+    [Fact]
+    public void CustomersPage_PaginatesRows_WhenPageSizeIsReduced()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        var customers = Enumerable.Range(1, 12)
+            .Select(i => new CustomerOverviewDto
+            {
+                CustomerId = $"c{i}",
+                Name = $"Customer {i}",
+                City = "Utrecht",
+                TotalSpent = i * 1000m,
+                RevenueEntryCount = 1,
+                SalesOrderCount = 0
+            })
+            .ToList();
+
+        SetupCustomersOverview(mockHttp, customers);
+
+        var cut = ctx.Render<CustomersPage>();
+        cut.WaitForElement(".list-pagination", TimeSpan.FromSeconds(5));
+
+        cut.Find("select").Change("5");
+
+        var rows = cut.FindAll(".customers-table tbody tr");
+        Assert.Equal(5, rows.Count);
+        Assert.Contains("Results per page", cut.Markup);
+        Assert.Contains("Customer 1", cut.Markup);
+        Assert.DoesNotContain("Customer 6", cut.Markup);
+    }
+
     private static void SetupCustomersOverview(MockHttpMessageHandler mockHttp, IReadOnlyList<CustomerOverviewDto> customers)
     {
         mockHttp.When(HttpMethod.Get, "*/api/customers/overview*")
