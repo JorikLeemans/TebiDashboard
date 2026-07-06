@@ -1,0 +1,17 @@
+@using TebiDashboard.UI.Helpers
+
+@* Table header for status columns; shows a legend on hover via the native title tooltip. *@
+<th scope="col"
+    class="status-column-header"
+    title="@StatusLegends.GetTooltip(Kind)"
+    aria-label="@($"{Label}. {StatusLegends.GetTooltip(Kind)}")">
+    @Label
+</th>
+
+@code {
+    [Parameter]
+    public string Label { get; set; } = "Status";
+
+    [Parameter]
+    public StatusLegendKind Kind { get; set; }
+}

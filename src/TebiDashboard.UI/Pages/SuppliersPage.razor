@@ -3,7 +3,7 @@
 @using TebiDashboard.Shared.Dtos
 @using TebiDashboard.UI.Helpers
 @inject DashboardApiClient ApiClient
-@inject IPeriodFilterService PeriodFilter
+@inject IPeriodFilterService InjectedPeriodFilter
 @inject IAuthStateService AuthState
 @inject NavigationManager Navigation
 @implements IDisposable
@@ -94,6 +94,12 @@
 </div>
 
 @code {
+    [CascadingParameter(Name = "PeriodFilter")]
+    private IPeriodFilterService? CascadedPeriodFilter { get; set; }
+
+    private IPeriodFilterService PeriodFilter => CascadedPeriodFilter ?? InjectedPeriodFilter;
+
+    private readonly PeriodFilterReload _periodReload = new();
     private IReadOnlyList<SupplierOverviewDto> _suppliers = [];
     private string _searchText = string.Empty;
     private bool _activityOnly;
@@ -126,24 +132,45 @@
 
     private void OnPeriodChanged()
     {
-        _ = ReloadSuppliersAsync();
+        _ = InvokeAsync(ReloadSuppliersAsync);
     }
 
     private async Task ReloadSuppliersAsync()
     {
-        ResetPage();
-        await LoadSuppliersAsync();
+        var generation = _periodReload.BeginReload(out var cancellationToken);
+
+        try
+        {
+            ResetPage();
+            await LoadSuppliersAsync(cancellationToken);
+
+            if (!_periodReload.IsCurrent(generation))
+            {
+                return;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
         await InvokeAsync(StateHasChanged);
     }
 
-    private async Task LoadSuppliersAsync()
+    private async Task LoadSuppliersAsync(CancellationToken cancellationToken = default)
     {
+        var from = PeriodFilter.From;
+        var to = PeriodFilter.To;
         _isLoading = true;
         _error = null;
 
         try
         {
-            _suppliers = await ApiClient.GetSuppliersOverviewAsync(PeriodFilter.From, PeriodFilter.To);
+            _suppliers = await ApiClient.GetSuppliersOverviewAsync(from, to, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -218,5 +245,6 @@
     public void Dispose()
     {
         PeriodFilter.OnChanged -= OnPeriodChanged;
+        _periodReload.Dispose();
     }
 }

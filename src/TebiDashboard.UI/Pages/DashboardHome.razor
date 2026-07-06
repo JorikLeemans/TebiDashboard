@@ -2,7 +2,7 @@
 @layout DashboardLayout
 @using TebiDashboard.Shared.Dtos
 @inject DashboardApiClient ApiClient
-@inject IPeriodFilterService PeriodFilter
+@inject IPeriodFilterService InjectedPeriodFilter
 @inject IAuthStateService AuthState
 @inject NavigationManager Navigation
 @implements IDisposable
@@ -139,7 +139,7 @@
                             <th>Customer / Supplier</th>
                             <th>Item</th>
                             <th>Qty open</th>
-                            <th>Status</th>
+                            <StatusColumnHeader Kind="StatusLegendKind.OpenTransaction" />
                         </tr>
                     </thead>
                     <tbody>
@@ -235,7 +235,7 @@
                         <tr>
                             <th>Item</th>
                             <th>On hand</th>
-                            <th>Status</th>
+                            <StatusColumnHeader Kind="StatusLegendKind.InventoryStock" />
                         </tr>
                     </thead>
                     <tbody>
@@ -255,6 +255,12 @@
 </div>
 
 @code {
+    [CascadingParameter(Name = "PeriodFilter")]
+    private IPeriodFilterService? CascadedPeriodFilter { get; set; }
+
+    private IPeriodFilterService PeriodFilter => CascadedPeriodFilter ?? InjectedPeriodFilter;
+
+    private readonly PeriodFilterReload _periodReload = new();
     private PeriodOverviewDto? _overview;
     private IReadOnlyList<ChartBarItem> _revenueChartItems = [];
     private decimal _quarterGoalPercentage;
@@ -278,23 +284,40 @@
 
     private void OnPeriodChanged()
     {
-        _ = ReloadOverviewAsync();
+        _ = InvokeAsync(ReloadOverviewAsync);
     }
 
     private async Task ReloadOverviewAsync()
     {
-        await LoadOverviewAsync();
+        var generation = _periodReload.BeginReload(out var cancellationToken);
+
+        try
+        {
+            await LoadOverviewAsync(cancellationToken);
+
+            if (!_periodReload.IsCurrent(generation))
+            {
+                return;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
         await InvokeAsync(StateHasChanged);
     }
 
-    private async Task LoadOverviewAsync()
+    private async Task LoadOverviewAsync(CancellationToken cancellationToken = default)
     {
+        var from = PeriodFilter.From;
+        var to = PeriodFilter.To;
         _isLoading = true;
         _error = null;
 
         try
         {
-            _overview = await ApiClient.GetPeriodOverviewAsync(PeriodFilter.From, PeriodFilter.To);
+            _overview = await ApiClient.GetPeriodOverviewAsync(from, to, cancellationToken);
             if (_overview is null)
             {
                 _error = "No overview data returned from the API.";
@@ -310,7 +333,11 @@
                 })
                 .ToList();
 
-            await LoadQuarterGoalAsync();
+            await LoadQuarterGoalAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -322,13 +349,13 @@
         }
     }
 
-    private async Task LoadQuarterGoalAsync()
+    private async Task LoadQuarterGoalAsync(CancellationToken cancellationToken = default)
     {
         var periodEnd = PeriodFilter.To;
         var quarter = PeriodHelper.GetQuarter(periodEnd);
         _goalPeriodLabel = $"{quarter} {periodEnd.Year}";
 
-        var goals = await ApiClient.GetGoalsAsync(periodEnd.Year, quarter);
+        var goals = await ApiClient.GetGoalsAsync(periodEnd.Year, quarter, cancellationToken);
         var companyGoal = goals.FirstOrDefault(goal => string.IsNullOrWhiteSpace(goal.ItemId));
 
         _quarterGoalPercentage = companyGoal?.Percentage ?? _overview?.Summary.GoalPercentage ?? 0m;
@@ -339,5 +366,6 @@
     public void Dispose()
     {
         PeriodFilter.OnChanged -= OnPeriodChanged;
+        _periodReload.Dispose();
     }
 }

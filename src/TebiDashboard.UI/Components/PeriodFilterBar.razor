@@ -1,4 +1,3 @@
-@inject IPeriodFilterService PeriodFilter
 @implements IDisposable
 
 <section class="period-filter" aria-label="Period filter">
@@ -50,6 +49,9 @@
 </section>
 
 @code {
+    [Parameter, EditorRequired]
+    public IPeriodFilterService PeriodFilter { get; set; } = default!;
+
     private PeriodFilterPreset _activePreset = PeriodFilterPreset.Last2Days;
     private string _customFrom = "";
     private string _customTo = "";
@@ -72,7 +74,11 @@
         _customTo = PeriodFilter.To.ToString("yyyy-MM-dd");
     }
 
-    private void ToggleExpanded() => PeriodFilter.SetExpanded(!PeriodFilter.IsExpanded);
+    private void ToggleExpanded()
+    {
+        PeriodFilter.SetExpanded(!PeriodFilter.IsExpanded);
+        StateHasChanged();
+    }
 
     private void Apply(PeriodFilterPreset preset)
     {

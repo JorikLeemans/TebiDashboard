@@ -1,33 +1,19 @@
 @inherits LayoutComponentBase
-
 @using TebiDashboard.Shared.Constants
-
 @inject IAuthStateService AuthState
-
+@inject IPeriodFilterService PeriodFilter
 @inject NavigationManager Navigation
 
-
-
 <div class="dashboard-layout">
-
     <header class="dashboard-header">
-
         <div class="dashboard-header__brand">
-
             <img src="_content/TebiDashboard.UI/images/tebi-logo.png" alt="TEBI" class="dashboard-header__logo" />
-
             <span class="dashboard-header__title">Dashboard</span>
-
         </div>
 
-
-
         @if (AuthState.IsAuthenticated)
-
         {
-
             <nav class="dashboard-header__nav" aria-label="Main navigation">
-
                 <a href="/dashboard" class="dashboard-header__link">Home</a>
                 <a href="/goals" class="dashboard-header__link">Goals</a>
                 <a href="/customers" class="dashboard-header__link">Customers</a>
@@ -35,67 +21,37 @@
                 <a href="/inventory" class="dashboard-header__link">Inventory</a>
 
                 @if (AuthState.CanAccessAdminDashboard())
-
                 {
-
                     <a href="/admin" class="dashboard-header__link dashboard-header__link--admin">Administration</a>
-
                 }
-
             </nav>
 
-
-
             <div class="dashboard-header__user">
-
                 <span class="dashboard-header__username">@AuthState.Username</span>
-
                 <span class="dashboard-header__role">@AuthState.Role</span>
-
                 <button type="button" class="btn-logout" @onclick="SignOutAsync">Sign out</button>
-
             </div>
-
         }
-
     </header>
 
-
-
     <main class="dashboard-main">
-
-        <PeriodFilterBar />
-
-        @Body
-
+        @* Share one period-filter instance between the bar and all dashboard pages. *@
+        <CascadingValue Value="PeriodFilter" Name="PeriodFilter">
+            <PeriodFilterBar PeriodFilter="PeriodFilter" />
+            @Body
+        </CascadingValue>
     </main>
-
 </div>
 
-
-
 @code {
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthState.InitializeAsync();
+    }
 
-  protected override async Task OnInitializedAsync()
-
-  {
-
-    await AuthState.InitializeAsync();
-
-  }
-
-
-
-  private async Task SignOutAsync()
-
-  {
-
-    await AuthState.SignOutAsync();
-
-    Navigation.NavigateTo("/login");
-
-  }
-
+    private async Task SignOutAsync()
+    {
+        await AuthState.SignOutAsync();
+        Navigation.NavigateTo("/login");
+    }
 }
-
-

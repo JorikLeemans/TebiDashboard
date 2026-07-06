@@ -5,7 +5,8 @@ namespace TebiDashboard.UI.Services;
 /// </summary>
 public sealed class PeriodFilterService : IPeriodFilterService
 {
-    private static readonly DateOnly Today = DateOnly.FromDateTime(DateTime.UtcNow);
+    // Recompute each time so presets stay aligned with the current calendar day.
+    private static DateOnly Today => DateOnly.FromDateTime(DateTime.UtcNow);
 
     public DateOnly From { get; private set; } = Today.AddDays(-2);
 
@@ -45,6 +46,6 @@ public sealed class PeriodFilterService : IPeriodFilterService
         }
 
         IsExpanded = expanded;
-        OnChanged?.Invoke();
+        // UI expand/collapse should not trigger data reloads on dashboard pages.
     }
 }

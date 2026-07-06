@@ -2,7 +2,7 @@
 @layout DashboardLayout
 @using TebiDashboard.Shared.Dtos
 @inject DashboardApiClient ApiClient
-@inject IPeriodFilterService PeriodFilter
+@inject IPeriodFilterService InjectedPeriodFilter
 @inject IAuthStateService AuthState
 @inject NavigationManager Navigation
 @implements IDisposable
@@ -108,7 +108,7 @@
                             <th scope="col">Item</th>
                             <th scope="col">Qty open</th>
                             <th scope="col">Amount</th>
-                            <th scope="col">Status</th>
+                            <StatusColumnHeader Kind="StatusLegendKind.PurchaseOrder" />
                         </tr>
                     </thead>
                     <tbody>
@@ -180,6 +180,13 @@
 </div>
 
 @code {
+    [CascadingParameter(Name = "PeriodFilter")]
+    private IPeriodFilterService? CascadedPeriodFilter { get; set; }
+
+    private IPeriodFilterService PeriodFilter => CascadedPeriodFilter ?? InjectedPeriodFilter;
+
+    private readonly PeriodFilterReload _periodReload = new();
+
     [Parameter]
     public string SupplierId { get; set; } = string.Empty;
 
@@ -207,28 +214,49 @@
 
     private void OnPeriodChanged()
     {
-        _ = ReloadDetailAsync();
+        _ = InvokeAsync(ReloadDetailAsync);
     }
 
     private async Task ReloadDetailAsync()
     {
-        await LoadDetailAsync();
+        var generation = _periodReload.BeginReload(out var cancellationToken);
+
+        try
+        {
+            await LoadDetailAsync(cancellationToken);
+
+            if (!_periodReload.IsCurrent(generation))
+            {
+                return;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
         await InvokeAsync(StateHasChanged);
     }
 
-    private async Task LoadDetailAsync()
+    private async Task LoadDetailAsync(CancellationToken cancellationToken = default)
     {
+        var from = PeriodFilter.From;
+        var to = PeriodFilter.To;
         _isLoading = true;
         _error = null;
 
         try
         {
-            _detail = await ApiClient.GetSupplierDetailAsync(SupplierId, PeriodFilter.From, PeriodFilter.To);
+            _detail = await ApiClient.GetSupplierDetailAsync(SupplierId, from, to, cancellationToken);
 
             if (_detail is null)
             {
                 _error = $"No supplier found with id '{SupplierId}'.";
             }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -245,5 +273,6 @@
     public void Dispose()
     {
         PeriodFilter.OnChanged -= OnPeriodChanged;
+        _periodReload.Dispose();
     }
 }
