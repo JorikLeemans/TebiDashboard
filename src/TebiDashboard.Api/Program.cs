@@ -12,6 +12,11 @@ if (!string.IsNullOrWhiteSpace(port))
 }
 
 builder.Services.AddControllers();
+builder.Services.AddRequestTimeouts(options =>
+{
+    options.AddPolicy("NetSuiteSync", TimeSpan.FromMinutes(
+        Math.Clamp(builder.Configuration.GetValue("NetSuite:SyncHttpTimeoutMinutes", 30), 1, 120)));
+});
 builder.Services.AddOpenApi();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -49,6 +54,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("Clients");
+app.UseRequestTimeouts();
 app.MapControllers();
 
 app.Run();

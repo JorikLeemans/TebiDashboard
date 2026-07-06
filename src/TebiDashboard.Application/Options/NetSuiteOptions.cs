@@ -63,6 +63,11 @@ public sealed class NetSuiteOptions
     /// </summary>
     public bool ClearDashboardDataOnSync { get; set; } = true;
 
+    /// <summary>
+    /// HTTP timeout (minutes) for NetSuite REST calls and the admin sync API request from the UI.
+    /// </summary>
+    public int SyncHttpTimeoutMinutes { get; set; } = 30;
+
     public bool IsConfigured =>
         Enabled
         && !string.IsNullOrWhiteSpace(AccountId)

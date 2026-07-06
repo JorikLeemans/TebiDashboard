@@ -39,7 +39,12 @@ public static class MauiProgram
         apiBaseUrl = "https://localhost:7119/";
 #endif
 
-        builder.Services.AddSingleton(_ => new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
+        builder.Services.AddSingleton(_ => new HttpClient
+        {
+            BaseAddress = new Uri(apiBaseUrl),
+            // NetSuite sync can exceed the default 100 second HttpClient timeout.
+            Timeout = TimeSpan.FromMinutes(30)
+        });
         builder.Services.AddSingleton<AuthApiClient>();
         builder.Services.AddSingleton<DashboardApiClient>();
         builder.Services.AddScoped<AdminApiClient>();

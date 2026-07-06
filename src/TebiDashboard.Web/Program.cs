@@ -41,10 +41,16 @@ builder.Services.AddScoped<IAuthStateService, AuthStateService>();
 builder.Services.AddScoped<IPeriodFilterService, PeriodFilterService>();
 
 var apiBaseUrl = ResolveApiBaseUrl(builder.Configuration["ApiBaseUrl"]);
+var syncTimeoutMinutes = builder.Configuration.GetValue("NetSuite:SyncHttpTimeoutMinutes", 30);
 
 builder.Services.AddHttpClient<AuthApiClient>(client => client.BaseAddress = apiBaseUrl);
 builder.Services.AddHttpClient<DashboardApiClient>(client => client.BaseAddress = apiBaseUrl);
-builder.Services.AddHttpClient<AdminApiClient>(client => client.BaseAddress = apiBaseUrl);
+builder.Services.AddHttpClient<AdminApiClient>(client =>
+{
+    client.BaseAddress = apiBaseUrl;
+    // NetSuite sync can run many SuiteQL pages; default HttpClient timeout is only 100 seconds.
+    client.Timeout = TimeSpan.FromMinutes(Math.Clamp(syncTimeoutMinutes, 1, 120));
+});
 
 var app = builder.Build();
 
