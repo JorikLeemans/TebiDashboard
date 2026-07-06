@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.Mvc;
 using TebiDashboard.Api.Authorization;
 using TebiDashboard.Application.Interfaces;
@@ -27,6 +28,7 @@ public class NetSuiteController(
     /// Imports NetSuite master and transactional data into the dashboard database.
     /// </summary>
     [HttpPost("sync")]
+    [RequestTimeout("NetSuiteSync")]
     public async Task<IActionResult> SyncDashboardData(CancellationToken cancellationToken)
     {
         if (!AdminRequestContext.IsAdmin(Request))

@@ -21,7 +21,15 @@ public static class DependencyInjection
         services.Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SectionName));
 
         services.AddMemoryCache();
-        services.AddHttpClient(NetSuiteHttpClientNames.Api);
+        services.AddHttpClient(NetSuiteHttpClientNames.Api)
+            .ConfigureHttpClient((serviceProvider, client) =>
+            {
+                var timeoutMinutes = serviceProvider
+                    .GetRequiredService<Microsoft.Extensions.Options.IOptions<NetSuiteOptions>>()
+                    .Value
+                    .SyncHttpTimeoutMinutes;
+                client.Timeout = TimeSpan.FromMinutes(Math.Clamp(timeoutMinutes, 1, 120));
+            });
         services.AddSingleton<INetSuiteTokenProvider, NetSuiteOAuth2TokenProvider>();
         services.AddScoped<INetSuiteConnectionService, NetSuiteConnectionService>();
         services.AddScoped<INetSuiteRestClient, NetSuiteRestClient>();

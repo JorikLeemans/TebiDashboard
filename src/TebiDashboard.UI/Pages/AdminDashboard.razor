@@ -357,6 +357,10 @@
         _statusMessage = "NetSuite data imported successfully.";
       }
     }
+    catch (TaskCanceledException ex) when (!ex.CancellationToken.IsCancellationRequested)
+    {
+      _netSuiteError = "De sync duurde te lang (time-out). Wacht even en probeer opnieuw, of verlaag NetSuite__SyncLookbackDays op de API.";
+    }
     catch (Exception ex)
     {
       _netSuiteError = ex.Message;
