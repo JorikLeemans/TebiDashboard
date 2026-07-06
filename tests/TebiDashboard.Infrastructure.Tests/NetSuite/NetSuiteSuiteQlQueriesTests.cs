@@ -34,7 +34,7 @@ public sealed class NetSuiteSuiteQlQueriesTests
 
         Assert.Contains("itemId", sql);
         Assert.Contains("upcCode", sql);
-        Assert.Contains("reorderPoint", sql);
+        Assert.DoesNotContain("reorderPoint", sql, StringComparison.Ordinal);
         Assert.DoesNotContain("displayname", sql, StringComparison.Ordinal);
     }
 

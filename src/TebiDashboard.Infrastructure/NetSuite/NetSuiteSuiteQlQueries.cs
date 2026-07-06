@@ -40,7 +40,7 @@ internal static class NetSuiteSuiteQlQueries
         """;
 
     /// <summary>
-    /// Item master: id, itemId (SKU), upcCode (barcode), reorderPoint (TEBI SuiteQL field names).
+    /// Item master: id, itemId (SKU), upcCode (barcode). reorderPoint exists in Records Browser but not in SuiteQL item.
     /// </summary>
     public static string InventoryItems() =>
         """
@@ -48,8 +48,7 @@ internal static class NetSuiteSuiteQlQueries
             id,
             itemId,
             displayName,
-            upcCode,
-            NVL(reorderPoint, 0) AS reorderpoint
+            upcCode
         FROM item
         WHERE isInactive = 'F'
           AND itemType IN ('InvtPart', 'Assembly')
