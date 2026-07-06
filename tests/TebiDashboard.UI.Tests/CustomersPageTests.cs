@@ -49,6 +49,21 @@ public class CustomersPageTests
         Assert.Contains("Total spent", cut.Markup);
     }
 
+    [Fact]
+    public void CustomersPage_FiltersRows_BySearchText()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        SetupCustomersOverview(mockHttp, CreateSampleCustomers());
+
+        var cut = ctx.Render<CustomersPage>();
+        cut.WaitForElement(".customers-table", TimeSpan.FromSeconds(5));
+
+        cut.Find("input[type=search]").Input("gemeente");
+
+        Assert.Contains("Gemeente Utrecht", cut.Markup);
+        Assert.DoesNotContain("Bouwbedrijf Jansen", cut.Markup);
+    }
+
     private static void SetupCustomersOverview(MockHttpMessageHandler mockHttp, IReadOnlyList<CustomerOverviewDto> customers)
     {
         mockHttp.When(HttpMethod.Get, "*/api/customers/overview*")
