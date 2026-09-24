@@ -256,7 +256,10 @@ public static class DemoDataSeeder
             ProductGroupId = productGroupId,
             ProductGroupName = ResolveProductGroupName(productGroupId) ?? string.Empty,
             ItemId = linkedItemId,
-            ItemName = DemoItemName(linkedItemId)
+            ItemName = DemoItemName(linkedItemId),
+            // Demo lines for one customer share one invoice so the new column has a parent id.
+            InvoiceId = customerId,
+            InvoiceNumber = $"F-{customerId.ToUpperInvariant()}"
         };
     }
 

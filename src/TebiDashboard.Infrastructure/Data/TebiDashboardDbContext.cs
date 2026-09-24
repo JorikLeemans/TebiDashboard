@@ -65,6 +65,8 @@ public sealed class TebiDashboardDbContext(DbContextOptions<TebiDashboardDbConte
             entity.Property(e => e.ProductGroupName).HasMaxLength(256);
             entity.Property(e => e.ItemId).HasMaxLength(64);
             entity.Property(e => e.ItemName).HasMaxLength(256);
+            entity.Property(e => e.InvoiceId).HasMaxLength(64);
+            entity.Property(e => e.InvoiceNumber).HasMaxLength(64);
         });
 
         modelBuilder.Entity<GoalRecord>(entity =>

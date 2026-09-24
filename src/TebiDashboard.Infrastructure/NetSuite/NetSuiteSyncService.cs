@@ -282,6 +282,9 @@ public sealed class NetSuiteSyncService(
             dbContext.RevenueRecords.Add(new RevenueRecord
             {
                 Id = $"{invoiceId}-{lineId}",
+                // Keep the parent invoice so the UI can group lines under one document.
+                InvoiceId = invoiceId,
+                InvoiceNumber = NetSuiteSuiteQlRowReader.GetString(row, "invoicenumber", "tranid", "tranId") ?? string.Empty,
                 Date = tranDate,
                 Amount = NetSuiteSuiteQlRowReader.GetDecimal(row, "amount"),
                 CustomerId = customerId,
