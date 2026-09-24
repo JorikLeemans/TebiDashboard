@@ -177,8 +177,15 @@ public sealed class NetSuiteSyncService(
         foreach (var row in rows)
         {
             var customerId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id");
-            // Prefer glommedName so individual customers show a real name, not a blank companyName.
-            var name = NetSuiteSuiteQlRowReader.GetString(row, "glommedname", "glommedName", "companyname", "companyName")
+            // entityId is the shared label for companies and persons; glommedName/companyName are fallbacks.
+            var name = NetSuiteSuiteQlRowReader.GetString(
+                    row,
+                    "entityid",
+                    "entityId",
+                    "glommedname",
+                    "glommedName",
+                    "companyname",
+                    "companyName")
                 ?? "Unknown customer";
             // City comes from the default billing address-book row, not the full address blob.
             var city = NetSuiteSuiteQlRowReader.GetString(row, "city") ?? string.Empty;
