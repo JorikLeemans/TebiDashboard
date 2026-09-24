@@ -133,6 +133,7 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             PeriodFrom = filter.From,
             PeriodTo = filter.To,
             TotalSpent = orderTotal > 0 ? orderTotal : revenue.Sum(r => r.Amount),
+            // MapRevenue fills item names; ProductGroupName comes from the stored artikelgroep.
             Revenue = revenue.Select(r => MapRevenue(r, itemNames, customer.Name)).ToList(),
             SalesOrders = salesOrders
         };
@@ -409,6 +410,7 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .ToList();
         var itemNames = await LoadItemNamesAsync(itemIds, cancellationToken);
 
+        // Include both artikelgroep name and the representative item so callers can show either.
         return rows.Select(r => MapRevenue(r, itemNames, customerNameFallback: null)).ToList();
     }
 
@@ -667,6 +669,7 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
                 ? customerNameFallback ?? string.Empty
                 : record.CustomerName,
             ProductGroupId = record.ProductGroupId,
+            ProductGroupName = record.ProductGroupName,
             ItemId = itemId,
             ItemName = itemName
         };

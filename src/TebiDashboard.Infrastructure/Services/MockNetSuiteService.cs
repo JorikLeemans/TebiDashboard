@@ -284,6 +284,13 @@ public sealed class MockNetSuiteService : INetSuiteService
             CustomerId = customerId,
             CustomerName = customerName,
             ProductGroupId = productGroupId,
+            // Same artikelgroep names as the demo seeder so mock mode does not show "pg1".
+            ProductGroupName = productGroupId switch
+            {
+                "pg1" => "Bestrating",
+                "pg2" => "Tegels",
+                _ => null
+            },
             ItemId = itemId,
             ItemName = itemName
         };

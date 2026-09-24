@@ -13,6 +13,12 @@ public sealed class RevenueDto
     public string? ProductGroupId { get; init; }
 
     /// <summary>
+    /// Product group name for display (artikelgroep). Empty when only the NetSuite id is known;
+    /// callers then show <see cref="ProductGroupId"/>.
+    /// </summary>
+    public string? ProductGroupName { get; init; }
+
+    /// <summary>
     /// Inventory item that represents this revenue line's product group.
     /// Empty when the product group is not linked to an item.
     /// </summary>
