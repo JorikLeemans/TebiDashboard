@@ -10,6 +10,9 @@ using TebiDashboard.UI.Services;
 
 namespace TebiDashboard.UI.Tests;
 
+/// <summary>
+/// Customer detail page: invoice groups stay collapsed until the header row is opened.
+/// </summary>
 public class CustomerDetailPageTests
 {
     [Fact]
@@ -71,13 +74,17 @@ public class CustomerDetailPageTests
         Assert.Contains("Aannemer", cut.Markup);
         Assert.Contains("Woningbouw", cut.Markup);
 
+        // Invoice rows stay collapsed until clicked, so only the header fields are visible first.
         var revenue = cut.Find("table[aria-label='Customer revenue']").TextContent;
-        Assert.Contains("Opsluitbanden Grijs", revenue);
-        Assert.Contains("pg-edging", revenue);
         Assert.Contains("F-C1", revenue);
         Assert.Contains(",50", revenue);
-        Assert.Contains("Item", cut.Find("table[aria-label='Customer revenue']").TextContent);
-        Assert.Contains("Invoice", cut.Find("table[aria-label='Customer revenue']").TextContent);
+        Assert.Contains("Invoice", revenue);
+        Assert.DoesNotContain("Opsluitbanden Grijs", revenue);
+
+        cut.Find(".customer-detail__invoice-row").Click();
+        var expandedRevenue = cut.Find("table[aria-label='Customer revenue']").TextContent;
+        Assert.Contains("Opsluitbanden Grijs", expandedRevenue);
+        Assert.Contains("pg-edging", expandedRevenue);
 
         var orders = cut.Find("table[aria-label='Customer sales orders']").TextContent;
         Assert.Contains("Opsluitbanden Grijs", orders);
@@ -121,8 +128,58 @@ public class CustomerDetailPageTests
         var cut = ctx.Render<CustomerDetailPage>(parameters => parameters.Add(p => p.CustomerId, "c9"));
         cut.WaitForElement("table[aria-label='Customer revenue']", TimeSpan.FromSeconds(5));
 
+        cut.Find(".customer-detail__invoice-row").Click();
         Assert.Contains("pg-unknown", cut.Find("table[aria-label='Customer revenue']").TextContent);
         Assert.Contains("i-missing", cut.Find("table[aria-label='Customer sales orders']").TextContent);
+    }
+
+    [Fact]
+    public void CustomerDetailPage_GroupsRevenueByInvoice_AndExpandsLinesOnClick()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        mockHttp.When(HttpMethod.Get, "*/api/customers/c2*")
+            .Respond(HttpStatusCode.OK, _ => JsonContent.Create(new CustomerDetailDto
+            {
+                Customer = new CustomerDto { CustomerId = "c2", Name = "Stratenmakers BV" },
+                Revenue =
+                [
+                    new RevenueDto
+                    {
+                        Id = "1842-1",
+                        InvoiceId = "1842",
+                        InvoiceNumber = "F-100",
+                        Date = new DateOnly(2026, 9, 23),
+                        Amount = 10.25m,
+                        ItemName = "Klinkers",
+                        ProductGroupName = "Bestrating"
+                    },
+                    new RevenueDto
+                    {
+                        Id = "1842-2",
+                        InvoiceId = "1842",
+                        InvoiceNumber = "F-100",
+                        Date = new DateOnly(2026, 9, 23),
+                        Amount = 5.50m,
+                        ItemName = "Zand",
+                        ProductGroupName = "Zand"
+                    }
+                ]
+            }));
+
+        var cut = ctx.Render<CustomerDetailPage>(parameters => parameters.Add(p => p.CustomerId, "c2"));
+        cut.WaitForElement("table[aria-label='Customer revenue']", TimeSpan.FromSeconds(5));
+
+        var collapsed = cut.Find("table[aria-label='Customer revenue']").TextContent;
+        Assert.Contains("F-100", collapsed);
+        Assert.Contains("15,75", collapsed);
+        Assert.DoesNotContain("Klinkers", collapsed);
+        Assert.DoesNotContain("Zand", collapsed);
+
+        cut.Find(".customer-detail__invoice-row").Click();
+        var expanded = cut.Find("table[aria-label='Customer revenue']").TextContent;
+        Assert.Contains("Klinkers", expanded);
+        Assert.Contains("Zand", expanded);
+        Assert.Contains("Bestrating", expanded);
     }
 
     private static BunitContext CreateAuthenticatedContext(out MockHttpMessageHandler mockHttp)
