@@ -60,8 +60,9 @@ public sealed class NetSuiteOptions
 
     /// <summary>
     /// When true, dashboard tables are cleared before importing NetSuite data (users and goals are kept).
+    /// Default is false so a lookback sync appends new rows instead of wiping older invoices and orders.
     /// </summary>
-    public bool ClearDashboardDataOnSync { get; set; } = true;
+    public bool ClearDashboardDataOnSync { get; set; }
 
     /// <summary>
     /// HTTP timeout (minutes) for NetSuite REST calls and the admin sync API request from the UI.
