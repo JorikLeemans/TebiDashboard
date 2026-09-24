@@ -8,11 +8,22 @@ namespace TebiDashboard.UI.Helpers;
 public static class ProductGroupLabel
 {
     /// <summary>
-    /// Prefer the artikelgroep name. Fall back to the NetSuite id when the name was not stored,
-    /// so a numeric subsidiary id is still visible rather than a blank cell.
+    /// Prefer the artikelgroep name. Fall back to a non-numeric code such as pg-edging.
+    /// A bare NetSuite internal id (for example "16") is not a name — hide it instead of
+    /// showing the same number in the product-group column.
     /// </summary>
-    public static string For(RevenueDto revenue) =>
-        string.IsNullOrWhiteSpace(revenue.ProductGroupName)
-            ? revenue.ProductGroupId ?? string.Empty
-            : revenue.ProductGroupName;
+    public static string For(RevenueDto revenue)
+    {
+        if (!string.IsNullOrWhiteSpace(revenue.ProductGroupName))
+        {
+            return revenue.ProductGroupName;
+        }
+
+        var id = revenue.ProductGroupId ?? string.Empty;
+        return LooksLikeInternalId(id) ? string.Empty : id;
+    }
+
+    // SuiteQL subsidiary / class internal ids are digits. Demo codes use a pg- prefix.
+    private static bool LooksLikeInternalId(string value) =>
+        value.Length > 0 && value.All(char.IsDigit);
 }

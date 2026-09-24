@@ -176,6 +176,11 @@ namespace TebiDashboard.Infrastructure.Data.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<string>("ItemName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
                     b.Property<decimal>("QuantityOpen")
                         .HasColumnType("numeric");
 
@@ -212,8 +217,8 @@ namespace TebiDashboard.Infrastructure.Data.Migrations
             modelBuilder.Entity("TebiDashboard.Infrastructure.Data.Entities.RevenueRecord", b =>
                 {
                     b.Property<string>("Id")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<decimal>("Amount")
                         .HasColumnType("numeric");
@@ -237,6 +242,16 @@ namespace TebiDashboard.Infrastructure.Data.Migrations
                         .HasColumnType("character varying(64)");
 
                     b.Property<string>("ProductGroupName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ItemId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ItemName")
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");

@@ -20,7 +20,8 @@ internal static class RevenueItemLink
 
     /// <summary>
     /// Resolves the name shown on a revenue row.
-    /// Prefer the inventory item name, then the item id, then the product group id.
+    /// Prefer the inventory item name. Never copy a product-group / subsidiary id into the
+    /// item label — that is how both columns ended up showing a raw number such as "16".
     /// </summary>
     public static string ResolveItemName(
         string? productGroupId,
@@ -31,7 +32,7 @@ internal static class RevenueItemLink
         if (linkedItemId is null)
         {
             itemId = string.Empty;
-            return productGroupId ?? string.Empty;
+            return string.Empty;
         }
 
         itemId = linkedItemId;

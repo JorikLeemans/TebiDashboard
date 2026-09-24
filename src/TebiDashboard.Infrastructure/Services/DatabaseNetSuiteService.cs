@@ -102,12 +102,13 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .ThenBy(t => t.TransactionId)
             .ToListAsync(cancellationToken);
 
-        // Revenue lines only store a product group. Include the linked item ids so the
-        // same lookup that names sales orders can also name those revenue rows.
+        // Look up names for sales-order items and for revenue lines that already store an item id.
         var itemIds = salesOrderRows.Select(r => r.ItemId)
+            .Concat(revenue.Select(r => r.ItemId))
             .Concat(revenue.Select(r => RevenueItemLink.TryGetItemId(r.ProductGroupId))
                 .Where(id => id is not null)
                 .Select(id => id!))
+            .Where(id => !string.IsNullOrWhiteSpace(id))
             .Distinct()
             .ToList();
         var itemNames = itemIds.Count == 0
@@ -121,7 +122,7 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
         var salesOrders = salesOrderRows
             .Select(t => MapOpenTransaction(
                 t,
-                itemNames.GetValueOrDefault(t.ItemId, t.ItemId),
+                ResolveStoredOrLookedUpItemName(t.ItemId, t.ItemName, itemNames),
                 customerNames,
                 new Dictionary<string, string>()))
             .ToList();
@@ -246,7 +247,7 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .Select(group => new SupplierPurchasedItemDto
             {
                 ItemId = group.Key,
-                ItemName = itemNames.GetValueOrDefault(group.Key, group.Key),
+                ItemName = ResolveStoredOrLookedUpItemName(group.Key, group.First().ItemName, itemNames),
                 TotalQuantityOpen = group.Sum(t => t.QuantityOpen)
             })
             .OrderBy(item => item.ItemName)
@@ -255,7 +256,7 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
         var purchaseOrders = purchaseOrderRows
             .Select(t => MapOpenTransaction(
                 t,
-                itemNames.GetValueOrDefault(t.ItemId, t.ItemId),
+                ResolveStoredOrLookedUpItemName(t.ItemId, t.ItemName, itemNames),
                 customerNames,
                 supplierNames))
             .ToList();
@@ -389,7 +390,7 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
 
         return rows.Select(t => MapOpenTransaction(
             t,
-            itemNames.GetValueOrDefault(t.ItemId, t.ItemId),
+            ResolveStoredOrLookedUpItemName(t.ItemId, t.ItemName, itemNames),
             customerNames,
             supplierNames)).ToList();
     }
@@ -403,9 +404,11 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .ToListAsync(cancellationToken);
 
         var itemIds = rows
-            .Select(r => RevenueItemLink.TryGetItemId(r.ProductGroupId))
-            .Where(id => id is not null)
-            .Select(id => id!)
+            .Select(r => r.ItemId)
+            .Concat(rows.Select(r => RevenueItemLink.TryGetItemId(r.ProductGroupId))
+                .Where(id => id is not null)
+                .Select(id => id!))
+            .Where(id => !string.IsNullOrWhiteSpace(id))
             .Distinct()
             .ToList();
         var itemNames = await LoadItemNamesAsync(itemIds, cancellationToken);
@@ -514,11 +517,16 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .ThenBy(t => t.Type)
             .ToListAsync(cancellationToken);
 
-        var itemName = await dbContext.InventoryItems
+        var lookedUpName = await dbContext.InventoryItems
             .AsNoTracking()
             .Where(i => i.ItemId == itemId)
             .Select(i => i.ItemName)
-            .FirstOrDefaultAsync(cancellationToken) ?? itemId;
+            .FirstOrDefaultAsync(cancellationToken);
+        var storedName = rows.Select(t => t.ItemName).FirstOrDefault(name => !string.IsNullOrWhiteSpace(name))
+            ?? string.Empty;
+        var itemName = ResolveStoredOrLookedUpItemName(itemId, storedName, lookedUpName is null
+            ? new Dictionary<string, string>()
+            : new Dictionary<string, string> { [itemId] = lookedUpName });
 
         var customerNames = await LoadCustomerNamesAsync(rows, cancellationToken);
         var supplierNames = await LoadSupplierNamesAsync(rows, cancellationToken);
@@ -656,7 +664,15 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
         IReadOnlyDictionary<string, string> itemNames,
         string? customerNameFallback)
     {
-        var itemName = RevenueItemLink.ResolveItemName(record.ProductGroupId, itemNames, out var itemId);
+        var linkedItemId = string.IsNullOrWhiteSpace(record.ItemId)
+            ? RevenueItemLink.TryGetItemId(record.ProductGroupId) ?? string.Empty
+            : record.ItemId;
+        var itemName = ResolveStoredOrLookedUpItemName(linkedItemId, record.ItemName, itemNames);
+        if (string.IsNullOrWhiteSpace(itemName) && string.IsNullOrWhiteSpace(record.ItemId))
+        {
+            // Demo rows that only have a product-group code still resolve through RevenueItemLink.
+            itemName = RevenueItemLink.ResolveItemName(record.ProductGroupId, itemNames, out _);
+        }
 
         return new RevenueDto
         {
@@ -670,10 +686,37 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
                 : record.CustomerName,
             ProductGroupId = record.ProductGroupId,
             ProductGroupName = record.ProductGroupName,
-            ItemId = itemId,
+            ItemId = linkedItemId,
             ItemName = itemName
         };
     }
+
+    /// <summary>
+    /// Prefer a live inventory name, then the name stored at sync/seed time.
+    /// Never return a bare numeric internal id such as "16".
+    /// </summary>
+    private static string ResolveStoredOrLookedUpItemName(
+        string itemId,
+        string storedName,
+        IReadOnlyDictionary<string, string> itemNames)
+    {
+        if (!string.IsNullOrWhiteSpace(itemId)
+            && itemNames.TryGetValue(itemId, out var lookedUp)
+            && !string.IsNullOrWhiteSpace(lookedUp))
+        {
+            return lookedUp;
+        }
+
+        if (!string.IsNullOrWhiteSpace(storedName))
+        {
+            return storedName;
+        }
+
+        return LooksLikeInternalId(itemId) ? string.Empty : itemId;
+    }
+
+    private static bool LooksLikeInternalId(string? value) =>
+        !string.IsNullOrWhiteSpace(value) && value.All(char.IsDigit);
 
     private static ExpenseDto MapExpense(
         Data.Entities.ExpenseRecord record,

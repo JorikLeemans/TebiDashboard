@@ -18,10 +18,18 @@ public sealed class ProductGroupLabelTests
     }
 
     [Fact]
-    public void For_FallsBackToIdWhenNameIsMissing()
+    public void For_HidesNumericInternalIdsWhenNameIsMissing()
     {
-        var revenue = new RevenueDto { ProductGroupId = "42", ProductGroupName = "  " };
+        var revenue = new RevenueDto { ProductGroupId = "16", ProductGroupName = "  " };
 
-        Assert.Equal("42", ProductGroupLabel.For(revenue));
+        Assert.Equal(string.Empty, ProductGroupLabel.For(revenue));
+    }
+
+    [Fact]
+    public void For_FallsBackToNonNumericCodeWhenNameIsMissing()
+    {
+        var revenue = new RevenueDto { ProductGroupId = "pg-edging", ProductGroupName = "  " };
+
+        Assert.Equal("pg-edging", ProductGroupLabel.For(revenue));
     }
 }

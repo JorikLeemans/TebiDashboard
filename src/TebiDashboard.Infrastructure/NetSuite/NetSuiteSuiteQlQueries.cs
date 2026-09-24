@@ -71,26 +71,29 @@ internal static class NetSuiteSuiteQlQueries
         """;
 
     /// <summary>
-    /// Invoice revenue (omzet bron): tranId, tranDate, entity, subsidiary; amount excl. BTW via total - taxTotal.
-    /// Uses the Invoice SuiteQL table (TEBI field names) instead of generic transaction joins.
-    /// tranDate is projected with TO_CHAR so the payload is YYYY-MM-DD regardless of the account
-    /// date preference. A raw day-first value such as 24/09/2025 does not parse as invariant
-    /// M/D/YYYY and used to be stored as UTC today. productgroupname is the subsidiary display
-    /// name (artikelgroep shown to users); productgroupid stays the numeric internal id.
+    /// Invoice line revenue (omzet): one row per item line so the dashboard can show the
+    /// article name and artikelgroep (item class), not the numeric subsidiary internal id.
+    /// Header-only invoice.subsidiary was previously stored as productgroupid, which is why
+    /// both Item and Product group rendered as "16".
     /// </summary>
     public static string Invoices(DateOnly fromDate) =>
         $"""
         SELECT
-            id,
-            tranId,
-            TO_CHAR(tranDate, 'YYYY-MM-DD') AS trandate,
-            entity AS customerid,
-            subsidiary AS productgroupid,
-            BUILTIN.DF(subsidiary) AS productgroupname,
-            NVL(total, 0) - NVL(taxTotal, 0) AS amount
-        FROM invoice
-        WHERE tranDate >= TO_DATE('{fromDate:yyyy-MM-dd}', 'YYYY-MM-DD')
-        ORDER BY tranDate DESC
+            i.id AS invoiceid,
+            tl.id AS lineid,
+            TO_CHAR(i.tranDate, 'YYYY-MM-DD') AS trandate,
+            i.entity AS customerid,
+            tl.item AS itemid,
+            BUILTIN.DF(tl.item) AS itemname,
+            it.class AS productgroupid,
+            BUILTIN.DF(it.class) AS productgroupname,
+            NVL(tl.amount, 0) AS amount
+        FROM transactionline tl
+        INNER JOIN invoice i ON i.id = tl.transaction
+        LEFT JOIN item it ON it.id = tl.item
+        WHERE tl.mainline = 'F'
+          AND i.tranDate >= TO_DATE('{fromDate:yyyy-MM-dd}', 'YYYY-MM-DD')
+        ORDER BY i.tranDate DESC
         """;
 
     /// <summary>
@@ -122,6 +125,7 @@ internal static class NetSuiteSuiteQlQueries
             TO_CHAR(so.tranDate, 'YYYY-MM-DD') AS trandate,
             so.entity AS customerid,
             tl.item AS itemid,
+            BUILTIN.DF(tl.item) AS itemname,
             (tl.quantity - NVL(tl.quantityshiprecv, 0)) AS quantityopen,
             NVL(tl.amount, 0) AS amount,
             so.status AS status
@@ -145,6 +149,7 @@ internal static class NetSuiteSuiteQlQueries
             TO_CHAR(po.tranDate, 'YYYY-MM-DD') AS trandate,
             po.entity AS supplierid,
             tl.item AS itemid,
+            BUILTIN.DF(tl.item) AS itemname,
             (tl.quantity - NVL(tl.quantityshiprecv, 0)) AS quantityopen,
             NVL(tl.amount, 0) AS amount,
             po.status AS status

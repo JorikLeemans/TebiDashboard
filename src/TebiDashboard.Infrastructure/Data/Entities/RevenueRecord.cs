@@ -23,4 +23,16 @@ public sealed class RevenueRecord
     /// falls back to that id so older rows still render.
     /// </summary>
     public string ProductGroupName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Inventory item internal id from the invoice line. Empty on header-only legacy rows
+    /// that stored a subsidiary id as the product group.
+    /// </summary>
+    public string ItemId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Display name captured at sync time (SKU / displayName / BUILTIN.DF). The read path
+    /// prefers a live inventory lookup and uses this when that row is missing.
+    /// </summary>
+    public string ItemName { get; set; } = string.Empty;
 }

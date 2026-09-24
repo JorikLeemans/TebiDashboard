@@ -189,8 +189,11 @@
         return row.ProductGroupId ?? string.Empty;
     }
 
+    // Hide a bare NetSuite internal id (digits only) when the name never arrived.
     private static string ItemLabel(string? itemName, string itemId) =>
-        string.IsNullOrWhiteSpace(itemName) ? itemId : itemName;
+        !string.IsNullOrWhiteSpace(itemName)
+            ? itemName
+            : itemId.Length > 0 && itemId.All(char.IsDigit) ? string.Empty : itemId;
     private decimal SalesOrdersTotal => _detail?.SalesOrders.Sum(order => order.Amount) ?? 0m;
 
     protected override void OnParametersSet()
