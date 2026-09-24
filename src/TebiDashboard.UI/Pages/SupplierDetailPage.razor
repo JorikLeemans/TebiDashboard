@@ -83,7 +83,8 @@
                         @foreach (var item in _detail.PurchasedItems)
                         {
                             <tr class="supplier-detail__link-row" @onclick="() => OpenItem(item.ItemId)" tabindex="0">
-                                <td>@item.ItemName</td>
+                                @* Item name comes from the inventory item; the id is the fallback when it cannot be resolved. *@
+                                <td>@ItemLabel(item.ItemName, item.ItemId)</td>
                                 <td>@item.TotalQuantityOpen.ToString("N0")</td>
                             </tr>
                         }
@@ -117,7 +118,7 @@
                             <tr class="supplier-detail__link-row" @onclick="() => OpenItem(order.ItemId)" tabindex="0">
                                 <td>@order.TransactionDate.ToString("d")</td>
                                 <td><code>@order.TransactionId</code></td>
-                                <td>@order.ItemName</td>
+                                <td>@ItemLabel(order.ItemName, order.ItemId)</td>
                                 <td>@order.QuantityOpen.ToString("N0")</td>
                                 <td>@EuroFormatting.FormatWhole(order.Amount)</td>
                                 <td>@order.Status</td>
@@ -151,6 +152,7 @@
                         <tr>
                             <th scope="col">Date</th>
                             <th scope="col">Category</th>
+                            <th scope="col">Vendor</th>
                             <th scope="col">Amount</th>
                         </tr>
                     </thead>
@@ -160,6 +162,7 @@
                             <tr>
                                 <td>@expense.Date.ToString("d")</td>
                                 <td>@expense.Category</td>
+                                <td>@ExpensePartyName(expense)</td>
                                 <td>@EuroFormatting.FormatWhole(expense.Amount)</td>
                             </tr>
                         }
@@ -168,7 +171,7 @@
                     {
                         <tfoot>
                             <tr>
-                                <th scope="row" colspan="2">Total</th>
+                                <th scope="row" colspan="3">Total</th>
                                 <td>@EuroFormatting.FormatWhole(ExpensesTotal)</td>
                             </tr>
                         </tfoot>
@@ -198,6 +201,26 @@
 
     // Footer totals show how expenses and purchase orders add up to Total purchased.
     private decimal ExpensesTotal => _detail?.Expenses.Sum(row => row.Amount) ?? 0m;
+
+    private static string ItemLabel(string? itemName, string itemId) =>
+        string.IsNullOrWhiteSpace(itemName) ? itemId : itemName;
+
+    // Vendor text is the name on the bill. The supplier master name covers rows that only
+    // have a supplier id, and the id itself is the last resort so the cell is never blank.
+    private static string ExpensePartyName(ExpenseDto expense)
+    {
+        if (!string.IsNullOrWhiteSpace(expense.VendorName))
+        {
+            return expense.VendorName;
+        }
+
+        if (!string.IsNullOrWhiteSpace(expense.SupplierName))
+        {
+            return expense.SupplierName;
+        }
+
+        return expense.SupplierId ?? string.Empty;
+    }
     private decimal PurchaseOrdersTotal => _detail?.PurchaseOrders.Sum(order => order.Amount) ?? 0m;
 
     protected override void OnParametersSet()

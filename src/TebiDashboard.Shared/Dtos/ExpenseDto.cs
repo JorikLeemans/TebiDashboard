@@ -12,4 +12,10 @@ public sealed class ExpenseDto
     public string? VendorName { get; init; }
 
     public string? SupplierId { get; init; }
+
+    /// <summary>
+    /// Supplier master name for <see cref="SupplierId"/>.
+    /// The supplier id itself when the master row cannot be resolved, or empty when the expense has no supplier.
+    /// </summary>
+    public string SupplierName { get; init; } = string.Empty;
 }
