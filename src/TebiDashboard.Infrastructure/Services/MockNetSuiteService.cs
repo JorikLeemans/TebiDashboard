@@ -23,9 +23,7 @@ public sealed class MockNetSuiteService : INetSuiteService
         var revenue = GetMockRevenue().Where(r => r.Date >= filter.From && r.Date <= filter.To).ToList();
         var salesOrders = GetMockTransactions()
             .Where(t => t.Type == "Sales Order"
-                && !string.IsNullOrWhiteSpace(t.CustomerId)
-                && t.TransactionDate >= filter.From
-                && t.TransactionDate <= filter.To)
+                && !string.IsNullOrWhiteSpace(t.CustomerId))
             .ToList();
 
         var overview = GetMockCustomers()
@@ -68,9 +66,7 @@ public sealed class MockNetSuiteService : INetSuiteService
 
         var salesOrders = GetMockTransactions()
             .Where(t => t.Type == "Sales Order"
-                && t.CustomerId == customerId
-                && t.TransactionDate >= filter.From
-                && t.TransactionDate <= filter.To)
+                && t.CustomerId == customerId)
             .OrderByDescending(t => t.TransactionDate)
             .ToList();
 
@@ -204,7 +200,10 @@ public sealed class MockNetSuiteService : INetSuiteService
     {
         var revenue = GetMockRevenue().Where(r => r.Date >= filter.From && r.Date <= filter.To).ToList();
         var expenses = GetMockExpenses().Where(e => e.Date >= filter.From && e.Date <= filter.To).ToList();
-        var transactions = GetMockTransactions().Where(t => t.TransactionDate >= filter.From && t.TransactionDate <= filter.To).ToList();
+        var transactions = GetMockTransactions()
+            .Where(t => t.Type == "Sales Order"
+                || (t.TransactionDate >= filter.From && t.TransactionDate <= filter.To))
+            .ToList();
         var lowStock = GetMockLowStock();
         var activeIds = transactions.Select(t => t.ItemId).ToHashSet();
 

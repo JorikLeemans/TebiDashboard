@@ -132,14 +132,14 @@
         </section>
 
         <section class="dashboard-section">
-            <h2>Transactions in period (@_overview.Transactions.Count)</h2>
+            <h2>Open sales orders and period transactions (@_overview.Transactions.Count)</h2>
             @if (_overview.Transactions.Count == 0)
             {
-                <p class="dashboard-empty">No open transactions in this period.</p>
+                <p class="dashboard-empty">No open sales orders or other transactions in this period.</p>
             }
             else
             {
-                <table class="dashboard-table" aria-label="Transactions in period">
+                <table class="dashboard-table" aria-label="Open sales orders and period transactions">
                     <thead>
                         <tr>
                             <th>Date</th>

@@ -12,12 +12,14 @@ public sealed class NetSuiteSuiteQlQueriesTests
         Assert.Contains("entityId", sql);
         Assert.Contains("glommedName", sql);
         Assert.DoesNotContain("companyName", sql);
-        Assert.Contains("LEFT JOIN entityAddress", sql);
-        Assert.Contains("ea.nKey = c.defaultAddress", sql);
+        Assert.Contains("LEFT JOIN customerAddressBook", sql);
+        Assert.Contains("cab.defaultBilling = 'T'", sql);
+        Assert.Contains("LEFT JOIN customerAddressBookEntityAddress", sql);
+        Assert.Contains("ea.nKey = cab.addressBookAddress", sql);
         Assert.Contains("ea.city", sql);
         Assert.Contains("BUILTIN.DF(c.category) AS category", sql);
         Assert.Contains("BUILTIN.DF(c.custentity_tebi_klant_subcategorie) AS subcategory", sql);
-        Assert.DoesNotContain("defaultBillingAddress", sql);
+        Assert.DoesNotContain("defaultAddress", sql);
         Assert.Contains("isInactive", sql);
     }
 
@@ -28,10 +30,12 @@ public sealed class NetSuiteSuiteQlQueriesTests
 
         Assert.Contains("entityId", sql);
         Assert.Contains("companyName", sql);
-        Assert.Contains("LEFT JOIN entityAddress", sql);
-        Assert.Contains("ea.nKey = v.defaultAddress", sql);
+        Assert.Contains("LEFT JOIN vendorAddressBook", sql);
+        Assert.Contains("vab.defaultBilling = 'T'", sql);
+        Assert.Contains("LEFT JOIN vendorAddressBookEntityAddress", sql);
+        Assert.Contains("ea.nKey = vab.addressBookAddress", sql);
         Assert.Contains("ea.city", sql);
-        Assert.DoesNotContain("defaultBillingAddress", sql);
+        Assert.DoesNotContain("defaultAddress", sql);
         Assert.Contains("isInactive", sql);
     }
 
@@ -74,11 +78,13 @@ public sealed class NetSuiteSuiteQlQueriesTests
     [Fact]
     public void OpenSalesOrderLines_UsesSalesOrderTable()
     {
-        var sql = NetSuiteSuiteQlQueries.OpenSalesOrderLines(new DateOnly(2026, 1, 1));
+        var sql = NetSuiteSuiteQlQueries.OpenSalesOrderLines();
 
         Assert.Contains("INNER JOIN salesorder", sql, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("TO_CHAR(so.tranDate, 'YYYY-MM-DD') AS trandate", sql);
         Assert.Contains("so.entity", sql);
+        Assert.Contains("so.status NOT IN", sql);
+        Assert.DoesNotContain("so.tranDate >=", sql, StringComparison.Ordinal);
         Assert.DoesNotContain("type = 'SalesOrd'", sql, StringComparison.OrdinalIgnoreCase);
     }
 

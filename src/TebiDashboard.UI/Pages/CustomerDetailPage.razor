@@ -45,8 +45,8 @@
             <article class="customer-detail__kpi">
                 <h2>Total spent</h2>
                 <p>@EuroFormatting.FormatWhole(_detail.TotalSpent)</p>
-                @* Total spent is the sum of sales order amounts in the selected period. *@
-                <p class="customer-detail__kpi-hint">Sum of sales order amounts below</p>
+                @* Total spent is the sum of still-open sales order amounts. *@
+                <p class="customer-detail__kpi-hint">Sum of open sales order amounts below</p>
             </article>
             <article class="customer-detail__kpi">
                 <h2>Revenue entries</h2>
@@ -109,10 +109,10 @@
         </section>
 
         <section class="customer-detail__section">
-            <h2>Sales orders in period</h2>
+            <h2>Open sales orders</h2>
             @if (_detail.SalesOrders.Count == 0)
             {
-                <p class="customer-detail__empty">No open sales orders linked to this customer in the selected period.</p>
+                <p class="customer-detail__empty">No open sales orders linked to this customer.</p>
             }
             else
             {

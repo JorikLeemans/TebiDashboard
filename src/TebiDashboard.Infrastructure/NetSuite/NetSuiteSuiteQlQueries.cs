@@ -9,7 +9,8 @@ internal static class NetSuiteSuiteQlQueries
     /// <summary>
     /// Customer: id, entityId (code), glommedName, email, city, and category labels.
     /// glommedName is the display name for both companies and individuals; companyName is empty for persons.
-    /// defaultAddress is the address id; entityAddress.city is the town, not the full address text.
+    /// City comes from the default billing address book row. defaultAddress is not exposed to SuiteQL SEARCH
+    /// (NOT_EXPOSED). Analytics Browser join: customerAddressBook.entity + customerAddressBookEntityAddress.nkey.
     /// category and custentity_tebi_klant_subcategorie are list fields; BUILTIN.DF returns the text, not the id.
     /// custentity_tebi_primaire_dochtermaatsch is available but not stored until subsidiary filtering is added.
     /// </summary>
@@ -24,14 +25,18 @@ internal static class NetSuiteSuiteQlQueries
             BUILTIN.DF(c.category) AS category,
             BUILTIN.DF(c.custentity_tebi_klant_subcategorie) AS subcategory
         FROM customer c
-        LEFT JOIN entityAddress ea ON ea.nKey = c.defaultAddress
+        LEFT JOIN customerAddressBook cab
+            ON cab.entity = c.id
+           AND cab.defaultBilling = 'T'
+        LEFT JOIN customerAddressBookEntityAddress ea
+            ON ea.nKey = cab.addressBookAddress
         WHERE c.isInactive = 'F'
         ORDER BY c.glommedName
         """;
 
     /// <summary>
-    /// Vendor: id, entityId (code), companyName, email, and city from the default address.
-    /// Same entityAddress join as customers so the City column stores a town, not the full address.
+    /// Vendor: id, entityId (code), companyName, email, and city from the default billing address book.
+    /// Same address-book path as customers so the City column stores a town, not the full address.
     /// </summary>
     public static string Vendors() =>
         """
@@ -42,7 +47,11 @@ internal static class NetSuiteSuiteQlQueries
             v.email,
             ea.city
         FROM vendor v
-        LEFT JOIN entityAddress ea ON ea.nKey = v.defaultAddress
+        LEFT JOIN vendorAddressBook vab
+            ON vab.entity = v.id
+           AND vab.defaultBilling = 'T'
+        LEFT JOIN vendorAddressBookEntityAddress ea
+            ON ea.nKey = vab.addressBookAddress
         WHERE v.isInactive = 'F'
         ORDER BY v.companyName
         """;
@@ -123,10 +132,11 @@ internal static class NetSuiteSuiteQlQueries
         """;
 
     /// <summary>
-    /// Open sales order lines: salesOrder header + transactionline details (TEBI SuiteQL field names).
+    /// Open sales order lines: every non-closed order, not only those inside the invoice lookback.
+    /// Status H/C (and SalesOrd:H/C) are Closed/Cancelled. Remaining quantity must still be open.
     /// </summary>
-    public static string OpenSalesOrderLines(DateOnly fromDate) =>
-        $"""
+    public static string OpenSalesOrderLines() =>
+        """
         SELECT
             tl.transaction,
             tl.id AS lineid,
@@ -142,7 +152,7 @@ internal static class NetSuiteSuiteQlQueries
         INNER JOIN salesorder so ON so.id = tl.transaction
         WHERE tl.mainline = 'F'
           AND tl.quantity > NVL(tl.quantityshiprecv, 0)
-          AND so.tranDate >= TO_DATE('{fromDate:yyyy-MM-dd}', 'YYYY-MM-DD')
+          AND so.status NOT IN ('H', 'C', 'SalesOrd:H', 'SalesOrd:C', 'Closed', 'Cancelled')
         ORDER BY so.tranDate DESC
         """;
 

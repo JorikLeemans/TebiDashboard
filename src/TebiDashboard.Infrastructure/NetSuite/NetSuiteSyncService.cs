@@ -180,7 +180,7 @@ public sealed class NetSuiteSyncService(
             // Prefer glommedName so individual customers show a real name, not a blank companyName.
             var name = NetSuiteSuiteQlRowReader.GetString(row, "glommedname", "glommedName", "companyname", "companyName")
                 ?? "Unknown customer";
-            // City comes from entityAddress.city via defaultAddress, not the full address blob.
+            // City comes from the default billing address-book row, not the full address blob.
             var city = NetSuiteSuiteQlRowReader.GetString(row, "city") ?? string.Empty;
             var contactEmail = NetSuiteSuiteQlRowReader.GetString(row, "email") ?? string.Empty;
             // BUILTIN.DF aliases; drop a leftover numeric id so the UI never shows "16".
@@ -232,7 +232,7 @@ public sealed class NetSuiteSyncService(
         {
             var supplierId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id");
             var name = NetSuiteSuiteQlRowReader.GetString(row, "companyname", "companyName") ?? "Unknown supplier";
-            // Same city mapping as customers: entityAddress.city joined on defaultAddress.
+            // Same city mapping as customers: default billing address-book city.
             var city = NetSuiteSuiteQlRowReader.GetString(row, "city") ?? string.Empty;
             var contactEmail = NetSuiteSuiteQlRowReader.GetString(row, "email") ?? string.Empty;
 
@@ -473,7 +473,7 @@ public sealed class NetSuiteSyncService(
 
         var salesRows = NetSuiteSuiteQlRowDeduplicator.ByFields(
             await restClient.QuerySuiteQlAsync(
-                NetSuiteSuiteQlQueries.OpenSalesOrderLines(fromDate),
+                NetSuiteSuiteQlQueries.OpenSalesOrderLines(),
                 pageSize,
                 cancellationToken),
             "transaction",
