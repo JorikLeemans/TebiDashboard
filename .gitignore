@@ -84,3 +84,6 @@ Desktop.ini
 *.db
 *.db-shm
 *.db-wal
+
+# Runtime-generated Blazor data protection keys
+src/TebiDashboard.Web/data-protection-keys/
