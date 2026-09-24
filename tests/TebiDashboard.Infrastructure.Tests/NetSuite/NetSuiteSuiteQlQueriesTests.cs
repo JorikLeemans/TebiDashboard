@@ -10,10 +10,13 @@ public sealed class NetSuiteSuiteQlQueriesTests
         var sql = NetSuiteSuiteQlQueries.Customers();
 
         Assert.Contains("entityId", sql);
-        Assert.Contains("companyName", sql);
-        Assert.Contains("defaultBillingAddress", sql);
+        Assert.Contains("glommedName", sql);
+        Assert.DoesNotContain("companyName", sql);
+        Assert.Contains("LEFT JOIN entityAddress", sql);
+        Assert.Contains("ea.nKey = c.defaultAddress", sql);
+        Assert.Contains("ea.city", sql);
+        Assert.DoesNotContain("defaultBillingAddress", sql);
         Assert.Contains("isInactive", sql);
-        Assert.DoesNotContain("defaultaddress", sql, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -23,7 +26,10 @@ public sealed class NetSuiteSuiteQlQueriesTests
 
         Assert.Contains("entityId", sql);
         Assert.Contains("companyName", sql);
-        Assert.Contains("defaultBillingAddress", sql);
+        Assert.Contains("LEFT JOIN entityAddress", sql);
+        Assert.Contains("ea.nKey = v.defaultAddress", sql);
+        Assert.Contains("ea.city", sql);
+        Assert.DoesNotContain("defaultBillingAddress", sql);
         Assert.Contains("isInactive", sql);
     }
 

@@ -42,8 +42,8 @@ public sealed class NetSuiteSyncServiceTests
         {
             Customers =
             [
-                Row(("id", "\"c-old\""), ("companyName", "\"Renamed customer\""), ("email", "\"old@tebi.nl\"")),
-                Row(("id", "\"c-new\""), ("companyName", "\"New customer\""), ("email", "\"new@tebi.nl\""))
+                Row(("id", "\"c-old\""), ("glommedName", "\"Renamed customer\""), ("email", "\"old@tebi.nl\""), ("city", "\"Eindhoven\"")),
+                Row(("id", "\"c-new\""), ("glommedName", "\"New customer\""), ("email", "\"new@tebi.nl\""), ("city", "\"Utrecht\""))
             ],
             Invoices =
             [
@@ -69,7 +69,34 @@ public sealed class NetSuiteSyncServiceTests
         Assert.Equal("c-new", added.CustomerId);
 
         Assert.Equal("Renamed customer", (await db.Customers.SingleAsync(row => row.CustomerId == "c-old")).Name);
-        Assert.True(await db.Customers.AnyAsync(row => row.CustomerId == "c-new"));
+        Assert.Equal("Eindhoven", (await db.Customers.SingleAsync(row => row.CustomerId == "c-old")).City);
+        Assert.Equal("Utrecht", (await db.Customers.SingleAsync(row => row.CustomerId == "c-new")).City);
+    }
+
+    [Fact]
+    public async Task Sync_UsesGlommedName_WhenCompanyNameIsAlsoPresent()
+    {
+        await using var db = CreateDbContext();
+        var restClient = new FakeNetSuiteRestClient
+        {
+            Customers =
+            [
+                Row(
+                    ("id", "\"c-1\""),
+                    ("companyName", "\"Company only\""),
+                    ("glommedName", "\"Jansen, Piet\""),
+                    ("email", "\"piet@tebi.nl\""),
+                    ("city", "\"Helmond\""))
+            ]
+        };
+
+        var result = await CreateSut(db, restClient, clearOnSync: false)
+            .SyncDashboardDataAsync();
+
+        Assert.True(result.Success, result.Message);
+        var customer = await db.Customers.SingleAsync();
+        Assert.Equal("Jansen, Piet", customer.Name);
+        Assert.Equal("Helmond", customer.City);
     }
 
     [Fact]

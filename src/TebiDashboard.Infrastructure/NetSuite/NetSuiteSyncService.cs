@@ -177,11 +177,11 @@ public sealed class NetSuiteSyncService(
         foreach (var row in rows)
         {
             var customerId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id");
-            var name = NetSuiteSuiteQlRowReader.GetString(row, "companyname", "companyName") ?? "Unknown customer";
-            // defaultBillingAddress holds the billing address text when available in SuiteQL.
-            var city = NetSuiteSuiteQlRowReader.GetString(row, "defaultbillingaddress", "defaultBillingAddress")
-                ?? NetSuiteSuiteQlRowReader.GetString(row, "defaultshippingaddress", "defaultShippingAddress")
-                ?? string.Empty;
+            // Prefer glommedName so individual customers show a real name, not a blank companyName.
+            var name = NetSuiteSuiteQlRowReader.GetString(row, "glommedname", "glommedName", "companyname", "companyName")
+                ?? "Unknown customer";
+            // City comes from entityAddress.city via defaultAddress, not the full address blob.
+            var city = NetSuiteSuiteQlRowReader.GetString(row, "city") ?? string.Empty;
             var contactEmail = NetSuiteSuiteQlRowReader.GetString(row, "email") ?? string.Empty;
 
             if (existing.TryGetValue(customerId, out var customer))
@@ -224,9 +224,8 @@ public sealed class NetSuiteSyncService(
         {
             var supplierId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id");
             var name = NetSuiteSuiteQlRowReader.GetString(row, "companyname", "companyName") ?? "Unknown supplier";
-            var city = NetSuiteSuiteQlRowReader.GetString(row, "defaultbillingaddress", "defaultBillingAddress")
-                ?? NetSuiteSuiteQlRowReader.GetString(row, "defaultshippingaddress", "defaultShippingAddress")
-                ?? string.Empty;
+            // Same city mapping as customers: entityAddress.city joined on defaultAddress.
+            var city = NetSuiteSuiteQlRowReader.GetString(row, "city") ?? string.Empty;
             var contactEmail = NetSuiteSuiteQlRowReader.GetString(row, "email") ?? string.Empty;
 
             if (existing.TryGetValue(supplierId, out var supplier))
