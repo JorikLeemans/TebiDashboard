@@ -24,7 +24,9 @@ public class CustomerDetailPageTests
                     CustomerId = "c1",
                     Name = "Bouwbedrijf Jansen",
                     City = "Utrecht",
-                    ContactEmail = "inkoop@jansen.nl"
+                    ContactEmail = "inkoop@jansen.nl",
+                    Category = "Aannemer",
+                    Subcategory = "Woningbouw"
                 },
                 PeriodFrom = new DateOnly(2026, 9, 1),
                 PeriodTo = new DateOnly(2026, 9, 24),
@@ -65,6 +67,9 @@ public class CustomerDetailPageTests
 
         var cut = ctx.Render<CustomerDetailPage>(parameters => parameters.Add(p => p.CustomerId, "c1"));
         cut.WaitForElement("table[aria-label='Customer revenue']", TimeSpan.FromSeconds(5));
+
+        Assert.Contains("Aannemer", cut.Markup);
+        Assert.Contains("Woningbouw", cut.Markup);
 
         var revenue = cut.Find("table[aria-label='Customer revenue']").TextContent;
         Assert.Contains("Opsluitbanden Grijs", revenue);

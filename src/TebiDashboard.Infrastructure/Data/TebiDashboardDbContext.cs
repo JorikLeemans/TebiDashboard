@@ -43,6 +43,8 @@ public sealed class TebiDashboardDbContext(DbContextOptions<TebiDashboardDbConte
             entity.Property(e => e.Name).HasMaxLength(256);
             entity.Property(e => e.City).HasMaxLength(128);
             entity.Property(e => e.ContactEmail).HasMaxLength(256);
+            entity.Property(e => e.Category).HasMaxLength(128);
+            entity.Property(e => e.Subcategory).HasMaxLength(128);
         });
 
         modelBuilder.Entity<SupplierRecord>(entity =>

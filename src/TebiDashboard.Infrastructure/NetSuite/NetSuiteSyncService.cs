@@ -177,12 +177,16 @@ public sealed class NetSuiteSyncService(
         foreach (var row in rows)
         {
             var customerId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id");
-            var name = NetSuiteSuiteQlRowReader.GetString(row, "companyname", "companyName") ?? "Unknown customer";
-            // defaultBillingAddress holds the billing address text when available in SuiteQL.
-            var city = NetSuiteSuiteQlRowReader.GetString(row, "defaultbillingaddress", "defaultBillingAddress")
-                ?? NetSuiteSuiteQlRowReader.GetString(row, "defaultshippingaddress", "defaultShippingAddress")
-                ?? string.Empty;
+            // Prefer glommedName so individual customers show a real name, not a blank companyName.
+            var name = NetSuiteSuiteQlRowReader.GetString(row, "glommedname", "glommedName", "companyname", "companyName")
+                ?? "Unknown customer";
+            // City comes from entityAddress.city via defaultAddress, not the full address blob.
+            var city = NetSuiteSuiteQlRowReader.GetString(row, "city") ?? string.Empty;
             var contactEmail = NetSuiteSuiteQlRowReader.GetString(row, "email") ?? string.Empty;
+            // BUILTIN.DF aliases; drop a leftover numeric id so the UI never shows "16".
+            var category = ListFieldDisplayName(NetSuiteSuiteQlRowReader.GetString(row, "category"));
+            var subcategory = ListFieldDisplayName(
+                NetSuiteSuiteQlRowReader.GetString(row, "subcategory", "custentity_tebi_klant_subcategorie"));
 
             if (existing.TryGetValue(customerId, out var customer))
             {
@@ -190,6 +194,8 @@ public sealed class NetSuiteSyncService(
                 customer.Name = name;
                 customer.City = city;
                 customer.ContactEmail = contactEmail;
+                customer.Category = category;
+                customer.Subcategory = subcategory;
             }
             else
             {
@@ -199,7 +205,9 @@ public sealed class NetSuiteSyncService(
                     CustomerId = customerId,
                     Name = name,
                     City = city,
-                    ContactEmail = contactEmail
+                    ContactEmail = contactEmail,
+                    Category = category,
+                    Subcategory = subcategory
                 };
                 dbContext.Customers.Add(created);
                 existing[customerId] = created;
@@ -224,9 +232,8 @@ public sealed class NetSuiteSyncService(
         {
             var supplierId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id");
             var name = NetSuiteSuiteQlRowReader.GetString(row, "companyname", "companyName") ?? "Unknown supplier";
-            var city = NetSuiteSuiteQlRowReader.GetString(row, "defaultbillingaddress", "defaultBillingAddress")
-                ?? NetSuiteSuiteQlRowReader.GetString(row, "defaultshippingaddress", "defaultShippingAddress")
-                ?? string.Empty;
+            // Same city mapping as customers: entityAddress.city joined on defaultAddress.
+            var city = NetSuiteSuiteQlRowReader.GetString(row, "city") ?? string.Empty;
             var contactEmail = NetSuiteSuiteQlRowReader.GetString(row, "email") ?? string.Empty;
 
             if (existing.TryGetValue(supplierId, out var supplier))
@@ -626,6 +633,19 @@ public sealed class NetSuiteSyncService(
 
     private static string StockLocationKey(string itemId, string locationId) =>
         $"{itemId}|{locationId}";
+
+    /// <summary>
+    /// Keeps a list-field label and hides a bare numeric NetSuite internal id.
+    /// </summary>
+    private static string ListFieldDisplayName(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        return value.All(char.IsDigit) ? string.Empty : value;
+    }
 
     private static NetSuiteSyncResult Failed(string message) =>
         new(

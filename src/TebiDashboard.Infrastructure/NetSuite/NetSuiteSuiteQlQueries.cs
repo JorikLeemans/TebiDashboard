@@ -7,36 +7,44 @@ namespace TebiDashboard.Infrastructure.NetSuite;
 internal static class NetSuiteSuiteQlQueries
 {
     /// <summary>
-    /// Customer: id, entityId (code), companyName, email, defaultBillingAddress (TEBI SuiteQL field names).
+    /// Customer: id, entityId (code), glommedName, email, city, and category labels.
+    /// glommedName is the display name for both companies and individuals; companyName is empty for persons.
+    /// defaultAddress is the address id; entityAddress.city is the town, not the full address text.
+    /// category and custentity_tebi_klant_subcategorie are list fields; BUILTIN.DF returns the text, not the id.
     /// custentity_tebi_primaire_dochtermaatsch is available but not stored until subsidiary filtering is added.
     /// </summary>
     public static string Customers() =>
         """
         SELECT DISTINCT
-            id,
-            entityId,
-            companyName,
-            email,
-            defaultBillingAddress
-        FROM customer
-        WHERE isInactive = 'F'
-        ORDER BY companyName
+            c.id,
+            c.entityId,
+            c.glommedName,
+            c.email,
+            ea.city,
+            BUILTIN.DF(c.category) AS category,
+            BUILTIN.DF(c.custentity_tebi_klant_subcategorie) AS subcategory
+        FROM customer c
+        LEFT JOIN entityAddress ea ON ea.nKey = c.defaultAddress
+        WHERE c.isInactive = 'F'
+        ORDER BY c.glommedName
         """;
 
     /// <summary>
-    /// Vendor: id, entityId (code), companyName, email, defaultBillingAddress (TEBI SuiteQL field names).
+    /// Vendor: id, entityId (code), companyName, email, and city from the default address.
+    /// Same entityAddress join as customers so the City column stores a town, not the full address.
     /// </summary>
     public static string Vendors() =>
         """
         SELECT DISTINCT
-            id,
-            entityId,
-            companyName,
-            email,
-            defaultBillingAddress
-        FROM vendor
-        WHERE isInactive = 'F'
-        ORDER BY companyName
+            v.id,
+            v.entityId,
+            v.companyName,
+            v.email,
+            ea.city
+        FROM vendor v
+        LEFT JOIN entityAddress ea ON ea.nKey = v.defaultAddress
+        WHERE v.isInactive = 'F'
+        ORDER BY v.companyName
         """;
 
     /// <summary>
