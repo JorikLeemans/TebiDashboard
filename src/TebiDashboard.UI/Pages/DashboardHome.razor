@@ -64,6 +64,7 @@
                         <tr>
                             <th>Date</th>
                             <th>Customer</th>
+                            <th>Product group</th>
                             <th>Amount</th>
                         </tr>
                     </thead>
@@ -85,6 +86,7 @@
                                         </a>
                                     }
                                 </td>
+                                <td>@ProductGroupLabel.For(row)</td>
                                 <td>@EuroFormatting.FormatWhole(row.Amount)</td>
                             </tr>
                         }

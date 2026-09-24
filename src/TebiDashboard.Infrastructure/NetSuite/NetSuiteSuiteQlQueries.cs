@@ -73,15 +73,20 @@ internal static class NetSuiteSuiteQlQueries
     /// <summary>
     /// Invoice revenue (omzet bron): tranId, tranDate, entity, subsidiary; amount excl. BTW via total - taxTotal.
     /// Uses the Invoice SuiteQL table (TEBI field names) instead of generic transaction joins.
+    /// tranDate is projected with TO_CHAR so the payload is YYYY-MM-DD regardless of the account
+    /// date preference. A raw day-first value such as 24/09/2025 does not parse as invariant
+    /// M/D/YYYY and used to be stored as UTC today. productgroupname is the subsidiary display
+    /// name (artikelgroep shown to users); productgroupid stays the numeric internal id.
     /// </summary>
     public static string Invoices(DateOnly fromDate) =>
         $"""
         SELECT
             id,
             tranId,
-            tranDate,
+            TO_CHAR(tranDate, 'YYYY-MM-DD') AS trandate,
             entity AS customerid,
             subsidiary AS productgroupid,
+            BUILTIN.DF(subsidiary) AS productgroupname,
             NVL(total, 0) - NVL(taxTotal, 0) AS amount
         FROM invoice
         WHERE tranDate >= TO_DATE('{fromDate:yyyy-MM-dd}', 'YYYY-MM-DD')
@@ -90,12 +95,13 @@ internal static class NetSuiteSuiteQlQueries
 
     /// <summary>
     /// Vendor bill expenses: trandate, vendor entity, foreigntotal (transaction.total is not SuiteQL-safe).
+    /// The date is formatted as YYYY-MM-DD for the same reason as invoice tranDate.
     /// </summary>
     public static string VendorBills(DateOnly fromDate) =>
         $"""
         SELECT
             t.id,
-            t.trandate,
+            TO_CHAR(t.trandate, 'YYYY-MM-DD') AS trandate,
             NVL(t.foreigntotal, 0) AS amount,
             t.entity AS supplierid
         FROM transaction t
@@ -113,7 +119,7 @@ internal static class NetSuiteSuiteQlQueries
             tl.transaction,
             tl.id AS lineid,
             so.tranId,
-            so.tranDate,
+            TO_CHAR(so.tranDate, 'YYYY-MM-DD') AS trandate,
             so.entity AS customerid,
             tl.item AS itemid,
             (tl.quantity - NVL(tl.quantityshiprecv, 0)) AS quantityopen,
@@ -136,7 +142,7 @@ internal static class NetSuiteSuiteQlQueries
             tl.transaction,
             tl.id AS lineid,
             po.tranId,
-            po.tranDate,
+            TO_CHAR(po.tranDate, 'YYYY-MM-DD') AS trandate,
             po.entity AS supplierid,
             tl.item AS itemid,
             (tl.quantity - NVL(tl.quantityshiprecv, 0)) AS quantityopen,

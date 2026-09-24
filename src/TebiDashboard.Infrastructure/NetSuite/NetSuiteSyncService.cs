@@ -262,21 +262,36 @@ public sealed class NetSuiteSyncService(
         var rows = NetSuiteSuiteQlRowDeduplicator.ByField(
             await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.Invoices(fromDate), pageSize, cancellationToken),
             "id");
+        var imported = 0;
         foreach (var row in rows)
         {
+            // Skip instead of storing UTC today when tranDate is missing or still unparseable.
+            if (!NetSuiteSuiteQlRowReader.TryGetDate(row, out var tranDate, "trandate", "tranDate"))
+            {
+                logger.LogWarning(
+                    "Skipping invoice {InvoiceId}: tranDate '{TranDate}' is missing or not a real transaction date.",
+                    NetSuiteSuiteQlRowReader.GetString(row, "id"),
+                    NetSuiteSuiteQlRowReader.GetString(row, "trandate", "tranDate") ?? "(missing)");
+                continue;
+            }
+
             var customerId = NetSuiteSuiteQlRowReader.GetString(row, "customerid") ?? string.Empty;
             dbContext.RevenueRecords.Add(new RevenueRecord
             {
                 Id = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id"),
-                Date = NetSuiteSuiteQlRowReader.GetDate(row, "trandate", "tranDate"),
+                Date = tranDate,
                 Amount = NetSuiteSuiteQlRowReader.GetDecimal(row, "amount"),
                 CustomerId = customerId,
                 CustomerName = customerNames.GetValueOrDefault(customerId) ?? string.Empty,
-                ProductGroupId = NetSuiteSuiteQlRowReader.GetString(row, "productgroupid") ?? string.Empty
+                ProductGroupId = NetSuiteSuiteQlRowReader.GetString(row, "productgroupid") ?? string.Empty,
+                // Display name from BUILTIN.DF(subsidiary). Empty when NetSuite omits it; the UI
+                // then falls back to the numeric ProductGroupId.
+                ProductGroupName = NetSuiteSuiteQlRowReader.GetString(row, "productgroupname", "productGroupName") ?? string.Empty
             });
+            imported++;
         }
 
-        return rows.Count;
+        return imported;
     }
 
     private async Task<int> SyncExpensesAsync(DateOnly fromDate, int pageSize, CancellationToken cancellationToken)
@@ -288,13 +303,23 @@ public sealed class NetSuiteSyncService(
         var rows = NetSuiteSuiteQlRowDeduplicator.ByField(
             await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.VendorBills(fromDate), pageSize, cancellationToken),
             "id");
+        var imported = 0;
         foreach (var row in rows)
         {
+            if (!NetSuiteSuiteQlRowReader.TryGetDate(row, out var tranDate, "trandate", "tranDate"))
+            {
+                logger.LogWarning(
+                    "Skipping vendor bill {BillId}: trandate '{TranDate}' is missing or not a real transaction date.",
+                    NetSuiteSuiteQlRowReader.GetString(row, "id"),
+                    NetSuiteSuiteQlRowReader.GetString(row, "trandate", "tranDate") ?? "(missing)");
+                continue;
+            }
+
             var supplierId = NetSuiteSuiteQlRowReader.GetString(row, "supplierid");
             dbContext.Expenses.Add(new ExpenseRecord
             {
                 Id = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id"),
-                Date = NetSuiteSuiteQlRowReader.GetDate(row, "trandate"),
+                Date = tranDate,
                 Amount = NetSuiteSuiteQlRowReader.GetDecimal(row, "amount"),
                 Category = "Vendor Bill",
                 VendorName = supplierId is null
@@ -302,9 +327,10 @@ public sealed class NetSuiteSyncService(
                     : supplierNames.GetValueOrDefault(supplierId) ?? string.Empty,
                 SupplierId = supplierId
             });
+            imported++;
         }
 
-        return rows.Count;
+        return imported;
     }
 
     private async Task<int> SyncOpenTransactionsAsync(DateOnly fromDate, int pageSize, CancellationToken cancellationToken)
@@ -317,13 +343,21 @@ public sealed class NetSuiteSyncService(
             "transaction",
             "lineid");
 
+        var imported = 0;
         foreach (var row in salesRows)
         {
-            dbContext.OpenTransactions.Add(MapOpenTransactionRow(
+            var mapped = MapOpenTransactionRow(
                 row,
                 type: "Sales Order",
                 customerId: NetSuiteSuiteQlRowReader.GetString(row, "customerid"),
-                supplierId: null));
+                supplierId: null);
+            if (mapped is null)
+            {
+                continue;
+            }
+
+            dbContext.OpenTransactions.Add(mapped);
+            imported++;
         }
 
         var purchaseRows = NetSuiteSuiteQlRowDeduplicator.ByFields(
@@ -336,17 +370,24 @@ public sealed class NetSuiteSyncService(
 
         foreach (var row in purchaseRows)
         {
-            dbContext.OpenTransactions.Add(MapOpenTransactionRow(
+            var mapped = MapOpenTransactionRow(
                 row,
                 type: "Purchase Order",
                 customerId: null,
-                supplierId: NetSuiteSuiteQlRowReader.GetString(row, "supplierid")));
+                supplierId: NetSuiteSuiteQlRowReader.GetString(row, "supplierid"));
+            if (mapped is null)
+            {
+                continue;
+            }
+
+            dbContext.OpenTransactions.Add(mapped);
+            imported++;
         }
 
-        return salesRows.Count + purchaseRows.Count;
+        return imported;
     }
 
-    private static OpenTransactionRecord MapOpenTransactionRow(
+    private OpenTransactionRecord? MapOpenTransactionRow(
         IReadOnlyDictionary<string, JsonElement> row,
         string type,
         string? customerId,
@@ -356,6 +397,18 @@ public sealed class NetSuiteSyncService(
         var transactionId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "transaction");
         var lineId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "lineid");
 
+        // Same rule as invoices: a bad tranDate must not become "today".
+        if (!NetSuiteSuiteQlRowReader.TryGetDate(row, out var transactionDate, "trandate", "tranDate"))
+        {
+            logger.LogWarning(
+                "Skipping open {Type} {TransactionId}-{LineId}: tranDate '{TranDate}' is missing or not a real transaction date.",
+                type,
+                transactionId,
+                lineId,
+                NetSuiteSuiteQlRowReader.GetString(row, "trandate", "tranDate") ?? "(missing)");
+            return null;
+        }
+
         return new OpenTransactionRecord
         {
             TransactionId = $"{transactionId}-{lineId}",
@@ -363,7 +416,7 @@ public sealed class NetSuiteSyncService(
             ItemId = NetSuiteSuiteQlRowReader.GetString(row, "itemid") ?? string.Empty,
             CustomerId = customerId,
             SupplierId = supplierId,
-            TransactionDate = NetSuiteSuiteQlRowReader.GetDate(row, "trandate", "tranDate"),
+            TransactionDate = transactionDate,
             QuantityOpen = NetSuiteSuiteQlRowReader.GetDecimal(row, "quantityopen"),
             Amount = NetSuiteSuiteQlRowReader.GetDecimal(row, "amount"),
             Status = NetSuiteSuiteQlRowReader.GetString(row, "status") ?? "Open"

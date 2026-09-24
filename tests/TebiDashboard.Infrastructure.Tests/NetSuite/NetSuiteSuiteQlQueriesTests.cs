@@ -44,9 +44,10 @@ public sealed class NetSuiteSuiteQlQueriesTests
         var sql = NetSuiteSuiteQlQueries.Invoices(new DateOnly(2026, 1, 1));
 
         Assert.Contains("FROM invoice", sql, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("tranDate", sql);
+        Assert.Contains("TO_CHAR(tranDate, 'YYYY-MM-DD') AS trandate", sql);
         Assert.Contains("taxTotal", sql);
         Assert.Contains("subsidiary", sql);
+        Assert.Contains("BUILTIN.DF(subsidiary) AS productgroupname", sql);
         Assert.DoesNotContain("transactionline", sql, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -65,7 +66,7 @@ public sealed class NetSuiteSuiteQlQueriesTests
         var sql = NetSuiteSuiteQlQueries.OpenSalesOrderLines(new DateOnly(2026, 1, 1));
 
         Assert.Contains("INNER JOIN salesorder", sql, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("so.tranDate", sql);
+        Assert.Contains("TO_CHAR(so.tranDate, 'YYYY-MM-DD') AS trandate", sql);
         Assert.Contains("so.entity", sql);
         Assert.DoesNotContain("type = 'SalesOrd'", sql, StringComparison.OrdinalIgnoreCase);
     }
@@ -76,7 +77,7 @@ public sealed class NetSuiteSuiteQlQueriesTests
         var sql = NetSuiteSuiteQlQueries.OpenPurchaseOrderLines(new DateOnly(2026, 1, 1));
 
         Assert.Contains("INNER JOIN purchaseorder", sql, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("po.tranDate", sql);
+        Assert.Contains("TO_CHAR(po.tranDate, 'YYYY-MM-DD') AS trandate", sql);
         Assert.Contains("po.entity", sql);
         Assert.DoesNotContain("type = 'PurchOrd'", sql, StringComparison.OrdinalIgnoreCase);
     }

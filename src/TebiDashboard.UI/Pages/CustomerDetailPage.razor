@@ -82,7 +82,7 @@
                             <tr>
                                 <td>@row.Date.ToString("d")</td>
                                 <td>@EuroFormatting.FormatWhole(row.Amount)</td>
-                                <td><code>@row.ProductGroupId</code></td>
+                                <td>@ProductGroupLabel.For(row)</td>
                             </tr>
                         }
                     </tbody>
