@@ -11,6 +11,8 @@ namespace TebiDashboard.Infrastructure.NetSuite;
 
 /// <summary>
 /// Imports NetSuite master and transactional data into the dashboard database.
+/// Sync is incremental by default: existing revenue, expenses, and masters stay,
+/// and only unseen rows are inserted (masters and stock quantities are refreshed).
 /// </summary>
 public sealed class NetSuiteSyncService(
     TebiDashboardDbContext dbContext,
@@ -32,6 +34,7 @@ public sealed class NetSuiteSyncService(
 
         try
         {
+            // Full replace is opt-in. Normal syncs keep stored rows and only add or refresh what NetSuite returns.
             if (settings.ClearDashboardDataOnSync)
             {
                 await RunStepAsync("clear dashboard tables", () => ClearDashboardTablesAsync(cancellationToken));
@@ -47,6 +50,8 @@ public sealed class NetSuiteSyncService(
             await dbContext.SaveChangesAsync(cancellationToken);
 
             var stockLocations = await RunStepAsync("stock locations", SyncStockLocationsAsync, pageSize, cancellationToken);
+            // Persist stock first so the on-hand rollup reads the rows just imported or refreshed.
+            await dbContext.SaveChangesAsync(cancellationToken);
             await ApplyInventoryQuantitiesFromStockLocationsAsync(cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -165,22 +170,45 @@ public sealed class NetSuiteSyncService(
         var rows = NetSuiteSuiteQlRowDeduplicator.ByField(
             await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.Customers(), pageSize, cancellationToken),
             "id");
+        var existing = await dbContext.Customers.ToDictionaryAsync(
+            customer => customer.CustomerId,
+            cancellationToken);
+        var imported = 0;
         foreach (var row in rows)
         {
-            dbContext.Customers.Add(new CustomerRecord
+            var customerId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id");
+            var name = NetSuiteSuiteQlRowReader.GetString(row, "companyname", "companyName") ?? "Unknown customer";
+            // defaultBillingAddress holds the billing address text when available in SuiteQL.
+            var city = NetSuiteSuiteQlRowReader.GetString(row, "defaultbillingaddress", "defaultBillingAddress")
+                ?? NetSuiteSuiteQlRowReader.GetString(row, "defaultshippingaddress", "defaultShippingAddress")
+                ?? string.Empty;
+            var contactEmail = NetSuiteSuiteQlRowReader.GetString(row, "email") ?? string.Empty;
+
+            if (existing.TryGetValue(customerId, out var customer))
             {
-                // Internal id matches invoice.entity; entityId is the human-readable customer code in NetSuite.
-                CustomerId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id"),
-                Name = NetSuiteSuiteQlRowReader.GetString(row, "companyname", "companyName") ?? "Unknown customer",
-                // defaultBillingAddress holds the billing address text when available in SuiteQL.
-                City = NetSuiteSuiteQlRowReader.GetString(row, "defaultbillingaddress", "defaultBillingAddress")
-                    ?? NetSuiteSuiteQlRowReader.GetString(row, "defaultshippingaddress", "defaultShippingAddress")
-                    ?? string.Empty,
-                ContactEmail = NetSuiteSuiteQlRowReader.GetString(row, "email") ?? string.Empty
-            });
+                // Refresh the stored name/contact; do not delete customers missing from this page.
+                customer.Name = name;
+                customer.City = city;
+                customer.ContactEmail = contactEmail;
+            }
+            else
+            {
+                var created = new CustomerRecord
+                {
+                    // Internal id matches invoice.entity; entityId is the human-readable customer code in NetSuite.
+                    CustomerId = customerId,
+                    Name = name,
+                    City = city,
+                    ContactEmail = contactEmail
+                };
+                dbContext.Customers.Add(created);
+                existing[customerId] = created;
+            }
+
+            imported++;
         }
 
-        return rows.Count;
+        return imported;
     }
 
     private async Task<int> SyncSuppliersAsync(int pageSize, CancellationToken cancellationToken)
@@ -188,21 +216,43 @@ public sealed class NetSuiteSyncService(
         var rows = NetSuiteSuiteQlRowDeduplicator.ByField(
             await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.Vendors(), pageSize, cancellationToken),
             "id");
+        var existing = await dbContext.Suppliers.ToDictionaryAsync(
+            supplier => supplier.SupplierId,
+            cancellationToken);
+        var imported = 0;
         foreach (var row in rows)
         {
-            dbContext.Suppliers.Add(new SupplierRecord
+            var supplierId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id");
+            var name = NetSuiteSuiteQlRowReader.GetString(row, "companyname", "companyName") ?? "Unknown supplier";
+            var city = NetSuiteSuiteQlRowReader.GetString(row, "defaultbillingaddress", "defaultBillingAddress")
+                ?? NetSuiteSuiteQlRowReader.GetString(row, "defaultshippingaddress", "defaultShippingAddress")
+                ?? string.Empty;
+            var contactEmail = NetSuiteSuiteQlRowReader.GetString(row, "email") ?? string.Empty;
+
+            if (existing.TryGetValue(supplierId, out var supplier))
             {
-                // Internal id matches vendor bill entity; entityId is the human-readable vendor code in NetSuite.
-                SupplierId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id"),
-                Name = NetSuiteSuiteQlRowReader.GetString(row, "companyname", "companyName") ?? "Unknown supplier",
-                City = NetSuiteSuiteQlRowReader.GetString(row, "defaultbillingaddress", "defaultBillingAddress")
-                    ?? NetSuiteSuiteQlRowReader.GetString(row, "defaultshippingaddress", "defaultShippingAddress")
-                    ?? string.Empty,
-                ContactEmail = NetSuiteSuiteQlRowReader.GetString(row, "email") ?? string.Empty
-            });
+                supplier.Name = name;
+                supplier.City = city;
+                supplier.ContactEmail = contactEmail;
+            }
+            else
+            {
+                var created = new SupplierRecord
+                {
+                    // Internal id matches vendor bill entity; entityId is the human-readable vendor code in NetSuite.
+                    SupplierId = supplierId,
+                    Name = name,
+                    City = city,
+                    ContactEmail = contactEmail
+                };
+                dbContext.Suppliers.Add(created);
+                existing[supplierId] = created;
+            }
+
+            imported++;
         }
 
-        return rows.Count;
+        return imported;
     }
 
     private async Task<int> SyncInventoryItemsAsync(int pageSize, CancellationToken cancellationToken)
@@ -210,25 +260,44 @@ public sealed class NetSuiteSyncService(
         var rows = NetSuiteSuiteQlRowDeduplicator.ByField(
             await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.InventoryItems(), pageSize, cancellationToken),
             "id");
+        var existing = await dbContext.InventoryItems.ToDictionaryAsync(item => item.ItemId, cancellationToken);
+        var imported = 0;
         foreach (var row in rows)
         {
-            dbContext.InventoryItems.Add(new InventoryItemRecord
+            var itemId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id");
+            // TEBI uses itemId (SKU) as display name; fall back to displayName when itemId is empty.
+            var itemName = NetSuiteSuiteQlRowReader.GetString(row, "itemid", "itemId")
+                ?? NetSuiteSuiteQlRowReader.GetString(row, "displayname", "displayName")
+                ?? "Unknown item";
+            var barcode = NetSuiteSuiteQlRowReader.GetString(row, "upccode", "upcCode") ?? string.Empty;
+
+            if (existing.TryGetValue(itemId, out var item))
             {
-                ItemId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id"),
-                // TEBI uses itemId (SKU) as display name; fall back to displayName when itemId is empty.
-                ItemName = NetSuiteSuiteQlRowReader.GetString(row, "itemid", "itemId")
-                    ?? NetSuiteSuiteQlRowReader.GetString(row, "displayname", "displayName")
-                    ?? "Unknown item",
-                Barcode = NetSuiteSuiteQlRowReader.GetString(row, "upccode", "upcCode") ?? string.Empty,
-                QuantityOnHand = 0m,
-                // reorderPoint is not queryable via SuiteQL on item; default to 0 until a custom field is mapped.
-                ReorderPoint = 0m,
-                RecentSalesVolume = 0m,
-                IsLowStock = false
-            });
+                // Keep on-hand and sales figures; those are filled by later snapshot steps.
+                item.ItemName = itemName;
+                item.Barcode = barcode;
+            }
+            else
+            {
+                var created = new InventoryItemRecord
+                {
+                    ItemId = itemId,
+                    ItemName = itemName,
+                    Barcode = barcode,
+                    QuantityOnHand = 0m,
+                    // reorderPoint is not queryable via SuiteQL on item; default to 0 until a custom field is mapped.
+                    ReorderPoint = 0m,
+                    RecentSalesVolume = 0m,
+                    IsLowStock = false
+                };
+                dbContext.InventoryItems.Add(created);
+                existing[itemId] = created;
+            }
+
+            imported++;
         }
 
-        return rows.Count;
+        return imported;
     }
 
     private async Task<int> SyncStockLocationsAsync(int pageSize, CancellationToken cancellationToken)
@@ -237,20 +306,44 @@ public sealed class NetSuiteSyncService(
             await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.StockLocations(), pageSize, cancellationToken),
             "item",
             "location");
+        // Stock rows use an identity PK, so match the business key (item + location) to avoid duplicates.
+        var existing = (await dbContext.StockLocations.ToListAsync(cancellationToken))
+            .ToDictionary(
+                location => StockLocationKey(location.ItemId, location.LocationId),
+                StringComparer.OrdinalIgnoreCase);
+        var imported = 0;
         foreach (var row in rows)
         {
-            dbContext.StockLocations.Add(new StockLocationRecord
+            var itemId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "item");
+            var locationId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "location");
+            var locationName = NetSuiteSuiteQlRowReader.GetString(row, "locationname")
+                ?? NetSuiteSuiteQlRowReader.GetString(row, "location")
+                ?? "Unknown location";
+            var quantityOnHand = NetSuiteSuiteQlRowReader.GetDecimal(row, "quantity", "quantityonhand");
+            var key = StockLocationKey(itemId, locationId);
+
+            if (existing.TryGetValue(key, out var location))
             {
-                ItemId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "item"),
-                LocationId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "location"),
-                LocationName = NetSuiteSuiteQlRowReader.GetString(row, "locationname")
-                    ?? NetSuiteSuiteQlRowReader.GetString(row, "location")
-                    ?? "Unknown location",
-                QuantityOnHand = NetSuiteSuiteQlRowReader.GetDecimal(row, "quantity", "quantityonhand")
-            });
+                location.LocationName = locationName;
+                location.QuantityOnHand = quantityOnHand;
+            }
+            else
+            {
+                var created = new StockLocationRecord
+                {
+                    ItemId = itemId,
+                    LocationId = locationId,
+                    LocationName = locationName,
+                    QuantityOnHand = quantityOnHand
+                };
+                dbContext.StockLocations.Add(created);
+                existing[key] = created;
+            }
+
+            imported++;
         }
 
-        return rows.Count;
+        return imported;
     }
 
     private async Task<int> SyncRevenueAsync(DateOnly fromDate, int pageSize, CancellationToken cancellationToken)
@@ -263,6 +356,12 @@ public sealed class NetSuiteSyncService(
             await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.Invoices(fromDate), pageSize, cancellationToken),
             "invoiceid",
             "lineid");
+        // Historical invoice lines stay in the dashboard even after they fall outside the lookback window.
+        var existingIds = (await dbContext.RevenueRecords
+            .AsNoTracking()
+            .Select(record => record.Id)
+            .ToListAsync(cancellationToken))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var imported = 0;
         foreach (var row in rows)
         {
@@ -278,10 +377,17 @@ public sealed class NetSuiteSyncService(
 
             var invoiceId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "invoiceid", "id");
             var lineId = NetSuiteSuiteQlRowReader.GetString(row, "lineid") ?? "0";
+            var revenueId = $"{invoiceId}-{lineId}";
+            // Only append lines we have not stored yet; do not rewrite older amounts or names.
+            if (!existingIds.Add(revenueId))
+            {
+                continue;
+            }
+
             var customerId = NetSuiteSuiteQlRowReader.GetString(row, "customerid") ?? string.Empty;
             dbContext.RevenueRecords.Add(new RevenueRecord
             {
-                Id = $"{invoiceId}-{lineId}",
+                Id = revenueId,
                 // Keep the parent invoice so the UI can group lines under one document.
                 InvoiceId = invoiceId,
                 InvoiceNumber = NetSuiteSuiteQlRowReader.GetString(row, "invoicenumber", "tranid", "tranId") ?? string.Empty,
@@ -310,6 +416,11 @@ public sealed class NetSuiteSyncService(
         var rows = NetSuiteSuiteQlRowDeduplicator.ByField(
             await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.VendorBills(fromDate), pageSize, cancellationToken),
             "id");
+        var existingIds = (await dbContext.Expenses
+            .AsNoTracking()
+            .Select(expense => expense.Id)
+            .ToListAsync(cancellationToken))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var imported = 0;
         foreach (var row in rows)
         {
@@ -322,10 +433,17 @@ public sealed class NetSuiteSyncService(
                 continue;
             }
 
+            var expenseId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id");
+            // Keep older bills that are no longer in the lookback query.
+            if (!existingIds.Add(expenseId))
+            {
+                continue;
+            }
+
             var supplierId = NetSuiteSuiteQlRowReader.GetString(row, "supplierid");
             dbContext.Expenses.Add(new ExpenseRecord
             {
-                Id = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id"),
+                Id = expenseId,
                 Date = tranDate,
                 Amount = NetSuiteSuiteQlRowReader.GetDecimal(row, "amount"),
                 Category = "Vendor Bill",
@@ -342,6 +460,10 @@ public sealed class NetSuiteSyncService(
 
     private async Task<int> SyncOpenTransactionsAsync(DateOnly fromDate, int pageSize, CancellationToken cancellationToken)
     {
+        var existing = await dbContext.OpenTransactions.ToDictionaryAsync(
+            transaction => transaction.TransactionId,
+            cancellationToken);
+
         var salesRows = NetSuiteSuiteQlRowDeduplicator.ByFields(
             await restClient.QuerySuiteQlAsync(
                 NetSuiteSuiteQlQueries.OpenSalesOrderLines(fromDate),
@@ -363,8 +485,7 @@ public sealed class NetSuiteSyncService(
                 continue;
             }
 
-            dbContext.OpenTransactions.Add(mapped);
-            imported++;
+            imported += UpsertOpenTransaction(existing, mapped);
         }
 
         var purchaseRows = NetSuiteSuiteQlRowDeduplicator.ByFields(
@@ -387,11 +508,37 @@ public sealed class NetSuiteSyncService(
                 continue;
             }
 
-            dbContext.OpenTransactions.Add(mapped);
-            imported++;
+            imported += UpsertOpenTransaction(existing, mapped);
         }
 
         return imported;
+    }
+
+    /// <summary>
+    /// Adds a new open-order line or refreshes quantity/status on an existing one. Closed orders
+    /// that NetSuite no longer returns are left in place so history is not wiped.
+    /// </summary>
+    private int UpsertOpenTransaction(
+        Dictionary<string, OpenTransactionRecord> existing,
+        OpenTransactionRecord mapped)
+    {
+        if (existing.TryGetValue(mapped.TransactionId, out var stored))
+        {
+            stored.Type = mapped.Type;
+            stored.ItemId = mapped.ItemId;
+            stored.ItemName = mapped.ItemName;
+            stored.CustomerId = mapped.CustomerId;
+            stored.SupplierId = mapped.SupplierId;
+            stored.TransactionDate = mapped.TransactionDate;
+            stored.QuantityOpen = mapped.QuantityOpen;
+            stored.Amount = mapped.Amount;
+            stored.Status = mapped.Status;
+            return 1;
+        }
+
+        dbContext.OpenTransactions.Add(mapped);
+        existing[mapped.TransactionId] = mapped;
+        return 1;
     }
 
     private OpenTransactionRecord? MapOpenTransactionRow(
@@ -476,6 +623,9 @@ public sealed class NetSuiteSyncService(
             }
         }
     }
+
+    private static string StockLocationKey(string itemId, string locationId) =>
+        $"{itemId}|{locationId}";
 
     private static NetSuiteSyncResult Failed(string message) =>
         new(
