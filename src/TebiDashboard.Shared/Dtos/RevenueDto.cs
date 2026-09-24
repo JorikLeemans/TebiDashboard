@@ -11,4 +11,10 @@ public sealed class RevenueDto
     public string CustomerId { get; init; } = string.Empty;
     public string CustomerName { get; init; } = string.Empty;
     public string? ProductGroupId { get; init; }
+
+    /// <summary>
+    /// Product group name for display (artikelgroep). Empty when only the NetSuite id is known;
+    /// callers then show <see cref="ProductGroupId"/>.
+    /// </summary>
+    public string? ProductGroupName { get; init; }
 }

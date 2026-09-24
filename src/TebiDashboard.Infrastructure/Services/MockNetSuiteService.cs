@@ -243,22 +243,43 @@ public sealed class MockNetSuiteService : INetSuiteService
         return Task.FromResult<IReadOnlyList<RevenueDto>>(data);
     }
 
-    private static List<RevenueDto> GetMockRevenue() =>
-    [
-        new() { Id = "1", Date = Today.AddDays(-30), Amount = 42000m, CustomerId = "c1", CustomerName = "Bouwbedrijf Jansen", ProductGroupId = "pg1" },
-        new() { Id = "2", Date = Today.AddDays(-25), Amount = 8200m, CustomerId = "c2", CustomerName = "Gemeente Utrecht", ProductGroupId = "pg2" },
-        new() { Id = "3", Date = Today.AddDays(-22), Amount = 15600m, CustomerId = "c3", CustomerName = "Stratenmakers BV", ProductGroupId = "pg1" },
-        new() { Id = "4", Date = Today.AddDays(-20), Amount = 6800m, CustomerId = "c1", CustomerName = "Bouwbedrijf Jansen", ProductGroupId = "pg1" },
-        new() { Id = "5", Date = Today.AddDays(-18), Amount = 22400m, CustomerId = "c4", CustomerName = "Woningbouw De Vliet", ProductGroupId = "pg2" },
-        new() { Id = "6", Date = Today.AddDays(-15), Amount = 38500m, CustomerId = "c2", CustomerName = "Gemeente Utrecht", ProductGroupId = "pg2" },
-        new() { Id = "7", Date = Today.AddDays(-12), Amount = 14300m, CustomerId = "c3", CustomerName = "Stratenmakers BV", ProductGroupId = "pg1" },
-        new() { Id = "8", Date = Today.AddDays(-10), Amount = 9400m, CustomerId = "c5", CustomerName = "Aannemer Noord", ProductGroupId = "pg1" },
-        new() { Id = "9", Date = Today.AddDays(-7), Amount = 51200m, CustomerId = "c3", CustomerName = "Stratenmakers BV", ProductGroupId = "pg1" },
-        new() { Id = "10", Date = Today.AddDays(-5), Amount = 11200m, CustomerId = "c2", CustomerName = "Gemeente Utrecht", ProductGroupId = "pg2" },
-        new() { Id = "11", Date = Today.AddDays(-4), Amount = 8700m, CustomerId = "c4", CustomerName = "Woningbouw De Vliet", ProductGroupId = "pg2" },
-        new() { Id = "12", Date = Today.AddDays(-2), Amount = 39500m, CustomerId = "c1", CustomerName = "Bouwbedrijf Jansen", ProductGroupId = "pg1" },
-        new() { Id = "13", Date = Today.AddDays(-1), Amount = 27800m, CustomerId = "c4", CustomerName = "Woningbouw De Vliet", ProductGroupId = "pg2" }
-    ];
+    private static List<RevenueDto> GetMockRevenue()
+    {
+        RevenueDto Row(string id, int daysAgo, decimal amount, string customerId, string customerName, string productGroupId) =>
+            new()
+            {
+                Id = id,
+                Date = Today.AddDays(-daysAgo),
+                Amount = amount,
+                CustomerId = customerId,
+                CustomerName = customerName,
+                ProductGroupId = productGroupId,
+                // Same artikelgroep names as the demo seeder so mock mode does not show "pg1".
+                ProductGroupName = productGroupId switch
+                {
+                    "pg1" => "Bestrating",
+                    "pg2" => "Tegels",
+                    _ => null
+                }
+            };
+
+        return
+        [
+            Row("1", 30, 42000m, "c1", "Bouwbedrijf Jansen", "pg1"),
+            Row("2", 25, 8200m, "c2", "Gemeente Utrecht", "pg2"),
+            Row("3", 22, 15600m, "c3", "Stratenmakers BV", "pg1"),
+            Row("4", 20, 6800m, "c1", "Bouwbedrijf Jansen", "pg1"),
+            Row("5", 18, 22400m, "c4", "Woningbouw De Vliet", "pg2"),
+            Row("6", 15, 38500m, "c2", "Gemeente Utrecht", "pg2"),
+            Row("7", 12, 14300m, "c3", "Stratenmakers BV", "pg1"),
+            Row("8", 10, 9400m, "c5", "Aannemer Noord", "pg1"),
+            Row("9", 7, 51200m, "c3", "Stratenmakers BV", "pg1"),
+            Row("10", 5, 11200m, "c2", "Gemeente Utrecht", "pg2"),
+            Row("11", 4, 8700m, "c4", "Woningbouw De Vliet", "pg2"),
+            Row("12", 2, 39500m, "c1", "Bouwbedrijf Jansen", "pg1"),
+            Row("13", 1, 27800m, "c4", "Woningbouw De Vliet", "pg2")
+        ];
+    }
 
     public Task<IReadOnlyList<GoalDto>> GetGoalsAsync(int year, string? period = null, CancellationToken cancellationToken = default)
     {

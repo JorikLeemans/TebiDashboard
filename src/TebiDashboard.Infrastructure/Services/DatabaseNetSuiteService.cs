@@ -133,7 +133,8 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
                 Amount = r.Amount,
                 CustomerId = r.CustomerId,
                 CustomerName = r.CustomerName,
-                ProductGroupId = r.ProductGroupId
+                ProductGroupId = r.ProductGroupId,
+                ProductGroupName = r.ProductGroupName
             }).ToList(),
             SalesOrders = salesOrders
         };
@@ -417,7 +418,8 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             Amount = r.Amount,
             CustomerId = r.CustomerId,
             CustomerName = r.CustomerName,
-            ProductGroupId = r.ProductGroupId
+            ProductGroupId = r.ProductGroupId,
+            ProductGroupName = r.ProductGroupName
         }).ToList();
     }
 
