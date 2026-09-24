@@ -136,7 +136,7 @@
 
 .btn-admin:disabled {
   opacity: 0.6;
-  cursor: wait;
+  cursor: not-allowed;
 }
 
 .btn-admin--primary {
@@ -183,6 +183,63 @@
   margin: 0.35rem 0 0;
   color: #5a6b62;
   max-width: 52rem;
+}
+
+/* Status banner shown as soon as the admin page loads. */
+.admin-netsuite__setup {
+  margin: 0 0 0.85rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid #c9d8cf;
+  background: #f7faf8;
+}
+
+.admin-netsuite__setup--ok {
+  border-color: #b8e0c5;
+  background: #f2fbf5;
+}
+
+.admin-netsuite__setup--warn {
+  border-color: #e2c36d;
+  background: #fff9e8;
+}
+
+.admin-netsuite__setup-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
+  margin-bottom: 0.4rem;
+}
+
+.admin-netsuite__badge {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+}
+
+.admin-netsuite__badge--ok {
+  background: #d8f3e1;
+  color: #145c32;
+}
+
+.admin-netsuite__badge--warn {
+  background: #fbe7a1;
+  color: #6a4b00;
+}
+
+.admin-netsuite__last-sync {
+  color: #2f4f3d;
+  font-weight: 600;
+}
+
+.admin-netsuite__setup-message {
+  margin: 0.25rem 0 0;
+  color: #5a6b62;
 }
 
 .admin-netsuite__actions {

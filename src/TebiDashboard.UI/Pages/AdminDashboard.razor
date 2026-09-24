@@ -25,7 +25,7 @@
     }
     else if (_isLoading)
     {
-        <p>Loading accounts...</p>
+        <p>Loading administration...</p>
     }
     else if (!string.IsNullOrWhiteSpace(_pageError))
     {
@@ -49,18 +49,35 @@
                 <div class="admin-netsuite__actions">
                     <button type="button"
                             class="btn-admin btn-admin--secondary"
-                            disabled="@_netSuiteBusy"
+                            disabled="@NetSuiteActionsDisabled"
+                            title="@NetSuiteDisabledReason"
                             @onclick="TestNetSuiteConnectionAsync">
                         Test connection
                     </button>
                     <button type="button"
                             class="btn-admin btn-admin--primary"
-                            disabled="@_netSuiteBusy"
+                            disabled="@NetSuiteActionsDisabled"
+                            title="@NetSuiteDisabledReason"
                             @onclick="SyncNetSuiteDataAsync">
                         Sync NetSuite data
                     </button>
                 </div>
             </div>
+
+            @if (_netSuiteSetup is not null)
+            {
+                <div class="admin-netsuite__setup @(_netSuiteSetup.IsConfigured ? "admin-netsuite__setup--ok" : "admin-netsuite__setup--warn")"
+                     role="status">
+                    <div class="admin-netsuite__setup-row">
+                        <span class="admin-netsuite__badge @(_netSuiteSetup.IsConfigured ? "admin-netsuite__badge--ok" : "admin-netsuite__badge--warn")">
+                            @(_netSuiteSetup.IsConfigured ? "Configured" : "Not configured")
+                        </span>
+                        <span class="admin-netsuite__last-sync">@FormatLastSync(_netSuiteSetup.LastSync)</span>
+                    </div>
+                    <p class="admin-netsuite__setup-message">@_netSuiteSetup.ConfigurationMessage</p>
+                    <p class="admin-netsuite__setup-message">@_netSuiteSetup.DataSourceMessage</p>
+                </div>
+            }
 
             @if (_netSuiteBusy)
             {
@@ -188,8 +205,25 @@
   private string? _statusMessage;
   private bool _netSuiteBusy;
   private string? _netSuiteError;
+  private NetSuiteSetupStatusDto? _netSuiteSetup;
   private NetSuiteConnectionResultDto? _netSuiteConnection;
   private NetSuiteSyncResultDto? _netSuiteSync;
+
+  /// <summary>
+  /// Test and Sync stay disabled until credentials are present and no request is already running.
+  /// </summary>
+  private bool NetSuiteActionsDisabled =>
+    _netSuiteBusy || !(_netSuiteSetup?.CanTestConnection ?? false) || !(_netSuiteSetup?.CanSync ?? false);
+
+  /// <summary>
+  /// Explains why the NetSuite buttons are disabled (hover / assistive text).
+  /// </summary>
+  private string? NetSuiteDisabledReason =>
+    _netSuiteBusy
+      ? "A NetSuite request is already running."
+      : _netSuiteSetup is { IsConfigured: false }
+        ? "NetSuite is not configured on the API."
+        : null;
 
   protected override async Task OnInitializedAsync()
   {
@@ -208,7 +242,14 @@
       return;
     }
 
-    await LoadUsersAsync();
+    // Load accounts and NetSuite setup together so the status line is visible immediately.
+    await Task.WhenAll(LoadUsersAsync(), LoadNetSuiteSetupAsync());
+
+    // Watch only after the page has left the loading state so a long import does not hide the UI.
+    if (_netSuiteSetup?.LastSync.State == "Running")
+    {
+      await WatchRunningSyncAsync();
+    }
   }
 
   private UserEditState GetEditState(string email)
@@ -248,6 +289,46 @@
     {
       _isLoading = false;
     }
+  }
+
+  /// <summary>
+  /// Fetches configured / last-sync status. Failures stay on the NetSuite panel, not the whole page.
+  /// </summary>
+  private async Task LoadNetSuiteSetupAsync()
+  {
+    try
+    {
+      _netSuiteSetup = await AdminApi.GetNetSuiteSetupAsync();
+
+      if (_netSuiteSetup.LastSync.Result is not null)
+      {
+        _netSuiteSync = _netSuiteSetup.LastSync.Result;
+      }
+    }
+    catch (Exception ex)
+    {
+      _netSuiteError = ex.Message;
+    }
+  }
+
+  /// <summary>
+  /// Formats last-sync state for the status banner (idle / running / completed).
+  /// </summary>
+  private static string FormatLastSync(NetSuiteSyncStatusDto lastSync)
+  {
+    return lastSync.State switch
+    {
+      "Running" => lastSync.StartedAt is { } started
+        ? $"Last sync: in progress (started {started.LocalDateTime:g})."
+        : "Last sync: in progress.",
+      "Succeeded" => lastSync.CompletedAt is { } succeededAt
+        ? $"Last sync: succeeded at {succeededAt.LocalDateTime:g}."
+        : "Last sync: succeeded.",
+      "Failed" => lastSync.CompletedAt is { } failedAt
+        ? $"Last sync: failed at {failedAt.LocalDateTime:g}."
+        : "Last sync: failed.",
+      _ => lastSync.Message
+    };
   }
 
   private async Task SaveUserAsync(string email)
@@ -359,7 +440,31 @@
       }
 
       _statusMessage = "NetSuite sync gestart. Dit kan bij de eerste import enkele minuten duren…";
+      await WatchRunningSyncAsync();
+    }
+    catch (TaskCanceledException ex) when (!ex.CancellationToken.IsCancellationRequested)
+    {
+      _netSuiteError = "De verbinding met de API werd verbroken (time-out). De sync kan nog op de achtergrond draaien; vernieuw de pagina over een paar minuten.";
+    }
+    catch (Exception ex)
+    {
+      _netSuiteError = ex.Message;
+    }
+    finally
+    {
+      _netSuiteBusy = false;
+    }
+  }
 
+  /// <summary>
+  /// Polls /api/netsuite/sync/status until the background import finishes, then refreshes setup.
+  /// </summary>
+  private async Task WatchRunningSyncAsync()
+  {
+    _netSuiteBusy = true;
+
+    try
+    {
       while (true)
       {
         var status = await AdminApi.GetNetSuiteSyncStatusAsync();
@@ -382,14 +487,9 @@
 
         await Task.Delay(TimeSpan.FromSeconds(3));
       }
-    }
-    catch (TaskCanceledException ex) when (!ex.CancellationToken.IsCancellationRequested)
-    {
-      _netSuiteError = "De verbinding met de API werd verbroken (time-out). De sync kan nog op de achtergrond draaien; vernieuw de pagina over een paar minuten.";
-    }
-    catch (Exception ex)
-    {
-      _netSuiteError = ex.Message;
+
+      // Refresh the configured / last-sync banner after the run completes.
+      _netSuiteSetup = await AdminApi.GetNetSuiteSetupAsync();
     }
     finally
     {
