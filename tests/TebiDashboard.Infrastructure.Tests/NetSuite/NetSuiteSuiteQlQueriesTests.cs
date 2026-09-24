@@ -78,11 +78,13 @@ public sealed class NetSuiteSuiteQlQueriesTests
     [Fact]
     public void OpenSalesOrderLines_UsesSalesOrderTable()
     {
-        var sql = NetSuiteSuiteQlQueries.OpenSalesOrderLines(new DateOnly(2026, 1, 1));
+        var sql = NetSuiteSuiteQlQueries.OpenSalesOrderLines();
 
         Assert.Contains("INNER JOIN salesorder", sql, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("TO_CHAR(so.tranDate, 'YYYY-MM-DD') AS trandate", sql);
         Assert.Contains("so.entity", sql);
+        Assert.Contains("so.status NOT IN", sql);
+        Assert.DoesNotContain("so.tranDate >=", sql, StringComparison.Ordinal);
         Assert.DoesNotContain("type = 'SalesOrd'", sql, StringComparison.OrdinalIgnoreCase);
     }
 

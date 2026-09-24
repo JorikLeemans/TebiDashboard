@@ -69,7 +69,7 @@ public class DashboardHomeTests
         Assert.Contains("Sales volume", cut.Markup);
         Assert.Contains("Revenue chart", cut.Markup);
         Assert.Contains("Sales in period", cut.Markup);
-        Assert.Contains("Transactions in period", cut.Markup);
+        Assert.Contains("Open sales orders and period transactions", cut.Markup);
     }
 
     [Fact]
