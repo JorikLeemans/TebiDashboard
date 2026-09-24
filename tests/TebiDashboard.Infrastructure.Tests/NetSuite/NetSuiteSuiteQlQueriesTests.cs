@@ -43,12 +43,14 @@ public sealed class NetSuiteSuiteQlQueriesTests
     {
         var sql = NetSuiteSuiteQlQueries.Invoices(new DateOnly(2026, 1, 1));
 
-        Assert.Contains("FROM invoice", sql, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("TO_CHAR(tranDate, 'YYYY-MM-DD') AS trandate", sql);
-        Assert.Contains("taxTotal", sql);
-        Assert.Contains("subsidiary", sql);
-        Assert.Contains("BUILTIN.DF(subsidiary) AS productgroupname", sql);
-        Assert.DoesNotContain("transactionline", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("FROM transactionline", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("INNER JOIN invoice", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("TO_CHAR(i.tranDate, 'YYYY-MM-DD') AS trandate", sql);
+        Assert.Contains("tl.item AS itemid", sql);
+        Assert.Contains("BUILTIN.DF(tl.item) AS itemname", sql);
+        Assert.Contains("it.class AS productgroupid", sql);
+        Assert.Contains("BUILTIN.DF(it.class) AS productgroupname", sql);
+        Assert.DoesNotContain("subsidiary", sql, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

@@ -49,6 +49,7 @@ public static class DemoDataSeeder
         // Existing databases were seeded with only the product-group id. Fill the name so the
         // running app shows "Bestrating" instead of "pg-paving" without a full reseed.
         await EnsureRevenueProductGroupNamesAsync(dbContext, cancellationToken);
+        await EnsureRevenueAndTransactionItemNamesAsync(dbContext, cancellationToken);
 
         if (await dbContext.RevenueRecords.AnyAsync(cancellationToken))
         {
@@ -241,18 +242,26 @@ public static class DemoDataSeeder
         decimal amount,
         string customerId,
         string customerName,
-        string productGroupId) => new()
+        string productGroupId)
     {
-        Id = id,
-        Date = date,
-        Amount = amount,
-        CustomerId = customerId,
-        CustomerName = customerName,
-        // Product group stays a stable code (pg-paving, pg-tiles, pg-edging).
-        // Customer detail resolves that code to an inventory item name at read time.
-        ProductGroupId = productGroupId,
-        ProductGroupName = ResolveProductGroupName(productGroupId) ?? string.Empty
-    };
+        // Persist the representative item so detail rows do not depend on a later lookup.
+        var linkedItemId = MapProductGroupToItem(productGroupId);
+        return new RevenueRecord
+        {
+            Id = id,
+            Date = date,
+            Amount = amount,
+            CustomerId = customerId,
+            CustomerName = customerName,
+            ProductGroupId = productGroupId,
+            ProductGroupName = ResolveProductGroupName(productGroupId) ?? string.Empty,
+            ItemId = linkedItemId,
+            ItemName = DemoItemName(linkedItemId)
+        };
+    }
+
+    private static string DemoItemName(string itemId) =>
+        GetDemoInventoryItems().FirstOrDefault(item => item.ItemId == itemId)?.ItemName ?? itemId;
 
     /// <summary>
     /// Inserts demo inventory items that are missing.
@@ -333,6 +342,49 @@ public static class DemoDataSeeder
         {
             await dbContext.SaveChangesAsync(cancellationToken);
         }
+    }
+
+    /// <summary>
+    /// Backfills item names on existing demo revenue and open orders so a restarted API
+    /// stops showing raw ids without a full reseed.
+    /// </summary>
+    private static async Task EnsureRevenueAndTransactionItemNamesAsync(
+        TebiDashboardDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var namesById = GetDemoInventoryItems().ToDictionary(item => item.ItemId, item => item.ItemName);
+
+        var revenueRows = await dbContext.RevenueRecords
+            .Where(revenue => revenue.ItemName == null || revenue.ItemName == "")
+            .ToListAsync(cancellationToken);
+        foreach (var revenue in revenueRows)
+        {
+            // Only remap known demo product-group codes. A numeric NetSuite subsidiary id
+            // such as "16" must not be rewritten to i1 / Betonstraatstenen.
+            var itemId = string.IsNullOrWhiteSpace(revenue.ItemId)
+                ? RevenueItemLink.TryGetItemId(revenue.ProductGroupId)
+                : revenue.ItemId;
+            if (string.IsNullOrWhiteSpace(itemId) || !namesById.TryGetValue(itemId, out var itemName))
+            {
+                continue;
+            }
+
+            revenue.ItemId = itemId;
+            revenue.ItemName = itemName;
+        }
+
+        var orderRows = await dbContext.OpenTransactions
+            .Where(order => order.ItemName == null || order.ItemName == "")
+            .ToListAsync(cancellationToken);
+        foreach (var order in orderRows)
+        {
+            if (namesById.TryGetValue(order.ItemId, out var itemName))
+            {
+                order.ItemName = itemName;
+            }
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>
@@ -855,6 +907,7 @@ public static class DemoDataSeeder
         TransactionId = transactionId,
         Type = type,
         ItemId = itemId,
+        ItemName = DemoItemName(itemId),
         CustomerId = customerId,
         SupplierId = supplierId,
         TransactionDate = transactionDate,

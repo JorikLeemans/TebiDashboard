@@ -12,6 +12,12 @@ public sealed class OpenTransactionRecord
     public string ItemId { get; set; } = string.Empty;
 
     /// <summary>
+    /// Item display name from NetSuite (BUILTIN.DF) or demo seed. Used when the
+    /// inventory master row is missing so the UI does not show a raw internal id.
+    /// </summary>
+    public string ItemName { get; set; } = string.Empty;
+
+    /// <summary>
     /// Linked customer for sales orders; null for transfer/purchase orders.
     /// </summary>
     public string? CustomerId { get; set; }

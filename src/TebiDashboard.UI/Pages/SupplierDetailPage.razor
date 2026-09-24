@@ -202,8 +202,11 @@
     // Footer totals show how expenses and purchase orders add up to Total purchased.
     private decimal ExpensesTotal => _detail?.Expenses.Sum(row => row.Amount) ?? 0m;
 
+    // Hide a bare NetSuite internal id when the name never arrived.
     private static string ItemLabel(string? itemName, string itemId) =>
-        string.IsNullOrWhiteSpace(itemName) ? itemId : itemName;
+        !string.IsNullOrWhiteSpace(itemName)
+            ? itemName
+            : itemId.Length > 0 && itemId.All(char.IsDigit) ? string.Empty : itemId;
 
     // Vendor text is the name on the bill. The supplier master name covers rows that only
     // have a supplier id, and the id itself is the last resort so the cell is never blank.

@@ -57,11 +57,14 @@ public sealed class TebiDashboardDbContext(DbContextOptions<TebiDashboardDbConte
         modelBuilder.Entity<RevenueRecord>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).HasMaxLength(64);
+            // Invoice line keys are "{invoiceId}-{lineId}" and can exceed a short 64-char id.
+            entity.Property(e => e.Id).HasMaxLength(128);
             entity.Property(e => e.CustomerId).HasMaxLength(64);
             entity.Property(e => e.CustomerName).HasMaxLength(256);
             entity.Property(e => e.ProductGroupId).HasMaxLength(64);
             entity.Property(e => e.ProductGroupName).HasMaxLength(256);
+            entity.Property(e => e.ItemId).HasMaxLength(64);
+            entity.Property(e => e.ItemName).HasMaxLength(256);
         });
 
         modelBuilder.Entity<GoalRecord>(entity =>
@@ -98,6 +101,7 @@ public sealed class TebiDashboardDbContext(DbContextOptions<TebiDashboardDbConte
             entity.Property(e => e.TransactionId).HasMaxLength(64);
             entity.Property(e => e.Type).HasMaxLength(64);
             entity.Property(e => e.ItemId).HasMaxLength(64);
+            entity.Property(e => e.ItemName).HasMaxLength(256);
             entity.Property(e => e.CustomerId).HasMaxLength(64);
             entity.Property(e => e.SupplierId).HasMaxLength(64);
             entity.Property(e => e.Status).HasMaxLength(64);

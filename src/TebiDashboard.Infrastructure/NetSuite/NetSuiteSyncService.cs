@@ -259,9 +259,10 @@ public sealed class NetSuiteSyncService(
             .AsNoTracking()
             .ToDictionaryAsync(customer => customer.CustomerId, customer => customer.Name, cancellationToken);
 
-        var rows = NetSuiteSuiteQlRowDeduplicator.ByField(
+        var rows = NetSuiteSuiteQlRowDeduplicator.ByFields(
             await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.Invoices(fromDate), pageSize, cancellationToken),
-            "id");
+            "invoiceid",
+            "lineid");
         var imported = 0;
         foreach (var row in rows)
         {
@@ -270,22 +271,25 @@ public sealed class NetSuiteSyncService(
             {
                 logger.LogWarning(
                     "Skipping invoice {InvoiceId}: tranDate '{TranDate}' is missing or not a real transaction date.",
-                    NetSuiteSuiteQlRowReader.GetString(row, "id"),
+                    NetSuiteSuiteQlRowReader.GetString(row, "invoiceid", "id"),
                     NetSuiteSuiteQlRowReader.GetString(row, "trandate", "tranDate") ?? "(missing)");
                 continue;
             }
 
+            var invoiceId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "invoiceid", "id");
+            var lineId = NetSuiteSuiteQlRowReader.GetString(row, "lineid") ?? "0";
             var customerId = NetSuiteSuiteQlRowReader.GetString(row, "customerid") ?? string.Empty;
             dbContext.RevenueRecords.Add(new RevenueRecord
             {
-                Id = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id"),
+                Id = $"{invoiceId}-{lineId}",
                 Date = tranDate,
                 Amount = NetSuiteSuiteQlRowReader.GetDecimal(row, "amount"),
                 CustomerId = customerId,
                 CustomerName = customerNames.GetValueOrDefault(customerId) ?? string.Empty,
+                ItemId = NetSuiteSuiteQlRowReader.GetString(row, "itemid", "item") ?? string.Empty,
+                ItemName = NetSuiteSuiteQlRowReader.GetString(row, "itemname") ?? string.Empty,
+                // Artikelgroep is item class, not subsidiary. Empty name is better than a raw id.
                 ProductGroupId = NetSuiteSuiteQlRowReader.GetString(row, "productgroupid") ?? string.Empty,
-                // Display name from BUILTIN.DF(subsidiary). Empty when NetSuite omits it; the UI
-                // then falls back to the numeric ProductGroupId.
                 ProductGroupName = NetSuiteSuiteQlRowReader.GetString(row, "productgroupname", "productGroupName") ?? string.Empty
             });
             imported++;
@@ -414,6 +418,7 @@ public sealed class NetSuiteSyncService(
             TransactionId = $"{transactionId}-{lineId}",
             Type = type,
             ItemId = NetSuiteSuiteQlRowReader.GetString(row, "itemid") ?? string.Empty,
+            ItemName = NetSuiteSuiteQlRowReader.GetString(row, "itemname") ?? string.Empty,
             CustomerId = customerId,
             SupplierId = supplierId,
             TransactionDate = transactionDate,
