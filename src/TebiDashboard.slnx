@@ -1,6 +1,7 @@
 <Solution>
   <Project Path="../tests/TebiDashboard.Api.Tests/TebiDashboard.Api.Tests.csproj" />
   <Project Path="../tests/TebiDashboard.Application.Tests/TebiDashboard.Application.Tests.csproj" />
+  <Project Path="../tests/TebiDashboard.Infrastructure.Tests/TebiDashboard.Infrastructure.Tests.csproj" />
   <Project Path="../tests/TebiDashboard.UI.Tests/TebiDashboard.UI.Tests.csproj" />
   <Project Path="TebiDashboard.Api/TebiDashboard.Api.csproj" />
   <Project Path="TebiDashboard.Application/TebiDashboard.Application.csproj" />

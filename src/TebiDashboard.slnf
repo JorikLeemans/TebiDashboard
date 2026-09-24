@@ -10,6 +10,7 @@
       "TebiDashboard.Web\\TebiDashboard.Web.csproj",
       "..\\tests\\TebiDashboard.Application.Tests\\TebiDashboard.Application.Tests.csproj",
       "..\\tests\\TebiDashboard.Api.Tests\\TebiDashboard.Api.Tests.csproj",
+      "..\\tests\\TebiDashboard.Infrastructure.Tests\\TebiDashboard.Infrastructure.Tests.csproj",
       "..\\tests\\TebiDashboard.UI.Tests\\TebiDashboard.UI.Tests.csproj"
     ]
   }
