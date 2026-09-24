@@ -102,7 +102,14 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .ThenBy(t => t.TransactionId)
             .ToListAsync(cancellationToken);
 
-        var itemIds = salesOrderRows.Select(r => r.ItemId).Distinct().ToList();
+        // Revenue lines only store a product group. Include the linked item ids so the
+        // same lookup that names sales orders can also name those revenue rows.
+        var itemIds = salesOrderRows.Select(r => r.ItemId)
+            .Concat(revenue.Select(r => RevenueItemLink.TryGetItemId(r.ProductGroupId))
+                .Where(id => id is not null)
+                .Select(id => id!))
+            .Distinct()
+            .ToList();
         var itemNames = itemIds.Count == 0
             ? new Dictionary<string, string>()
             : await dbContext.InventoryItems
@@ -126,16 +133,8 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             PeriodFrom = filter.From,
             PeriodTo = filter.To,
             TotalSpent = orderTotal > 0 ? orderTotal : revenue.Sum(r => r.Amount),
-            Revenue = revenue.Select(r => new RevenueDto
-            {
-                Id = r.Id,
-                Date = r.Date,
-                Amount = r.Amount,
-                CustomerId = r.CustomerId,
-                CustomerName = r.CustomerName,
-                ProductGroupId = r.ProductGroupId,
-                ProductGroupName = r.ProductGroupName
-            }).ToList(),
+            // MapRevenue fills item names; ProductGroupName comes from the stored artikelgroep.
+            Revenue = revenue.Select(r => MapRevenue(r, itemNames, customer.Name)).ToList(),
             SalesOrders = salesOrders
         };
     }
@@ -267,15 +266,7 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             PeriodFrom = filter.From,
             PeriodTo = filter.To,
             TotalPurchased = expenseRows.Sum(e => e.Amount) + purchaseOrders.Sum(order => order.Amount),
-            Expenses = expenseRows.Select(e => new ExpenseDto
-            {
-                Id = e.Id,
-                Date = e.Date,
-                Category = e.Category,
-                Amount = e.Amount,
-                VendorName = e.VendorName,
-                SupplierId = e.SupplierId
-            }).ToList(),
+            Expenses = expenseRows.Select(e => MapExpense(e, supplierNames)).ToList(),
             PurchaseOrders = purchaseOrders,
             PurchasedItems = purchasedItems
         };
@@ -411,16 +402,16 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .OrderByDescending(r => r.Date)
             .ToListAsync(cancellationToken);
 
-        return rows.Select(r => new RevenueDto
-        {
-            Id = r.Id,
-            Date = r.Date,
-            Amount = r.Amount,
-            CustomerId = r.CustomerId,
-            CustomerName = r.CustomerName,
-            ProductGroupId = r.ProductGroupId,
-            ProductGroupName = r.ProductGroupName
-        }).ToList();
+        var itemIds = rows
+            .Select(r => RevenueItemLink.TryGetItemId(r.ProductGroupId))
+            .Where(id => id is not null)
+            .Select(id => id!)
+            .Distinct()
+            .ToList();
+        var itemNames = await LoadItemNamesAsync(itemIds, cancellationToken);
+
+        // Include both artikelgroep name and the representative item so callers can show either.
+        return rows.Select(r => MapRevenue(r, itemNames, customerNameFallback: null)).ToList();
     }
 
     public async Task<IReadOnlyList<GoalDto>> GetGoalsAsync(int year, string? period = null, CancellationToken cancellationToken = default)
@@ -543,15 +534,11 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .OrderByDescending(e => e.Date)
             .ToListAsync(cancellationToken);
 
-        return rows.Select(e => new ExpenseDto
-        {
-            Id = e.Id,
-            Date = e.Date,
-            Category = e.Category,
-            Amount = e.Amount,
-            VendorName = e.VendorName,
-            SupplierId = e.SupplierId
-        }).ToList();
+        var supplierNames = await LoadSupplierNamesByIdAsync(
+            rows.Select(e => e.SupplierId),
+            cancellationToken);
+
+        return rows.Select(e => MapExpense(e, supplierNames)).ToList();
     }
 
     public async Task<ItemDetailDto?> GetItemByBarcodeAsync(string barcode, CancellationToken cancellationToken = default)
@@ -626,6 +613,88 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .AsNoTracking()
             .Where(s => supplierIds.Contains(s.SupplierId))
             .ToDictionaryAsync(s => s.SupplierId, s => s.Name, cancellationToken);
+    }
+
+    private async Task<Dictionary<string, string>> LoadItemNamesAsync(
+        IReadOnlyList<string> itemIds,
+        CancellationToken cancellationToken)
+    {
+        if (itemIds.Count == 0)
+        {
+            return [];
+        }
+
+        return await dbContext.InventoryItems
+            .AsNoTracking()
+            .Where(i => itemIds.Contains(i.ItemId))
+            .ToDictionaryAsync(i => i.ItemId, i => i.ItemName, cancellationToken);
+    }
+
+    private async Task<Dictionary<string, string>> LoadSupplierNamesByIdAsync(
+        IEnumerable<string?> supplierIds,
+        CancellationToken cancellationToken)
+    {
+        var ids = supplierIds
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Select(id => id!)
+            .Distinct()
+            .ToList();
+
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        return await dbContext.Suppliers
+            .AsNoTracking()
+            .Where(s => ids.Contains(s.SupplierId))
+            .ToDictionaryAsync(s => s.SupplierId, s => s.Name, cancellationToken);
+    }
+
+    private static RevenueDto MapRevenue(
+        Data.Entities.RevenueRecord record,
+        IReadOnlyDictionary<string, string> itemNames,
+        string? customerNameFallback)
+    {
+        var itemName = RevenueItemLink.ResolveItemName(record.ProductGroupId, itemNames, out var itemId);
+
+        return new RevenueDto
+        {
+            Id = record.Id,
+            Date = record.Date,
+            Amount = record.Amount,
+            CustomerId = record.CustomerId,
+            // Keep a stored customer name; fill it from the customer master when the row is blank.
+            CustomerName = string.IsNullOrWhiteSpace(record.CustomerName)
+                ? customerNameFallback ?? string.Empty
+                : record.CustomerName,
+            ProductGroupId = record.ProductGroupId,
+            ProductGroupName = record.ProductGroupName,
+            ItemId = itemId,
+            ItemName = itemName
+        };
+    }
+
+    private static ExpenseDto MapExpense(
+        Data.Entities.ExpenseRecord record,
+        IReadOnlyDictionary<string, string> supplierNames)
+    {
+        // SupplierName is the master-record name. Fall back to the id so the row still
+        // identifies the supplier when the vendor text on the bill is empty.
+        var supplierName = string.IsNullOrWhiteSpace(record.SupplierId)
+            ? string.Empty
+            : supplierNames.GetValueOrDefault(record.SupplierId, record.SupplierId);
+
+        return new ExpenseDto
+        {
+            Id = record.Id,
+            Date = record.Date,
+            Category = record.Category,
+            Amount = record.Amount,
+            VendorName = record.VendorName,
+            SupplierId = record.SupplierId,
+            SupplierName = supplierName
+        };
     }
 
     private static OpenTransactionDto MapOpenTransaction(

@@ -43,6 +43,9 @@ public static class DemoDataSeeder
         await EnsureDemoExpenseSpreadAsync(dbContext, today, cancellationToken);
         await EnsureDemoPurchaseOrderSpreadAsync(dbContext, today, cancellationToken);
         await EnsureDemoOrderAmountAlignmentAsync(dbContext, today, cancellationToken);
+        // Spread rows are inserted before the full seed. Without this, transactions point at
+        // item ids that were never inserted, and detail pages show "i5" instead of the item name.
+        await EnsureDemoInventoryItemsAsync(dbContext, cancellationToken);
         // Existing databases were seeded with only the product-group id. Fill the name so the
         // running app shows "Bestrating" instead of "pg-paving" without a full reseed.
         await EnsureRevenueProductGroupNamesAsync(dbContext, cancellationToken);
@@ -60,17 +63,7 @@ public static class DemoDataSeeder
         dbContext.Goals.AddRange(BuildDemoGoals(today, year));
         dbContext.Goals.AddRange(BuildDemoGoals(today, year - 1));
 
-        dbContext.InventoryItems.AddRange(
-            CreateItem("i1", "Betonstraatstenen Antraciet", "8712345000011", 450, 100, 980, false),
-            CreateItem("i2", "Klinkers Rood-Bruin", "8712345000028", 22, 80, 640, true),
-            CreateItem("i3", "Tegels 60x60 Grijs", "8712345000035", 210, 120, 760, false),
-            CreateItem("i4", "Betonblokken 40x20", "8712345000042", 38, 90, 410, true),
-            CreateItem("i5", "Opsluitbanden Grijs", "8712345000059", 520, 150, 320, false),
-            CreateItem("i6", "Grind 16-32 mm", "8712345000066", 18, 60, 280, true),
-            CreateItem("i7", "Zandstraatstenen Geel", "8712345000073", 175, 100, 540, false),
-            CreateItem("i8", "Keramische Tegels Antraciet", "8712345000080", 95, 70, 490, false),
-            CreateItem("i9", "Drainage Tegels", "8712345000097", 12, 50, 210, true),
-            CreateItem("i10", "Beton Tegels 50x50", "8712345000103", 340, 110, 670, false));
+        dbContext.InventoryItems.AddRange(GetDemoInventoryItems());
 
         dbContext.StockLocations.AddRange(
             CreateLocation("i1", "loc1", "Hoofdmagazijn", 300),
@@ -255,9 +248,50 @@ public static class DemoDataSeeder
         Amount = amount,
         CustomerId = customerId,
         CustomerName = customerName,
+        // Product group stays a stable code (pg-paving, pg-tiles, pg-edging).
+        // Customer detail resolves that code to an inventory item name at read time.
         ProductGroupId = productGroupId,
         ProductGroupName = ResolveProductGroupName(productGroupId) ?? string.Empty
     };
+
+    /// <summary>
+    /// Inserts demo inventory items that are missing.
+    /// The revenue/order spread runs before the full seed and then returns early once any
+    /// revenue exists, so a database can have transactions without item master rows.
+    /// Detail pages resolve ItemId to these names and otherwise fall back to the id.
+    /// </summary>
+    private static async Task EnsureDemoInventoryItemsAsync(
+        TebiDashboardDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var demoItems = GetDemoInventoryItems();
+        var existingIds = await dbContext.InventoryItems
+            .Select(item => item.ItemId)
+            .ToListAsync(cancellationToken);
+
+        var missing = demoItems.Where(item => !existingIds.Contains(item.ItemId)).ToArray();
+        if (missing.Length == 0)
+        {
+            return;
+        }
+
+        dbContext.InventoryItems.AddRange(missing);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static InventoryItemRecord[] GetDemoInventoryItems() =>
+    [
+        CreateItem("i1", "Betonstraatstenen Antraciet", "8712345000011", 450, 100, 980, false),
+        CreateItem("i2", "Klinkers Rood-Bruin", "8712345000028", 22, 80, 640, true),
+        CreateItem("i3", "Tegels 60x60 Grijs", "8712345000035", 210, 120, 760, false),
+        CreateItem("i4", "Betonblokken 40x20", "8712345000042", 38, 90, 410, true),
+        CreateItem("i5", "Opsluitbanden Grijs", "8712345000059", 520, 150, 320, false),
+        CreateItem("i6", "Grind 16-32 mm", "8712345000066", 18, 60, 280, true),
+        CreateItem("i7", "Zandstraatstenen Geel", "8712345000073", 175, 100, 540, false),
+        CreateItem("i8", "Keramische Tegels Antraciet", "8712345000080", 95, 70, 490, false),
+        CreateItem("i9", "Drainage Tegels", "8712345000097", 12, 50, 210, true),
+        CreateItem("i10", "Beton Tegels 50x50", "8712345000103", 340, 110, 670, false)
+    ];
 
     /// <summary>
     /// Demo artikelgroep names. The id stays on the record; the name is what the UI shows.

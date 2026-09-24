@@ -17,4 +17,16 @@ public sealed class RevenueDto
     /// callers then show <see cref="ProductGroupId"/>.
     /// </summary>
     public string? ProductGroupName { get; init; }
+
+    /// <summary>
+    /// Inventory item that represents this revenue line's product group.
+    /// Empty when the product group is not linked to an item.
+    /// </summary>
+    public string ItemId { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Name of <see cref="ItemId"/>. When the item record is missing this is the item id;
+    /// when the product group is unknown it is <see cref="ProductGroupId"/>.
+    /// </summary>
+    public string ItemName { get; init; } = string.Empty;
 }

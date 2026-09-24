@@ -1,5 +1,6 @@
 using TebiDashboard.Application.Interfaces;
 using TebiDashboard.Application.Options;
+using TebiDashboard.Infrastructure.Data;
 using TebiDashboard.Shared.Dtos;
 using TebiDashboard.Shared.Filters;
 
@@ -243,42 +244,56 @@ public sealed class MockNetSuiteService : INetSuiteService
         return Task.FromResult<IReadOnlyList<RevenueDto>>(data);
     }
 
-    private static List<RevenueDto> GetMockRevenue()
-    {
-        RevenueDto Row(string id, int daysAgo, decimal amount, string customerId, string customerName, string productGroupId) =>
-            new()
-            {
-                Id = id,
-                Date = Today.AddDays(-daysAgo),
-                Amount = amount,
-                CustomerId = customerId,
-                CustomerName = customerName,
-                ProductGroupId = productGroupId,
-                // Same artikelgroep names as the demo seeder so mock mode does not show "pg1".
-                ProductGroupName = productGroupId switch
-                {
-                    "pg1" => "Bestrating",
-                    "pg2" => "Tegels",
-                    _ => null
-                }
-            };
+    private static List<RevenueDto> GetMockRevenue() =>
+    [
+        MockRevenue("1", -30, 42000m, "c1", "Bouwbedrijf Jansen", "pg1"),
+        MockRevenue("2", -25, 8200m, "c2", "Gemeente Utrecht", "pg2"),
+        MockRevenue("3", -22, 15600m, "c3", "Stratenmakers BV", "pg1"),
+        MockRevenue("4", -20, 6800m, "c1", "Bouwbedrijf Jansen", "pg1"),
+        MockRevenue("5", -18, 22400m, "c4", "Woningbouw De Vliet", "pg2"),
+        MockRevenue("6", -15, 38500m, "c2", "Gemeente Utrecht", "pg2"),
+        MockRevenue("7", -12, 14300m, "c3", "Stratenmakers BV", "pg1"),
+        MockRevenue("8", -10, 9400m, "c5", "Aannemer Noord", "pg1"),
+        MockRevenue("9", -7, 51200m, "c3", "Stratenmakers BV", "pg1"),
+        MockRevenue("10", -5, 11200m, "c2", "Gemeente Utrecht", "pg2"),
+        MockRevenue("11", -4, 8700m, "c4", "Woningbouw De Vliet", "pg2"),
+        MockRevenue("12", -2, 39500m, "c1", "Bouwbedrijf Jansen", "pg1"),
+        MockRevenue("13", -1, 27800m, "c4", "Woningbouw De Vliet", "pg2")
+    ];
 
-        return
-        [
-            Row("1", 30, 42000m, "c1", "Bouwbedrijf Jansen", "pg1"),
-            Row("2", 25, 8200m, "c2", "Gemeente Utrecht", "pg2"),
-            Row("3", 22, 15600m, "c3", "Stratenmakers BV", "pg1"),
-            Row("4", 20, 6800m, "c1", "Bouwbedrijf Jansen", "pg1"),
-            Row("5", 18, 22400m, "c4", "Woningbouw De Vliet", "pg2"),
-            Row("6", 15, 38500m, "c2", "Gemeente Utrecht", "pg2"),
-            Row("7", 12, 14300m, "c3", "Stratenmakers BV", "pg1"),
-            Row("8", 10, 9400m, "c5", "Aannemer Noord", "pg1"),
-            Row("9", 7, 51200m, "c3", "Stratenmakers BV", "pg1"),
-            Row("10", 5, 11200m, "c2", "Gemeente Utrecht", "pg2"),
-            Row("11", 4, 8700m, "c4", "Woningbouw De Vliet", "pg2"),
-            Row("12", 2, 39500m, "c1", "Bouwbedrijf Jansen", "pg1"),
-            Row("13", 1, 27800m, "c4", "Woningbouw De Vliet", "pg2")
-        ];
+    /// <summary>
+    /// Mock revenue only stores a product group. Attach the representative item name
+    /// the same way the database service does, so detail rows are not just group ids.
+    /// </summary>
+    private static RevenueDto MockRevenue(
+        string id,
+        int daysAgo,
+        decimal amount,
+        string customerId,
+        string customerName,
+        string productGroupId)
+    {
+        var itemNames = GetMockInventory().ToDictionary(item => item.ItemId, item => item.ItemName);
+        var itemName = RevenueItemLink.ResolveItemName(productGroupId, itemNames, out var itemId);
+
+        return new RevenueDto
+        {
+            Id = id,
+            Date = Today.AddDays(daysAgo),
+            Amount = amount,
+            CustomerId = customerId,
+            CustomerName = customerName,
+            ProductGroupId = productGroupId,
+            // Same artikelgroep names as the demo seeder so mock mode does not show "pg1".
+            ProductGroupName = productGroupId switch
+            {
+                "pg1" => "Bestrating",
+                "pg2" => "Tegels",
+                _ => null
+            },
+            ItemId = itemId,
+            ItemName = itemName
+        };
     }
 
     public Task<IReadOnlyList<GoalDto>> GetGoalsAsync(int year, string? period = null, CancellationToken cancellationToken = default)
@@ -416,14 +431,41 @@ public sealed class MockNetSuiteService : INetSuiteService
 
     private static List<ExpenseDto> GetMockExpenses() =>
     [
-        new() { Id = "e1", Date = Today.AddDays(-20), Category = "Transport", Amount = 12500m, VendorName = "Logistics Partner BV", SupplierId = "s3" },
-        new() { Id = "e2", Date = Today.AddDays(-10), Category = "Utilities", Amount = 4200m, VendorName = "Energiebedrijf NL", SupplierId = "s4" },
-        new() { Id = "e3", Date = Today.AddDays(-2), Category = "Maintenance", Amount = 2950m, VendorName = "Technische Dienst BV", SupplierId = "s5" },
-        new() { Id = "e9", Date = Today.AddDays(-2), Category = "Transport", Amount = 8400m, VendorName = "Logistics Partner BV", SupplierId = "s3" },
-        new() { Id = "e10", Date = Today.AddDays(-1), Category = "Utilities", Amount = 5200m, VendorName = "Energiebedrijf NL", SupplierId = "s4" },
-        new() { Id = "e11", Date = Today, Category = "Maintenance", Amount = 3600m, VendorName = "Technische Dienst BV", SupplierId = "s5" },
-        new() { Id = "e12", Date = Today.AddDays(-2), Category = "Insurance", Amount = 4800m, VendorName = "Verzekeraar NL", SupplierId = "s8" }
+        MockExpense("e1", -20, "Transport", 12500m, "Logistics Partner BV", "s3"),
+        MockExpense("e2", -10, "Utilities", 4200m, "Energiebedrijf NL", "s4"),
+        MockExpense("e3", -2, "Maintenance", 2950m, "Technische Dienst BV", "s5"),
+        MockExpense("e9", -2, "Transport", 8400m, "Logistics Partner BV", "s3"),
+        MockExpense("e10", -1, "Utilities", 5200m, "Energiebedrijf NL", "s4"),
+        MockExpense("e11", 0, "Maintenance", 3600m, "Technische Dienst BV", "s5"),
+        MockExpense("e12", -2, "Insurance", 4800m, "Verzekeraar NL", "s8")
     ];
+
+    /// <summary>
+    /// SupplierName comes from the supplier master when that id exists.
+    /// Otherwise keep the vendor text so the expense row still has a readable party name.
+    /// </summary>
+    private static ExpenseDto MockExpense(
+        string id,
+        int daysAgo,
+        string category,
+        decimal amount,
+        string vendor,
+        string supplierId)
+    {
+        var supplierName = GetMockSuppliers().FirstOrDefault(supplier => supplier.SupplierId == supplierId)?.Name
+            ?? vendor;
+
+        return new ExpenseDto
+        {
+            Id = id,
+            Date = Today.AddDays(daysAgo),
+            Category = category,
+            Amount = amount,
+            VendorName = vendor,
+            SupplierId = supplierId,
+            SupplierName = supplierName
+        };
+    }
 
     public Task<ItemDetailDto?> GetItemByBarcodeAsync(string barcode, CancellationToken cancellationToken = default)
     {

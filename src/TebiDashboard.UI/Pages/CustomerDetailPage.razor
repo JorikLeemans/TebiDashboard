@@ -72,6 +72,7 @@
                     <thead>
                         <tr>
                             <th scope="col">Date</th>
+                            <th scope="col">Item</th>
                             <th scope="col">Amount</th>
                             <th scope="col">Product group</th>
                         </tr>
@@ -81,6 +82,7 @@
                         {
                             <tr>
                                 <td>@row.Date.ToString("d")</td>
+                                <td>@RevenueItemLabel(row)</td>
                                 <td>@EuroFormatting.FormatWhole(row.Amount)</td>
                                 <td>@ProductGroupLabel.For(row)</td>
                             </tr>
@@ -91,6 +93,7 @@
                         <tfoot>
                             <tr>
                                 <th scope="row">Total</th>
+                                <td></td>
                                 <td>@EuroFormatting.FormatWhole(RevenueTotal)</td>
                                 <td></td>
                             </tr>
@@ -125,7 +128,8 @@
                             <tr class="customer-detail__link-row" @onclick="() => OpenItem(order.ItemId)" tabindex="0">
                                 <td>@order.TransactionDate.ToString("d")</td>
                                 <td><code>@order.TransactionId</code></td>
-                                <td>@order.ItemName</td>
+                                @* Item name is resolved from the inventory item; show the id when that record is missing. *@
+                                <td>@ItemLabel(order.ItemName, order.ItemId)</td>
                                 <td>@order.QuantityOpen.ToString("N0")</td>
                                 <td>@EuroFormatting.FormatWhole(order.Amount)</td>
                                 <td>@order.Status</td>
@@ -167,6 +171,26 @@
 
     // Footer totals make it easy to compare revenue with sales orders in the same period.
     private decimal RevenueTotal => _detail?.Revenue.Sum(row => row.Amount) ?? 0m;
+
+    // Revenue is stored by product group. ItemName is the linked inventory item so the row
+    // says what it is; fall back to the item id, then the product group id.
+    private static string RevenueItemLabel(RevenueDto row)
+    {
+        if (!string.IsNullOrWhiteSpace(row.ItemName))
+        {
+            return row.ItemName;
+        }
+
+        if (!string.IsNullOrWhiteSpace(row.ItemId))
+        {
+            return row.ItemId;
+        }
+
+        return row.ProductGroupId ?? string.Empty;
+    }
+
+    private static string ItemLabel(string? itemName, string itemId) =>
+        string.IsNullOrWhiteSpace(itemName) ? itemId : itemName;
     private decimal SalesOrdersTotal => _detail?.SalesOrders.Sum(order => order.Amount) ?? 0m;
 
     protected override void OnParametersSet()
