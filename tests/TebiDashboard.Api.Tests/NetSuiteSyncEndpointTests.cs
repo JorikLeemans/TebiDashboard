@@ -50,4 +50,37 @@ public sealed class NetSuiteSyncEndpointTests
         Assert.Equal("Failed", finalStatus.State);
         Assert.Contains("PostgreSQL", finalStatus.Message, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public async Task Setup_RequiresAdminRole()
+    {
+        await using var factory = new TebiWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/netsuite/setup");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Setup_ReportsNotConfigured_AndIdleLastSync_OnDefaultTestHost()
+    {
+        await using var factory = new TebiWebApplicationFactory();
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Tebi-Role", "Admin");
+
+        var response = await client.GetAsync("/api/netsuite/setup");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var setup = await response.Content.ReadFromJsonAsync<NetSuiteSetupStatusDto>();
+        Assert.NotNull(setup);
+        Assert.False(setup.IsConfigured);
+        Assert.False(setup.CanTestConnection);
+        Assert.False(setup.CanSync);
+        Assert.Contains("Enabled", setup.MissingSettings);
+        Assert.Contains("demo", setup.DataSourceMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("Idle", setup.LastSync.State);
+        Assert.Contains("No sync has run", setup.LastSync.Message, StringComparison.OrdinalIgnoreCase);
+    }
 }

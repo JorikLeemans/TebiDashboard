@@ -48,6 +48,14 @@ severity. Check off items as they are addressed.
   (`IWebHostEnvironment.IsDevelopment()`) or a config flag.
   - `src/TebiDashboard.Api/Controllers/AuthController.cs`
 
+## Admin UI
+
+- [x] **Show NetSuite setup status on the admin page.** Load configured / not configured
+  plus last sync when the page opens, and disable Test connection / Sync when credentials
+  are missing so admins do not have to guess whether sync can work.
+  - `GET /api/netsuite/setup`
+  - `src/TebiDashboard.UI/Pages/AdminDashboard.razor`
+
 ## Low — Correctness & robustness
 
 - [ ] **Keep SuiteQL queries parameterized.** Date values are interpolated into
