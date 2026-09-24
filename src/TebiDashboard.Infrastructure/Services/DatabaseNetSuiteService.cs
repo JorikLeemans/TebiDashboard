@@ -37,12 +37,11 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .Select(g => new { CustomerId = g.Key, Total = g.Sum(r => r.Amount), Count = g.Count() })
             .ToDictionaryAsync(x => x.CustomerId, cancellationToken);
 
+        // Open sales orders stay visible even when the order date is outside the selected period.
         var salesOrdersByCustomer = await dbContext.OpenTransactions
             .AsNoTracking()
             .Where(t => t.Type == "Sales Order"
-                && t.CustomerId != null
-                && t.TransactionDate >= filter.From
-                && t.TransactionDate <= filter.To)
+                && t.CustomerId != null)
             .GroupBy(t => t.CustomerId!)
             .Select(g => new
             {
@@ -97,9 +96,7 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
         var salesOrderRows = await dbContext.OpenTransactions
             .AsNoTracking()
             .Where(t => t.Type == "Sales Order"
-                && t.CustomerId == customerId
-                && t.TransactionDate >= filter.From
-                && t.TransactionDate <= filter.To)
+                && t.CustomerId == customerId)
             .OrderByDescending(t => t.TransactionDate)
             .ThenBy(t => t.TransactionId)
             .ToListAsync(cancellationToken);
@@ -371,7 +368,8 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
     {
         var rows = await dbContext.OpenTransactions
             .AsNoTracking()
-            .Where(t => t.TransactionDate >= filter.From && t.TransactionDate <= filter.To)
+            .Where(t => t.Type == "Sales Order"
+                || (t.TransactionDate >= filter.From && t.TransactionDate <= filter.To))
             .OrderByDescending(t => t.TransactionDate)
             .ThenBy(t => t.Type)
             .ToListAsync(cancellationToken);

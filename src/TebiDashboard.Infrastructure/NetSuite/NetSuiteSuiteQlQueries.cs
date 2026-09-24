@@ -132,10 +132,11 @@ internal static class NetSuiteSuiteQlQueries
         """;
 
     /// <summary>
-    /// Open sales order lines: salesOrder header + transactionline details (TEBI SuiteQL field names).
+    /// Open sales order lines: every non-closed order, not only those inside the invoice lookback.
+    /// Status H/C (and SalesOrd:H/C) are Closed/Cancelled. Remaining quantity must still be open.
     /// </summary>
-    public static string OpenSalesOrderLines(DateOnly fromDate) =>
-        $"""
+    public static string OpenSalesOrderLines() =>
+        """
         SELECT
             tl.transaction,
             tl.id AS lineid,
@@ -151,7 +152,7 @@ internal static class NetSuiteSuiteQlQueries
         INNER JOIN salesorder so ON so.id = tl.transaction
         WHERE tl.mainline = 'F'
           AND tl.quantity > NVL(tl.quantityshiprecv, 0)
-          AND so.tranDate >= TO_DATE('{fromDate:yyyy-MM-dd}', 'YYYY-MM-DD')
+          AND so.status NOT IN ('H', 'C', 'SalesOrd:H', 'SalesOrd:C', 'Closed', 'Cancelled')
         ORDER BY so.tranDate DESC
         """;
 

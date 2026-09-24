@@ -473,7 +473,7 @@ public sealed class NetSuiteSyncService(
 
         var salesRows = NetSuiteSuiteQlRowDeduplicator.ByFields(
             await restClient.QuerySuiteQlAsync(
-                NetSuiteSuiteQlQueries.OpenSalesOrderLines(fromDate),
+                NetSuiteSuiteQlQueries.OpenSalesOrderLines(),
                 pageSize,
                 cancellationToken),
             "transaction",
