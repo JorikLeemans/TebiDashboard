@@ -15,6 +15,8 @@ public sealed class NetSuiteSuiteQlQueriesTests
         Assert.Contains("LEFT JOIN entityAddress", sql);
         Assert.Contains("ea.nKey = c.defaultAddress", sql);
         Assert.Contains("ea.city", sql);
+        Assert.Contains("BUILTIN.DF(c.category) AS category", sql);
+        Assert.Contains("BUILTIN.DF(c.custentity_tebi_klant_subcategorie) AS subcategory", sql);
         Assert.DoesNotContain("defaultBillingAddress", sql);
         Assert.Contains("isInactive", sql);
     }

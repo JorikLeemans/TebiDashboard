@@ -23,6 +23,8 @@ public class CustomersPageTests
 
         Assert.Contains("Customers", cut.Markup);
         Assert.Contains("Bouwbedrijf Jansen", cut.Markup);
+        Assert.Contains("Aannemer", cut.Markup);
+        Assert.Contains("Woningbouw", cut.Markup);
     }
 
     [Fact]
@@ -121,6 +123,8 @@ public class CustomersPageTests
             CustomerId = "c1",
             Name = "Bouwbedrijf Jansen",
             City = "Utrecht",
+            Category = "Aannemer",
+            Subcategory = "Woningbouw",
             ContactEmail = "inkoop@jansen.nl",
             TotalSpent = 81500m,
             RevenueEntryCount = 2,
@@ -131,6 +135,8 @@ public class CustomersPageTests
             CustomerId = "c2",
             Name = "Gemeente Utrecht",
             City = "Utrecht",
+            Category = "Overheid",
+            Subcategory = "Gemeente",
             ContactEmail = "aanbesteding@utrecht.nl",
             TotalSpent = 38500m,
             RevenueEntryCount = 1,

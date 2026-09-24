@@ -7,9 +7,10 @@ namespace TebiDashboard.Infrastructure.NetSuite;
 internal static class NetSuiteSuiteQlQueries
 {
     /// <summary>
-    /// Customer: id, entityId (code), glommedName, email, and city from the default address.
+    /// Customer: id, entityId (code), glommedName, email, city, and category labels.
     /// glommedName is the display name for both companies and individuals; companyName is empty for persons.
     /// defaultAddress is the address id; entityAddress.city is the town, not the full address text.
+    /// category and custentity_tebi_klant_subcategorie are list fields; BUILTIN.DF returns the text, not the id.
     /// custentity_tebi_primaire_dochtermaatsch is available but not stored until subsidiary filtering is added.
     /// </summary>
     public static string Customers() =>
@@ -19,7 +20,9 @@ internal static class NetSuiteSuiteQlQueries
             c.entityId,
             c.glommedName,
             c.email,
-            ea.city
+            ea.city,
+            BUILTIN.DF(c.category) AS category,
+            BUILTIN.DF(c.custentity_tebi_klant_subcategorie) AS subcategory
         FROM customer c
         LEFT JOIN entityAddress ea ON ea.nKey = c.defaultAddress
         WHERE c.isInactive = 'F'

@@ -42,8 +42,8 @@ public sealed class NetSuiteSyncServiceTests
         {
             Customers =
             [
-                Row(("id", "\"c-old\""), ("glommedName", "\"Renamed customer\""), ("email", "\"old@tebi.nl\""), ("city", "\"Eindhoven\"")),
-                Row(("id", "\"c-new\""), ("glommedName", "\"New customer\""), ("email", "\"new@tebi.nl\""), ("city", "\"Utrecht\""))
+                Row(("id", "\"c-old\""), ("glommedName", "\"Renamed customer\""), ("email", "\"old@tebi.nl\""), ("city", "\"Eindhoven\""), ("category", "\"Aannemer\""), ("subcategory", "\"Woningbouw\"")),
+                Row(("id", "\"c-new\""), ("glommedName", "\"New customer\""), ("email", "\"new@tebi.nl\""), ("city", "\"Utrecht\""), ("category", "\"Overheid\""), ("subcategory", "\"16\""))
             ],
             Invoices =
             [
@@ -70,7 +70,11 @@ public sealed class NetSuiteSyncServiceTests
 
         Assert.Equal("Renamed customer", (await db.Customers.SingleAsync(row => row.CustomerId == "c-old")).Name);
         Assert.Equal("Eindhoven", (await db.Customers.SingleAsync(row => row.CustomerId == "c-old")).City);
+        Assert.Equal("Aannemer", (await db.Customers.SingleAsync(row => row.CustomerId == "c-old")).Category);
+        Assert.Equal("Woningbouw", (await db.Customers.SingleAsync(row => row.CustomerId == "c-old")).Subcategory);
         Assert.Equal("Utrecht", (await db.Customers.SingleAsync(row => row.CustomerId == "c-new")).City);
+        Assert.Equal("Overheid", (await db.Customers.SingleAsync(row => row.CustomerId == "c-new")).Category);
+        Assert.Equal(string.Empty, (await db.Customers.SingleAsync(row => row.CustomerId == "c-new")).Subcategory);
     }
 
     [Fact]

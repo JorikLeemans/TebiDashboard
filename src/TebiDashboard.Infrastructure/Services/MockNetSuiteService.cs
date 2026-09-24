@@ -385,11 +385,11 @@ public sealed class MockNetSuiteService : INetSuiteService
 
     private static List<CustomerDto> GetMockCustomers() =>
     [
-        new() { CustomerId = "c1", Name = "Bouwbedrijf Jansen", City = "Utrecht", ContactEmail = "inkoop@jansen.nl" },
-        new() { CustomerId = "c2", Name = "Gemeente Utrecht", City = "Utrecht", ContactEmail = "aanbesteding@utrecht.nl" },
-        new() { CustomerId = "c3", Name = "Stratenmakers BV", City = "Amersfoort", ContactEmail = "orders@stratenmakers.nl" },
-        new() { CustomerId = "c4", Name = "Woningbouw De Vliet", City = "Nieuwegein", ContactEmail = "inkoop@devliet.nl" },
-        new() { CustomerId = "c5", Name = "Aannemer Noord", City = "Groningen", ContactEmail = "sales@aannemernoord.nl" }
+        new() { CustomerId = "c1", Name = "Bouwbedrijf Jansen", City = "Utrecht", ContactEmail = "inkoop@jansen.nl", Category = "Aannemer", Subcategory = "Woningbouw" },
+        new() { CustomerId = "c2", Name = "Gemeente Utrecht", City = "Utrecht", ContactEmail = "aanbesteding@utrecht.nl", Category = "Overheid", Subcategory = "Gemeente" },
+        new() { CustomerId = "c3", Name = "Stratenmakers BV", City = "Amersfoort", ContactEmail = "orders@stratenmakers.nl", Category = "Stratenmaker", Subcategory = "Infra" },
+        new() { CustomerId = "c4", Name = "Woningbouw De Vliet", City = "Nieuwegein", ContactEmail = "inkoop@devliet.nl", Category = "Aannemer", Subcategory = "Woningbouw" },
+        new() { CustomerId = "c5", Name = "Aannemer Noord", City = "Groningen", ContactEmail = "sales@aannemernoord.nl", Category = "Aannemer", Subcategory = "Infra" }
     ];
 
     private static List<OpenTransactionDto> GetMockTransactions() =>
