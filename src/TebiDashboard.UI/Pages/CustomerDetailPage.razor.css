@@ -100,12 +100,34 @@
   background: #f7faf8;
 }
 
-.customer-detail__link-row {
+.customer-detail__link-row,
+.customer-detail__invoice-row {
   cursor: pointer;
 }
 
-.customer-detail__link-row:hover {
+.customer-detail__link-row:hover,
+.customer-detail__invoice-row:hover,
+.customer-detail__invoice-row:focus {
   background: #f0f7f2;
+}
+
+.customer-detail__invoice-row td {
+  font-weight: 600;
+}
+
+.customer-detail__invoice-toggle {
+  display: inline-block;
+  width: 1rem;
+  color: #2a8a4a;
+}
+
+.customer-detail__line-row td:first-child {
+  padding-left: 1.5rem;
+}
+
+.customer-detail__line-row td {
+  color: #445;
+  font-weight: 400;
 }
 
 .error {
