@@ -225,6 +225,12 @@
         ? "NetSuite is not configured on the API."
         : null;
 
+  /// <summary>
+  /// Setup is a convenience banner. Never block the admin page on it — Railway/proxy
+  /// stalls on GET /api/netsuite/setup were leaving this screen on "Loading administration...".
+  /// </summary>
+  private static readonly TimeSpan NetSuiteSetupLoadTimeout = TimeSpan.FromSeconds(8);
+
   protected override async Task OnInitializedAsync()
   {
     await AuthState.InitializeAsync();
@@ -242,13 +248,16 @@
       return;
     }
 
-    // Load accounts and NetSuite setup together so the status line is visible immediately.
-    await Task.WhenAll(LoadUsersAsync(), LoadNetSuiteSetupAsync());
+    // Accounts first, then paint, then setup. Task.WhenAll hid the whole page when setup hung.
+    await LoadUsersAsync();
+    await InvokeAsync(StateHasChanged);
 
-    // Watch only after the page has left the loading state so a long import does not hide the UI.
+    await LoadNetSuiteSetupAsync();
+
     if (_netSuiteSetup?.LastSync.State == "Running")
     {
-      await WatchRunningSyncAsync();
+      // Do not await inside OnInitialized — a long import would freeze this lifecycle again.
+      _ = InvokeAsync(WatchRunningSyncAsync);
     }
   }
 
@@ -292,13 +301,15 @@
   }
 
   /// <summary>
-  /// Fetches configured / last-sync status. Failures stay on the NetSuite panel, not the whole page.
+  /// Fetches configured / last-sync status with a short timeout. Failures stay on the
+  /// NetSuite panel so the accounts table can still render.
   /// </summary>
   private async Task LoadNetSuiteSetupAsync()
   {
     try
     {
-      _netSuiteSetup = await AdminApi.GetNetSuiteSetupAsync();
+      using var timeout = new CancellationTokenSource(NetSuiteSetupLoadTimeout);
+      _netSuiteSetup = await AdminApi.GetNetSuiteSetupAsync(timeout.Token);
 
       if (_netSuiteSetup.LastSync.Result is not null)
       {
