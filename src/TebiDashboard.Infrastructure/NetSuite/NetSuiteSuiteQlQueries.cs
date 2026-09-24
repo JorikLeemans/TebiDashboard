@@ -73,6 +73,8 @@ internal static class NetSuiteSuiteQlQueries
     /// <summary>
     /// Invoice revenue (omzet bron): tranId, tranDate, entity, subsidiary; amount excl. BTW via total - taxTotal.
     /// Uses the Invoice SuiteQL table (TEBI field names) instead of generic transaction joins.
+    /// productgroupname resolves the subsidiary reference to its display name via BUILTIN.DF so the
+    /// dashboard shows a readable product group instead of the raw numeric id.
     /// </summary>
     public static string Invoices(DateOnly fromDate) =>
         $"""
@@ -82,6 +84,7 @@ internal static class NetSuiteSuiteQlQueries
             tranDate,
             entity AS customerid,
             subsidiary AS productgroupid,
+            BUILTIN.DF(subsidiary) AS productgroupname,
             NVL(total, 0) - NVL(taxTotal, 0) AS amount
         FROM invoice
         WHERE tranDate >= TO_DATE('{fromDate:yyyy-MM-dd}', 'YYYY-MM-DD')

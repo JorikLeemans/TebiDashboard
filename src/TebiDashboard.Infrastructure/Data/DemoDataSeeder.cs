@@ -38,6 +38,7 @@ public static class DemoDataSeeder
         await BackfillPurchaseOrderSuppliersAsync(dbContext, cancellationToken);
         await BackfillExpenseSuppliersAsync(dbContext, cancellationToken);
         await EnsureDemoGoalsForYearAsync(dbContext, today, today.Year - 1, cancellationToken);
+        await EnsureRevenueProductGroupNamesAsync(dbContext, cancellationToken);
         await EnsureDemoRevenueSpreadAsync(dbContext, today, cancellationToken);
         await EnsureDemoSalesOrderSpreadAsync(dbContext, today, cancellationToken);
         await EnsureDemoExpenseSpreadAsync(dbContext, today, cancellationToken);
@@ -252,8 +253,47 @@ public static class DemoDataSeeder
         Amount = amount,
         CustomerId = customerId,
         CustomerName = customerName,
-        ProductGroupId = productGroupId
+        ProductGroupId = productGroupId,
+        // Seed a readable product group name so the running demo shows names, not raw ids.
+        ProductGroupName = ResolveProductGroupName(productGroupId)
     };
+
+    /// <summary>
+    /// Maps a demo product group id onto a human-readable Dutch product group (artikelgroep) name.
+    /// Unknown ids fall back to the id itself so nothing is lost.
+    /// </summary>
+    private static string ResolveProductGroupName(string productGroupId) => productGroupId switch
+    {
+        "pg-paving" => "Bestrating",
+        "pg-tiles" => "Tegels",
+        "pg-edging" => "Opsluitbanden",
+        _ => productGroupId
+    };
+
+    /// <summary>
+    /// Backfills readable product group names for revenue rows that were seeded/synced before the
+    /// ProductGroupName column existed, so existing databases also show names instead of raw ids.
+    /// </summary>
+    private static async Task EnsureRevenueProductGroupNamesAsync(
+        TebiDashboardDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var rows = await dbContext.RevenueRecords
+            .Where(revenue => revenue.ProductGroupName == null || revenue.ProductGroupName == "")
+            .ToListAsync(cancellationToken);
+
+        if (rows.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var revenue in rows)
+        {
+            revenue.ProductGroupName = ResolveProductGroupName(revenue.ProductGroupId);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 
     /// <summary>
     /// Inserts prior-year goals when missing so year-over-year comparison works on existing databases.

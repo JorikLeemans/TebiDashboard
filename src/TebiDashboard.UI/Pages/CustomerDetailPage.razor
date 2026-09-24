@@ -82,7 +82,9 @@
                             <tr>
                                 <td>@row.Date.ToString("d")</td>
                                 <td>@EuroFormatting.FormatWhole(row.Amount)</td>
-                                <td><code>@row.ProductGroupId</code></td>
+                                @* Prefer the readable product group name; fall back to the raw id
+                                   for older rows that were synced before names were captured. *@
+                                <td>@ProductGroupLabel(row)</td>
                             </tr>
                         }
                     </tbody>
@@ -164,6 +166,12 @@
     private bool _isLoading = true;
     private bool _isInitialLoad = true;
     private string? _error;
+
+    // Show the readable product group name when available, otherwise the raw id (backward compatible).
+    private static string ProductGroupLabel(RevenueDto revenue) =>
+        string.IsNullOrWhiteSpace(revenue.ProductGroupName)
+            ? revenue.ProductGroupId ?? string.Empty
+            : revenue.ProductGroupName;
 
     // Footer totals make it easy to compare revenue with sales orders in the same period.
     private decimal RevenueTotal => _detail?.Revenue.Sum(row => row.Amount) ?? 0m;

@@ -51,6 +51,16 @@ public sealed class NetSuiteSuiteQlQueriesTests
     }
 
     [Fact]
+    public void Invoices_SelectsReadableProductGroupName()
+    {
+        var sql = NetSuiteSuiteQlQueries.Invoices(new DateOnly(2026, 1, 1));
+
+        // BUILTIN.DF resolves the subsidiary reference to its display name so the dashboard can
+        // show a readable product group instead of the raw numeric id.
+        Assert.Contains("BUILTIN.DF(subsidiary) AS productgroupname", sql);
+    }
+
+    [Fact]
     public void VendorBills_UsesForeignTotalWithoutJoin()
     {
         var sql = NetSuiteSuiteQlQueries.VendorBills(new DateOnly(2026, 1, 1));

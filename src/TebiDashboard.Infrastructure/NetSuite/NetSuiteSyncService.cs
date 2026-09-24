@@ -286,7 +286,10 @@ public sealed class NetSuiteSyncService(
                 Amount = NetSuiteSuiteQlRowReader.GetDecimal(row, "amount"),
                 CustomerId = customerId,
                 CustomerName = customerNames.GetValueOrDefault(customerId) ?? string.Empty,
-                ProductGroupId = NetSuiteSuiteQlRowReader.GetString(row, "productgroupid") ?? string.Empty
+                ProductGroupId = NetSuiteSuiteQlRowReader.GetString(row, "productgroupid") ?? string.Empty,
+                // Human-readable product group (subsidiary) name resolved in SuiteQL via BUILTIN.DF;
+                // the numeric ProductGroupId is retained for backward compatibility/fallback.
+                ProductGroupName = NetSuiteSuiteQlRowReader.GetString(row, "productgroupname") ?? string.Empty
             });
             imported++;
         }
