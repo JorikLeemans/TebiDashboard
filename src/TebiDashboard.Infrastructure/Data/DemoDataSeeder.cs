@@ -521,11 +521,11 @@ public static class DemoDataSeeder
 
     private static CustomerRecord[] GetDemoCustomers() =>
     [
-        CreateCustomer("c1", "Bouwbedrijf Jansen", "Utrecht", "inkoop@jansen.nl"),
-        CreateCustomer("c2", "Gemeente Utrecht", "Utrecht", "aanbesteding@utrecht.nl"),
-        CreateCustomer("c3", "Stratenmakers BV", "Amersfoort", "orders@stratenmakers.nl"),
-        CreateCustomer("c4", "Woningbouw De Vliet", "Nieuwegein", "inkoop@devliet.nl"),
-        CreateCustomer("c5", "Aannemer Noord", "Groningen", "sales@aannemernoord.nl")
+        CreateCustomer("c1", "Bouwbedrijf Jansen", "Utrecht", "inkoop@jansen.nl", "Aannemer", "Woningbouw"),
+        CreateCustomer("c2", "Gemeente Utrecht", "Utrecht", "aanbesteding@utrecht.nl", "Overheid", "Gemeente"),
+        CreateCustomer("c3", "Stratenmakers BV", "Amersfoort", "orders@stratenmakers.nl", "Stratenmaker", "Infra"),
+        CreateCustomer("c4", "Woningbouw De Vliet", "Nieuwegein", "inkoop@devliet.nl", "Aannemer", "Woningbouw"),
+        CreateCustomer("c5", "Aannemer Noord", "Groningen", "sales@aannemernoord.nl", "Aannemer", "Infra")
     ];
 
     /// <summary>
@@ -876,12 +876,16 @@ public static class DemoDataSeeder
         string customerId,
         string name,
         string city,
-        string contactEmail) => new()
+        string contactEmail,
+        string category = "",
+        string subcategory = "") => new()
     {
         CustomerId = customerId,
         Name = name,
         City = city,
-        ContactEmail = contactEmail
+        ContactEmail = contactEmail,
+        Category = category,
+        Subcategory = subcategory
     };
 
     private static SupplierRecord CreateSupplier(

@@ -64,6 +64,8 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
                 Name = customer.Name,
                 City = customer.City,
                 ContactEmail = customer.ContactEmail,
+                Category = customer.Category,
+                Subcategory = customer.Subcategory,
                 // Total spent follows sales order amounts; demo data keeps revenue in sync.
                 TotalSpent = orderTotal > 0 ? orderTotal : revenue?.Total ?? 0m,
                 RevenueEntryCount = revenue?.Count ?? 0,
@@ -771,7 +773,9 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
         CustomerId = customer.CustomerId,
         Name = customer.Name,
         City = customer.City,
-        ContactEmail = customer.ContactEmail
+        ContactEmail = customer.ContactEmail,
+        Category = customer.Category,
+        Subcategory = customer.Subcategory
     };
 
     private static SupplierDto MapSupplier(Data.Entities.SupplierRecord supplier) => new()
