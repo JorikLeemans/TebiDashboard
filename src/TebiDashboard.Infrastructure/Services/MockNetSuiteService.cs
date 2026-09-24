@@ -292,7 +292,9 @@ public sealed class MockNetSuiteService : INetSuiteService
                 _ => null
             },
             ItemId = itemId,
-            ItemName = itemName
+            ItemName = itemName,
+            InvoiceId = customerId,
+            InvoiceNumber = $"F-{customerId.ToUpperInvariant()}"
         };
     }
 

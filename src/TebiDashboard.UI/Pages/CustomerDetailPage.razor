@@ -72,6 +72,7 @@
                     <thead>
                         <tr>
                             <th scope="col">Date</th>
+                            <th scope="col">Invoice</th>
                             <th scope="col">Item</th>
                             <th scope="col">Amount</th>
                             <th scope="col">Product group</th>
@@ -82,8 +83,9 @@
                         {
                             <tr>
                                 <td>@row.Date.ToString("d")</td>
+                                <td>@InvoiceLabel.For(row)</td>
                                 <td>@RevenueItemLabel(row)</td>
-                                <td>@EuroFormatting.FormatWhole(row.Amount)</td>
+                                <td>@EuroFormatting.Format(row.Amount)</td>
                                 <td>@ProductGroupLabel.For(row)</td>
                             </tr>
                         }
@@ -94,7 +96,8 @@
                             <tr>
                                 <th scope="row">Total</th>
                                 <td></td>
-                                <td>@EuroFormatting.FormatWhole(RevenueTotal)</td>
+                                <td></td>
+                                <td>@EuroFormatting.Format(RevenueTotal)</td>
                                 <td></td>
                             </tr>
                         </tfoot>

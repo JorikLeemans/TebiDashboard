@@ -29,4 +29,14 @@ public sealed class RevenueDto
     /// when the product group is unknown it is <see cref="ProductGroupId"/>.
     /// </summary>
     public string ItemName { get; init; } = string.Empty;
+
+    /// <summary>
+    /// NetSuite invoice internal id that this revenue line belongs to.
+    /// </summary>
+    public string InvoiceId { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Invoice document number (tranId) shown to operators, e.g. F-2026-001.
+    /// </summary>
+    public string InvoiceNumber { get; init; } = string.Empty;
 }

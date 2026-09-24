@@ -687,7 +687,9 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             ProductGroupId = record.ProductGroupId,
             ProductGroupName = record.ProductGroupName,
             ItemId = linkedItemId,
-            ItemName = itemName
+            ItemName = itemName,
+            InvoiceId = record.InvoiceId,
+            InvoiceNumber = record.InvoiceNumber
         };
     }
 

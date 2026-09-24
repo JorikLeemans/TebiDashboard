@@ -35,12 +35,14 @@ public class CustomerDetailPageTests
                     {
                         Id = "r38",
                         Date = new DateOnly(2026, 9, 23),
-                        Amount = 6100m,
+                        Amount = 6100.5m,
                         CustomerId = "c1",
                         CustomerName = "Bouwbedrijf Jansen",
                         ProductGroupId = "pg-edging",
                         ItemId = "i5",
-                        ItemName = "Opsluitbanden Grijs"
+                        ItemName = "Opsluitbanden Grijs",
+                        InvoiceId = "c1",
+                        InvoiceNumber = "F-C1"
                     }
                 ],
                 SalesOrders =
@@ -67,7 +69,10 @@ public class CustomerDetailPageTests
         var revenue = cut.Find("table[aria-label='Customer revenue']").TextContent;
         Assert.Contains("Opsluitbanden Grijs", revenue);
         Assert.Contains("pg-edging", revenue);
+        Assert.Contains("F-C1", revenue);
+        Assert.Contains(",50", revenue);
         Assert.Contains("Item", cut.Find("table[aria-label='Customer revenue']").TextContent);
+        Assert.Contains("Invoice", cut.Find("table[aria-label='Customer revenue']").TextContent);
 
         var orders = cut.Find("table[aria-label='Customer sales orders']").TextContent;
         Assert.Contains("Opsluitbanden Grijs", orders);
