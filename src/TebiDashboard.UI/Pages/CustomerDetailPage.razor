@@ -49,8 +49,8 @@
                 <p class="customer-detail__kpi-hint">Sum of open sales order amounts below</p>
             </article>
             <article class="customer-detail__kpi">
-                <h2>Revenue entries</h2>
-                <p>@_detail.Revenue.Count</p>
+                <h2>Invoices</h2>
+                <p>@InvoiceGroups.Count</p>
             </article>
             <article class="customer-detail__kpi">
                 <h2>Sales orders</h2>
@@ -62,6 +62,7 @@
             </article>
         </section>
 
+        @* Revenue is grouped by invoice. Click a row to expand its item lines. *@
         <section class="customer-detail__section">
             <h2>Revenue in period</h2>
             @if (_detail.Revenue.Count == 0)
@@ -75,32 +76,44 @@
                         <tr>
                             <th scope="col">Date</th>
                             <th scope="col">Invoice</th>
-                            <th scope="col">Item</th>
                             <th scope="col">Amount</th>
-                            <th scope="col">Product group</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var row in _detail.Revenue)
+                        @foreach (var invoice in InvoiceGroups)
                         {
-                            <tr>
-                                <td>@row.Date.ToString("d")</td>
-                                <td>@InvoiceLabel.For(row)</td>
-                                <td>@RevenueItemLabel(row)</td>
-                                <td>@EuroFormatting.Format(row.Amount)</td>
-                                <td>@ProductGroupLabel.For(row)</td>
+                            var expanded = IsInvoiceExpanded(invoice.Key);
+                            <tr class="customer-detail__invoice-row"
+                                @onclick="() => ToggleInvoice(invoice.Key)"
+                                tabindex="0"
+                                aria-expanded="@expanded"
+                                @onkeydown="(args) => HandleInvoiceKeyDown(args, invoice.Key)">
+                                <td>@invoice.Date.ToString("d")</td>
+                                <td>
+                                    <span class="customer-detail__invoice-toggle" aria-hidden="true">@(expanded ? "▼" : "▶")</span>
+                                    @invoice.InvoiceLabel
+                                </td>
+                                <td>@EuroFormatting.Format(invoice.TotalAmount)</td>
                             </tr>
+                            @if (expanded)
+                            {
+                                @foreach (var line in invoice.Lines)
+                                {
+                                    <tr class="customer-detail__line-row">
+                                        <td>@line.Date.ToString("d")</td>
+                                        <td>@LineDetailLabel(line)</td>
+                                        <td>@EuroFormatting.Format(line.Amount)</td>
+                                    </tr>
+                                }
+                            }
                         }
                     </tbody>
-                    @if (_detail.Revenue.Count > 0)
+                    @if (InvoiceGroups.Count > 0)
                     {
                         <tfoot>
                             <tr>
-                                <th scope="row">Total</th>
-                                <td></td>
-                                <td></td>
+                                <th scope="row" colspan="2">Total</th>
                                 <td>@EuroFormatting.Format(RevenueTotal)</td>
-                                <td></td>
                             </tr>
                         </tfoot>
                     }
@@ -173,6 +186,11 @@
     private bool _isLoading = true;
     private bool _isInitialLoad = true;
     private string? _error;
+    private readonly HashSet<string> _expandedInvoices = new(StringComparer.OrdinalIgnoreCase);
+
+    // One row per invoice; click a row to reveal its lines.
+    private IReadOnlyList<InvoiceRevenueGroup> InvoiceGroups =>
+        _detail is null ? [] : InvoiceRevenueGroups.From(_detail.Revenue);
 
     // Footer totals make it easy to compare revenue with sales orders in the same period.
     private decimal RevenueTotal => _detail?.Revenue.Sum(row => row.Amount) ?? 0m;
@@ -192,6 +210,42 @@
         }
 
         return row.ProductGroupId ?? string.Empty;
+    }
+
+    // Expanded invoice lines show the article and artikelgroep on the invoice column.
+    private static string LineDetailLabel(RevenueDto row)
+    {
+        var item = RevenueItemLabel(row);
+        var group = ProductGroupLabel.For(row);
+        if (string.IsNullOrWhiteSpace(group))
+        {
+            return item;
+        }
+
+        if (string.IsNullOrWhiteSpace(item))
+        {
+            return group;
+        }
+
+        return $"{item} · {group}";
+    }
+
+    private bool IsInvoiceExpanded(string key) => _expandedInvoices.Contains(key);
+
+    private void ToggleInvoice(string key)
+    {
+        if (!_expandedInvoices.Add(key))
+        {
+            _expandedInvoices.Remove(key);
+        }
+    }
+
+    private void HandleInvoiceKeyDown(KeyboardEventArgs args, string key)
+    {
+        if (args.Key is "Enter" or " ")
+        {
+            ToggleInvoice(key);
+        }
     }
 
     // Hide a bare NetSuite internal id (digits only) when the name never arrived.
@@ -258,6 +312,7 @@
             }
 
             _detail = detail;
+            _expandedInvoices.Clear();
 
             if (_detail is null)
             {
