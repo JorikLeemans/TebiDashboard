@@ -80,6 +80,7 @@ internal static class NetSuiteSuiteQlQueries
         $"""
         SELECT
             i.id AS invoiceid,
+            i.tranId AS invoicenumber,
             tl.id AS lineid,
             TO_CHAR(i.tranDate, 'YYYY-MM-DD') AS trandate,
             i.entity AS customerid,

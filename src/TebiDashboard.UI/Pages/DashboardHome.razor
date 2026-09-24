@@ -63,6 +63,7 @@
                     <thead>
                         <tr>
                             <th>Date</th>
+                            <th>Invoice</th>
                             <th>Customer</th>
                             <th>Product group</th>
                             <th>Amount</th>
@@ -73,6 +74,7 @@
                         {
                             <tr>
                                 <td>@row.Date.ToString("d")</td>
+                                <td>@InvoiceLabel.For(row)</td>
                                 <td>
                                     @if (string.IsNullOrWhiteSpace(row.CustomerId))
                                     {
@@ -87,7 +89,7 @@
                                     }
                                 </td>
                                 <td>@ProductGroupLabel.For(row)</td>
-                                <td>@EuroFormatting.FormatWhole(row.Amount)</td>
+                                <td>@EuroFormatting.Format(row.Amount)</td>
                             </tr>
                         }
                     </tbody>

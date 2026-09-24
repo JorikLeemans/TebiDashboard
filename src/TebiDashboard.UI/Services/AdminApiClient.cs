@@ -68,33 +68,50 @@ public sealed class AdminApiClient(HttpClient httpClient, IAuthStateService auth
     public async Task<NetSuiteSetupStatusDto> GetNetSuiteSetupAsync(CancellationToken cancellationToken = default)
     {
         using var request = CreateAuthorizedRequest(HttpMethod.Get, "api/netsuite/setup");
-        var response = await httpClient.SendAsync(request, cancellationToken);
 
-        if (response.StatusCode == HttpStatusCode.Forbidden)
+        HttpResponseMessage response;
+        try
         {
+            response = await httpClient.SendAsync(request, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // Keep the admin page usable when the hosting proxy never returns this GET.
             return new NetSuiteSetupStatusDto
             {
-                ConfigurationMessage = "You do not have permission to view NetSuite setup status.",
-                DataSourceMessage = "Administrator access is required."
+                ConfigurationMessage = "Timed out while loading NetSuite setup status.",
+                DataSourceMessage = "Accounts are still available. Use Test connection or Sync once the API responds."
             };
         }
 
-        if (!response.IsSuccessStatusCode)
+        using (response)
         {
-            var fallback = await ReadRawBodyAsync(response, cancellationToken);
-            return new NetSuiteSetupStatusDto
+            if (response.StatusCode == HttpStatusCode.Forbidden)
             {
-                ConfigurationMessage = DescribeNonJsonResponse(response.StatusCode, fallback),
-                DataSourceMessage = "Could not load NetSuite setup status from the API."
-            };
-        }
+                return new NetSuiteSetupStatusDto
+                {
+                    ConfigurationMessage = "You do not have permission to view NetSuite setup status.",
+                    DataSourceMessage = "Administrator access is required."
+                };
+            }
 
-        return await ReadJsonBodyAsync<NetSuiteSetupStatusDto>(response, cancellationToken)
-            ?? new NetSuiteSetupStatusDto
+            if (!response.IsSuccessStatusCode)
             {
-                ConfigurationMessage = "Empty response from NetSuite setup endpoint.",
-                DataSourceMessage = "Could not load NetSuite setup status from the API."
-            };
+                var fallback = await ReadRawBodyAsync(response, cancellationToken);
+                return new NetSuiteSetupStatusDto
+                {
+                    ConfigurationMessage = DescribeNonJsonResponse(response.StatusCode, fallback),
+                    DataSourceMessage = "Could not load NetSuite setup status from the API."
+                };
+            }
+
+            return await ReadJsonBodyAsync<NetSuiteSetupStatusDto>(response, cancellationToken)
+                ?? new NetSuiteSetupStatusDto
+                {
+                    ConfigurationMessage = "Empty response from NetSuite setup endpoint.",
+                    DataSourceMessage = "Could not load NetSuite setup status from the API."
+                };
+        }
     }
 
     /// <summary>
@@ -257,4 +274,4 @@ public sealed class AdminApiClient(HttpClient httpClient, IAuthStateService auth
         public string? Message { get; init; }
     }
 }
-
+

@@ -37,11 +37,11 @@ public class AdminDashboardPageTests
 
         var cut = ctx.Render<AdminDashboard>();
         cut.WaitForAssertion(() => Assert.Contains("admin@tebi.nl", cut.Markup), TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(() => Assert.Contains("Not configured", cut.Markup), TimeSpan.FromSeconds(5));
 
         Assert.Contains("Administrator dashboard", cut.Markup);
         Assert.Contains("NetSuite data sync", cut.Markup);
         Assert.Contains("sales@tebi.nl", cut.Markup);
-        Assert.Contains("Not configured", cut.Markup);
         Assert.Contains("No sync has run", cut.Markup);
         Assert.True(FindNetSuiteButton(cut, "Test connection").HasAttribute("disabled"));
         Assert.True(FindNetSuiteButton(cut, "Sync NetSuite data").HasAttribute("disabled"));
@@ -68,17 +68,49 @@ public class AdminDashboardPageTests
         Assert.False(FindNetSuiteButton(cut, "Sync NetSuite data").HasAttribute("disabled"));
     }
 
+    [Fact]
+    public void AdminDashboard_ShowsUsers_WhenSetupRequestNeverReturns()
+    {
+        using var ctx = CreateContext(isAdmin: true, out var mockHttp, registerDefaultSetup: false);
+        mockHttp.When(HttpMethod.Get, "*/api/admin/users*")
+            .Respond(HttpStatusCode.OK, _ => JsonContent.Create<IReadOnlyList<UserAccountDto>>(
+            [
+                new UserAccountDto { Email = "admin@tebi.nl", Role = Roles.Admin }
+            ]));
+        mockHttp.When(HttpMethod.Get, "*/api/netsuite/setup*")
+            .Respond(async _ =>
+            {
+                await Task.Delay(TimeSpan.FromMinutes(1));
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(CreateUnconfiguredSetup())
+                };
+            });
+
+        var cut = ctx.Render<AdminDashboard>();
+        cut.WaitForAssertion(() => Assert.Contains("admin@tebi.nl", cut.Markup), TimeSpan.FromSeconds(5));
+        Assert.DoesNotContain("Loading administration...", cut.Markup);
+
+        cut.WaitForAssertion(
+            () => Assert.Contains("Timed out while loading NetSuite setup status.", cut.Markup),
+            TimeSpan.FromSeconds(12));
+    }
+
     private static BunitContext CreateContext(
         bool isAdmin,
         out MockHttpMessageHandler mockHttp,
-        NetSuiteSetupStatusDto? setup = null)
+        NetSuiteSetupStatusDto? setup = null,
+        bool registerDefaultSetup = true)
     {
         var ctx = new BunitContext();
         mockHttp = new MockHttpMessageHandler();
 
         // Admin page always loads setup on open; default to the unconfigured API state.
-        mockHttp.When(HttpMethod.Get, "*/api/netsuite/setup*")
-            .Respond(HttpStatusCode.OK, _ => JsonContent.Create(setup ?? CreateUnconfiguredSetup()));
+        if (registerDefaultSetup)
+        {
+            mockHttp.When(HttpMethod.Get, "*/api/netsuite/setup*")
+                .Respond(HttpStatusCode.OK, _ => JsonContent.Create(setup ?? CreateUnconfiguredSetup()));
+        }
 
         var client = mockHttp.ToHttpClient();
         client.BaseAddress = new Uri("https://localhost/");

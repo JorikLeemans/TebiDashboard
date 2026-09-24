@@ -96,9 +96,10 @@ public class DashboardHomeTests
                 {
                     Id = "1",
                     Date = new DateOnly(2026, 6, 9),
-                    Amount = 42000m,
+                    Amount = 42000.5m,
                     CustomerId = "c1",
-                    CustomerName = "Bouwbedrijf Jansen"
+                    CustomerName = "Bouwbedrijf Jansen",
+                    InvoiceNumber = "F-C1"
                 }
             ]
         });
@@ -109,6 +110,9 @@ public class DashboardHomeTests
 
         Assert.Contains("href=\"/customers/c1\"", cut.Markup);
         Assert.Contains("Bouwbedrijf Jansen", cut.Markup);
+        Assert.Contains("F-C1", cut.Markup);
+        Assert.Contains("Invoice", cut.Markup);
+        Assert.Contains(",50", cut.Markup);
     }
 
     [Fact]

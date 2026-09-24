@@ -45,6 +45,7 @@ public sealed class NetSuiteSuiteQlQueriesTests
 
         Assert.Contains("FROM transactionline", sql, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("INNER JOIN invoice", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("i.tranId AS invoicenumber", sql);
         Assert.Contains("TO_CHAR(i.tranDate, 'YYYY-MM-DD') AS trandate", sql);
         Assert.Contains("tl.item AS itemid", sql);
         Assert.Contains("BUILTIN.DF(tl.item) AS itemname", sql);

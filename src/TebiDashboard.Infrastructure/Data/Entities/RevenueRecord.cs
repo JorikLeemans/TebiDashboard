@@ -35,4 +35,14 @@ public sealed class RevenueRecord
     /// prefers a live inventory lookup and uses this when that row is missing.
     /// </summary>
     public string ItemName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Parent invoice internal id. Line rows use "{invoiceId}-{lineId}" as <see cref="Id"/>.
+    /// </summary>
+    public string InvoiceId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Parent invoice document number (NetSuite tranId).
+    /// </summary>
+    public string InvoiceNumber { get; set; } = string.Empty;
 }
