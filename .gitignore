@@ -68,7 +68,11 @@ Thumbs.db
 Desktop.ini
 
 # Cursor / VS Code (keep shared settings optional)
-.cursor/
+.cursor/*
+# Keep the Cloud Agent environment configuration under version control.
+!.cursor/environment.json
+!.cursor/install.sh
+!.cursor/start.sh
 
 # Temporary files
 *.tmp
@@ -80,3 +84,6 @@ Desktop.ini
 *.db
 *.db-shm
 *.db-wal
+
+# Runtime-generated Blazor data protection keys
+src/TebiDashboard.Web/data-protection-keys/

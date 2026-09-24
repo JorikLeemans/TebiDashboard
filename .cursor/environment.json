@@ -1,0 +1,17 @@
+{
+  "name": "TEBI Dashboard",
+  "user": "ubuntu",
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "terminals": [
+    {
+      "name": "API",
+      "command": "export PATH=\"$HOME/.dotnet:$PATH\"; export DOTNET_ROOT=\"$HOME/.dotnet\"; export DOTNET_CLI_TELEMETRY_OPTOUT=1; export ASPNETCORE_ENVIRONMENT=Development; export ASPNETCORE_URLS=http://0.0.0.0:5233; cd src/TebiDashboard.Api && dotnet run --no-launch-profile -c Release"
+    },
+    {
+      "name": "Web",
+      "command": "export PATH=\"$HOME/.dotnet:$PATH\"; export DOTNET_ROOT=\"$HOME/.dotnet\"; export DOTNET_CLI_TELEMETRY_OPTOUT=1; export ASPNETCORE_ENVIRONMENT=Development; export ASPNETCORE_URLS=http://0.0.0.0:5186; export ApiBaseUrl=http://localhost:5233/; cd src/TebiDashboard.Web && dotnet run --no-launch-profile -c Release"
+    }
+  ],
+  "ports": [5233, 5186]
+}
