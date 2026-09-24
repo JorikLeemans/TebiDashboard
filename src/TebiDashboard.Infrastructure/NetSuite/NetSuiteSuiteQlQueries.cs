@@ -8,7 +8,7 @@ internal static class NetSuiteSuiteQlQueries
 {
     /// <summary>
     /// Customer: id, entityId (code), glommedName, email, city, and category labels.
-    /// glommedName is the display name for both companies and individuals; companyName is empty for persons.
+    /// entityId is the display name TEBI uses for both companies and persons; glommedName is a fallback.
     /// City comes from the default billing address book row. defaultAddress is not exposed to SuiteQL SEARCH
     /// (NOT_EXPOSED). Analytics Browser join: customerAddressBook.entity + customerAddressBookEntityAddress.nkey.
     /// category and custentity_tebi_klant_subcategorie are list fields; BUILTIN.DF returns the text, not the id.
@@ -31,7 +31,7 @@ internal static class NetSuiteSuiteQlQueries
         LEFT JOIN customerAddressBookEntityAddress ea
             ON ea.nKey = cab.addressBookAddress
         WHERE c.isInactive = 'F'
-        ORDER BY c.glommedName
+        ORDER BY c.entityId
         """;
 
     /// <summary>

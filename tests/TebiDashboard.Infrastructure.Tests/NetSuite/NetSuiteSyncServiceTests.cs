@@ -42,8 +42,8 @@ public sealed class NetSuiteSyncServiceTests
         {
             Customers =
             [
-                Row(("id", "\"c-old\""), ("glommedName", "\"Renamed customer\""), ("email", "\"old@tebi.nl\""), ("city", "\"Eindhoven\""), ("category", "\"Aannemer\""), ("subcategory", "\"Woningbouw\"")),
-                Row(("id", "\"c-new\""), ("glommedName", "\"New customer\""), ("email", "\"new@tebi.nl\""), ("city", "\"Utrecht\""), ("category", "\"Overheid\""), ("subcategory", "\"16\""))
+                Row(("id", "\"c-old\""), ("entityId", "\"Renamed customer\""), ("glommedName", "\"Other label\""), ("email", "\"old@tebi.nl\""), ("city", "\"Eindhoven\""), ("category", "\"Aannemer\""), ("subcategory", "\"Woningbouw\"")),
+                Row(("id", "\"c-new\""), ("entityId", "\"New customer\""), ("glommedName", "\"Other new label\""), ("email", "\"new@tebi.nl\""), ("city", "\"Utrecht\""), ("category", "\"Overheid\""), ("subcategory", "\"16\""))
             ],
             Invoices =
             [
@@ -78,7 +78,7 @@ public sealed class NetSuiteSyncServiceTests
     }
 
     [Fact]
-    public async Task Sync_UsesGlommedName_WhenCompanyNameIsAlsoPresent()
+    public async Task Sync_UsesEntityId_WhenGlommedNameAndCompanyNameAreAlsoPresent()
     {
         await using var db = CreateDbContext();
         var restClient = new FakeNetSuiteRestClient
@@ -87,6 +87,7 @@ public sealed class NetSuiteSyncServiceTests
             [
                 Row(
                     ("id", "\"c-1\""),
+                    ("entityId", "\"Piet Jansen\""),
                     ("companyName", "\"Company only\""),
                     ("glommedName", "\"Jansen, Piet\""),
                     ("email", "\"piet@tebi.nl\""),
@@ -99,7 +100,7 @@ public sealed class NetSuiteSyncServiceTests
 
         Assert.True(result.Success, result.Message);
         var customer = await db.Customers.SingleAsync();
-        Assert.Equal("Jansen, Piet", customer.Name);
+        Assert.Equal("Piet Jansen", customer.Name);
         Assert.Equal("Helmond", customer.City);
     }
 
