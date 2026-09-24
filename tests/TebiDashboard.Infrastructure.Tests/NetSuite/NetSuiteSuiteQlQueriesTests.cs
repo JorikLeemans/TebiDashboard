@@ -12,12 +12,14 @@ public sealed class NetSuiteSuiteQlQueriesTests
         Assert.Contains("entityId", sql);
         Assert.Contains("glommedName", sql);
         Assert.DoesNotContain("companyName", sql);
-        Assert.Contains("LEFT JOIN entityAddress", sql);
-        Assert.Contains("ea.nKey = c.defaultAddress", sql);
+        Assert.Contains("LEFT JOIN customerAddressBook", sql);
+        Assert.Contains("cab.defaultBilling = 'T'", sql);
+        Assert.Contains("LEFT JOIN customerAddressBookEntityAddress", sql);
+        Assert.Contains("ea.nKey = cab.addressBookAddress", sql);
         Assert.Contains("ea.city", sql);
         Assert.Contains("BUILTIN.DF(c.category) AS category", sql);
         Assert.Contains("BUILTIN.DF(c.custentity_tebi_klant_subcategorie) AS subcategory", sql);
-        Assert.DoesNotContain("defaultBillingAddress", sql);
+        Assert.DoesNotContain("defaultAddress", sql);
         Assert.Contains("isInactive", sql);
     }
 
@@ -28,10 +30,12 @@ public sealed class NetSuiteSuiteQlQueriesTests
 
         Assert.Contains("entityId", sql);
         Assert.Contains("companyName", sql);
-        Assert.Contains("LEFT JOIN entityAddress", sql);
-        Assert.Contains("ea.nKey = v.defaultAddress", sql);
+        Assert.Contains("LEFT JOIN vendorAddressBook", sql);
+        Assert.Contains("vab.defaultBilling = 'T'", sql);
+        Assert.Contains("LEFT JOIN vendorAddressBookEntityAddress", sql);
+        Assert.Contains("ea.nKey = vab.addressBookAddress", sql);
         Assert.Contains("ea.city", sql);
-        Assert.DoesNotContain("defaultBillingAddress", sql);
+        Assert.DoesNotContain("defaultAddress", sql);
         Assert.Contains("isInactive", sql);
     }
 
