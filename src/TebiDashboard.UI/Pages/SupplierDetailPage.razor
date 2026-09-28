@@ -118,7 +118,7 @@
                         @foreach (var order in OrderGroupsPreview)
                         {
                             var expanded = IsPurchaseOrderExpanded(order.Key);
-                            <tr class="supplier-detail__order-row"
+                            <tr class="@(PurchaseOrderRowClass(order.Key))"
                                 @onclick="() => TogglePurchaseOrder(order.Key)"
                                 tabindex="0"
                                 aria-expanded="@expanded"
@@ -230,6 +230,11 @@
     [Parameter]
     public string SupplierId { get; set; } = string.Empty;
 
+    /// <summary>Order id from inventory (?order=) so that purchase order is expanded on arrival.</summary>
+    [Parameter]
+    [SupplyParameterFromQuery(Name = OpenTransactionLinks.OrderQueryName)]
+    public string? FocusOrder { get; set; }
+
     private SupplierDetailDto? _detail;
     private bool _isLoading = true;
     private bool _isInitialLoad = true;
@@ -261,8 +266,39 @@
     }
 
     /// <summary>Newest 20 grouped purchase orders unless a column sort is active; KPIs still use the full list.</summary>
-    private IReadOnlyList<SalesOrderGroup> OrderGroupsPreview =>
-        DashboardHomePreview.MostRecent(OrderGroups);
+    private IReadOnlyList<SalesOrderGroup> OrderGroupsPreview
+    {
+        get
+        {
+            var groups = OrderGroups;
+            if (string.IsNullOrWhiteSpace(FocusOrder))
+            {
+                return DashboardHomePreview.MostRecent(groups);
+            }
+
+            var focused = groups.FirstOrDefault(order => IsFocusedOrder(order.Key));
+            if (focused is null)
+            {
+                return DashboardHomePreview.MostRecent(groups);
+            }
+
+            var preview = new List<SalesOrderGroup> { focused };
+            foreach (var group in groups)
+            {
+                if (preview.Count >= DashboardHomePreview.MaxRows)
+                {
+                    break;
+                }
+
+                if (!IsFocusedOrder(group.Key))
+                {
+                    preview.Add(group);
+                }
+            }
+
+            return preview;
+        }
+    }
 
     /// <summary>First 20 purchased items unless a column sort is active.</summary>
     private IReadOnlyList<SupplierPurchasedItemDto> PurchasedItemsPreview =>
@@ -331,6 +367,31 @@
 
     private bool IsPurchaseOrderExpanded(string key) => _expandedPurchaseOrders.Contains(key);
 
+    private bool IsFocusedOrder(string key) =>
+        !string.IsNullOrWhiteSpace(FocusOrder)
+        && string.Equals(key, FocusOrder, StringComparison.OrdinalIgnoreCase);
+
+    private string PurchaseOrderRowClass(string key) =>
+        IsFocusedOrder(key)
+            ? "supplier-detail__order-row supplier-detail__order-row--focus"
+            : "supplier-detail__order-row";
+
+    private void ExpandFocusedOrder()
+    {
+        // Query string may arrive after first init; keep reading it until the matching row exists.
+        FocusOrder ??= OpenTransactionLinks.OrderKeyFromUri(Navigation.Uri);
+        if (string.IsNullOrWhiteSpace(FocusOrder))
+        {
+            return;
+        }
+
+        var match = OrderGroups.FirstOrDefault(order => IsFocusedOrder(order.Key));
+        if (match is not null)
+        {
+            _expandedPurchaseOrders.Add(match.Key);
+        }
+    }
+
     private void TogglePurchaseOrder(string key)
     {
         if (!_expandedPurchaseOrders.Add(key))
@@ -350,6 +411,7 @@
     protected override void OnParametersSet()
     {
         _periodSubscription.Bind(CascadedPeriodFilter, InjectedPeriodFilter, OnPeriodChanged);
+        ExpandFocusedOrder();
     }
 
     protected override async Task OnInitializedAsync()
@@ -405,6 +467,7 @@
 
             _detail = detail;
             _expandedPurchaseOrders.Clear();
+            ExpandFocusedOrder();
 
             if (_detail is null)
             {

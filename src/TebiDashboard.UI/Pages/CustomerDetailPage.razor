@@ -142,7 +142,7 @@
                         @foreach (var order in OrderGroups)
                         {
                             var expanded = IsSalesOrderExpanded(order.Key);
-                            <tr class="customer-detail__invoice-row"
+                            <tr class="@(SalesOrderRowClass(order.Key))"
                                 @onclick="() => ToggleSalesOrder(order.Key)"
                                 tabindex="0"
                                 aria-expanded="@expanded"
@@ -204,6 +204,11 @@
 
     [Parameter]
     public string CustomerId { get; set; } = string.Empty;
+
+    /// <summary>Order id from inventory (?order=) so that sales order is expanded on arrival.</summary>
+    [Parameter]
+    [SupplyParameterFromQuery(Name = OpenTransactionLinks.OrderQueryName)]
+    public string? FocusOrder { get; set; }
 
     private CustomerDetailDto? _detail;
     private bool _isLoading = true;
@@ -314,6 +319,31 @@
 
     private bool IsSalesOrderExpanded(string key) => _expandedSalesOrders.Contains(key);
 
+    private bool IsFocusedOrder(string key) =>
+        !string.IsNullOrWhiteSpace(FocusOrder)
+        && string.Equals(key, FocusOrder, StringComparison.OrdinalIgnoreCase);
+
+    private string SalesOrderRowClass(string key) =>
+        IsFocusedOrder(key)
+            ? "customer-detail__invoice-row customer-detail__invoice-row--focus"
+            : "customer-detail__invoice-row";
+
+    private void ExpandFocusedOrder()
+    {
+        // Query string may arrive after first init; keep reading it until the matching row exists.
+        FocusOrder ??= OpenTransactionLinks.OrderKeyFromUri(Navigation.Uri);
+        if (string.IsNullOrWhiteSpace(FocusOrder))
+        {
+            return;
+        }
+
+        var match = OrderGroups.FirstOrDefault(order => IsFocusedOrder(order.Key));
+        if (match is not null)
+        {
+            _expandedSalesOrders.Add(match.Key);
+        }
+    }
+
     private void ToggleSalesOrder(string key)
     {
         if (!_expandedSalesOrders.Add(key))
@@ -353,6 +383,7 @@
     protected override void OnParametersSet()
     {
         _periodSubscription.Bind(CascadedPeriodFilter, InjectedPeriodFilter, OnPeriodChanged);
+        ExpandFocusedOrder();
     }
 
     protected override async Task OnInitializedAsync()
@@ -409,6 +440,7 @@
             _detail = detail;
             _expandedInvoices.Clear();
             _expandedSalesOrders.Clear();
+            ExpandFocusedOrder();
 
             if (_detail is null)
             {

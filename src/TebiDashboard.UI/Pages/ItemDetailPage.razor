@@ -93,6 +93,7 @@
             }
         </section>
 
+        @* Click a sales or purchase order to open it on the customer or supplier page. *@
         <section class="item-detail__section">
             <h2>Open transactions</h2>
             @if (_item.OpenTransactions.Count == 0)
@@ -118,16 +119,24 @@
                             var expanded = IsOrderExpanded(order.Key);
                             var canExpand = order.Lines.Count > 1;
                             var first = order.Lines[0];
-                            <tr class="@(canExpand ? "item-detail__order-row" : null)"
-                                @onclick="() => ToggleOrder(order.Key)"
-                                tabindex="@(canExpand ? 0 : -1)"
+                            @* Sales/purchase orders open the customer or supplier page; transfer orders only expand. *@
+                            var partyHref = OpenTransactionLinks.ForParty(first, order.Key);
+                            var isLink = partyHref is not null;
+                            <tr class="@OrderRowClass(canExpand, isLink)"
+                                @onclick="() => OnOrderRowClick(order)"
+                                tabindex="@(isLink || canExpand ? 0 : -1)"
+                                role="@(isLink ? "link" : null)"
+                                title="@(isLink ? "Open this order" : null)"
                                 aria-expanded="@(canExpand ? expanded : null)"
-                                @onkeydown="(args) => HandleOrderKeyDown(args, order.Key)">
+                                @onkeydown="(args) => HandleOrderKeyDown(args, order)">
                                 <td>@order.Date.ToString("d")</td>
                                 <td>
                                     @if (canExpand)
                                     {
-                                        <span class="item-detail__order-toggle" aria-hidden="true">@(expanded ? "▼" : "▶")</span>
+                                        <span class="item-detail__order-toggle"
+                                              aria-hidden="true"
+                                              @onclick="() => ToggleOrder(order.Key)"
+                                              @onclick:stopPropagation="true">@(expanded ? "▼" : "▶")</span>
                                     }
                                     <code>@order.OrderLabel</code>
                                 </td>
@@ -135,13 +144,11 @@
                                 <td>
                                     @if (!string.IsNullOrWhiteSpace(first.CustomerId))
                                     {
-                                        <a href="@($"/customers/{Uri.EscapeDataString(first.CustomerId)}")"
-                                           @onclick:stopPropagation="true">@PartyName(first.CustomerName, first.CustomerId)</a>
+                                        @PartyName(first.CustomerName, first.CustomerId)
                                     }
                                     else if (!string.IsNullOrWhiteSpace(first.SupplierId))
                                     {
-                                        <a href="@($"/suppliers/{Uri.EscapeDataString(first.SupplierId)}")"
-                                           @onclick:stopPropagation="true">@PartyName(first.SupplierName, first.SupplierId)</a>
+                                        @PartyName(first.SupplierName, first.SupplierId)
                                     }
                                     else
                                     {
@@ -242,6 +249,30 @@
 
     private bool IsOrderExpanded(string key) => _expandedOrders.Contains(key);
 
+    private static string? OrderRowClass(bool canExpand, bool isLink)
+    {
+        if (isLink)
+        {
+            return "item-detail__order-row item-detail__order-row--link";
+        }
+
+        return canExpand ? "item-detail__order-row" : null;
+    }
+
+    // A sales or purchase order opens the customer/supplier page focused on that order.
+    // Transfer orders have no party here, so the row only expands when there are multiple lines.
+    private void OnOrderRowClick(SalesOrderGroup order)
+    {
+        var href = OpenTransactionLinks.ForParty(order.Lines[0], order.Key);
+        if (href is not null)
+        {
+            Navigation.NavigateTo(href);
+            return;
+        }
+
+        ToggleOrder(order.Key);
+    }
+
     private void ToggleOrder(string key)
     {
         var group = TransactionGroups.FirstOrDefault(order => order.Key == key);
@@ -256,11 +287,11 @@
         }
     }
 
-    private void HandleOrderKeyDown(KeyboardEventArgs args, string key)
+    private void HandleOrderKeyDown(KeyboardEventArgs args, SalesOrderGroup order)
     {
         if (args.Key is "Enter" or " ")
         {
-            ToggleOrder(key);
+            OnOrderRowClick(order);
         }
     }
 

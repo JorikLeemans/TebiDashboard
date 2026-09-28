@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Bunit;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using RichardSzalay.MockHttp;
 using TebiDashboard.Shared.Constants;
@@ -226,8 +227,55 @@ public class SupplierDetailPageTests
         Assert.Contains("BetonCentrale Midden-NL", expenses);
         Assert.Contains("s-missing", expenses);
         Assert.Contains("i-missing", cut.Find("table[aria-label='Purchased items']").TextContent);
-        cut.Find("table[aria-label='Supplier purchase orders'] .supplier-detail__order-row").Click();
+        cut.Find("table[aria-label='Supplier purchase orders'] tbody .supplier-detail__order-row").Click();
         Assert.Contains("i-missing", cut.Find("table[aria-label='Supplier purchase orders']").TextContent);
+    }
+
+    [Fact]
+    public void SupplierDetailPage_ExpandsPurchaseOrder_WhenFocusOrderQueryIsSet()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        var detail = SampleDetail();
+        detail = new SupplierDetailDto
+        {
+            Supplier = detail.Supplier,
+            PurchaseOrders =
+            [
+                new OpenTransactionDto
+                {
+                    TransactionId = "t19-1",
+                    Type = "Purchase Order",
+                    ItemName = "Betonblokken 40x20",
+                    SupplierId = "s1",
+                    TransactionDate = new DateOnly(2026, 9, 22),
+                    QuantityOpen = 12,
+                    Amount = 100m,
+                    Status = "Pending Receipt"
+                },
+                new OpenTransactionDto
+                {
+                    TransactionId = "t19-2",
+                    Type = "Purchase Order",
+                    ItemName = "Zand 0/8",
+                    SupplierId = "s1",
+                    TransactionDate = new DateOnly(2026, 9, 22),
+                    QuantityOpen = 6,
+                    Amount = 25m,
+                    Status = "Pending Receipt"
+                }
+            ]
+        };
+
+        mockHttp.When(HttpMethod.Get, "*/api/suppliers/s1*")
+            .Respond(HttpStatusCode.OK, _ => JsonContent.Create(detail));
+
+        var navigation = ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo(navigation.GetUriWithQueryParameter("order", "t19"));
+        var cut = ctx.Render<SupplierDetailPage>(parameters => parameters.Add(p => p.SupplierId, "s1"));
+        cut.WaitForElement("table[aria-label='Supplier purchase orders']", TimeSpan.FromSeconds(5));
+
+        Assert.Contains("Betonblokken 40x20", cut.Find("table[aria-label='Supplier purchase orders']").TextContent);
+        Assert.Contains("supplier-detail__order-row--focus", cut.Markup);
     }
 
     private static SupplierDetailDto SampleDetail() => new()
