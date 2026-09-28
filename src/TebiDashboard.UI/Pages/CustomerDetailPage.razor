@@ -54,7 +54,7 @@
             </article>
             <article class="customer-detail__kpi">
                 <h2>Sales orders</h2>
-                <p>@_detail.SalesOrders.Count</p>
+                <p>@OrderGroups.Count</p>
             </article>
             <article class="customer-detail__kpi">
                 <h2>Period</h2>
@@ -121,6 +121,7 @@
             }
         </section>
 
+        @* Open orders are grouped by sales order. Click a row to expand its item lines. *@
         <section class="customer-detail__section">
             <h2>Open sales orders</h2>
             @if (_detail.SalesOrders.Count == 0)
@@ -134,33 +135,47 @@
                         <tr>
                             <th scope="col">Date</th>
                             <th scope="col">Order</th>
-                            <th scope="col">Item</th>
-                            <th scope="col">Qty open</th>
                             <th scope="col">Amount</th>
-                            <StatusColumnHeader Kind="StatusLegendKind.SalesOrder" />
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var order in _detail.SalesOrders)
+                        @foreach (var order in OrderGroups)
                         {
-                            <tr class="customer-detail__link-row" @onclick="() => OpenItem(order.ItemId)" tabindex="0">
-                                <td>@order.TransactionDate.ToString("d")</td>
-                                <td><code>@order.TransactionId</code></td>
-                                @* Item name is resolved from the inventory item; show the id when that record is missing. *@
-                                <td>@ItemLabel(order.ItemName, order.ItemId)</td>
-                                <td>@order.QuantityOpen.ToString("N0")</td>
-                                <td>@EuroFormatting.FormatWhole(order.Amount)</td>
-                                <td>@order.Status</td>
+                            var expanded = IsSalesOrderExpanded(order.Key);
+                            <tr class="customer-detail__invoice-row"
+                                @onclick="() => ToggleSalesOrder(order.Key)"
+                                tabindex="0"
+                                aria-expanded="@expanded"
+                                @onkeydown="(args) => HandleSalesOrderKeyDown(args, order.Key)">
+                                <td>@order.Date.ToString("d")</td>
+                                <td>
+                                    <span class="customer-detail__invoice-toggle" aria-hidden="true">@(expanded ? "▼" : "▶")</span>
+                                    <code>@order.OrderLabel</code>
+                                </td>
+                                <td>@EuroFormatting.Format(order.TotalAmount)</td>
                             </tr>
+                            @if (expanded)
+                            {
+                                @foreach (var line in order.Lines)
+                                {
+                                    <tr class="customer-detail__line-row customer-detail__link-row"
+                                        @onclick="() => OpenItem(line.ItemId)"
+                                        @onclick:stopPropagation="true"
+                                        tabindex="0">
+                                        <td>@line.TransactionDate.ToString("d")</td>
+                                        <td>@SalesOrderLineLabel(line)</td>
+                                        <td>@EuroFormatting.Format(line.Amount)</td>
+                                    </tr>
+                                }
+                            }
                         }
                     </tbody>
-                    @if (_detail.SalesOrders.Count > 0)
+                    @if (OrderGroups.Count > 0)
                     {
                         <tfoot>
                             <tr>
-                                <th scope="row" colspan="4">Total</th>
-                                <td>@EuroFormatting.FormatWhole(SalesOrdersTotal)</td>
-                                <td></td>
+                                <th scope="row" colspan="2">Total</th>
+                                <td>@EuroFormatting.Format(SalesOrdersTotal)</td>
                             </tr>
                         </tfoot>
                     }
@@ -187,10 +202,15 @@
     private bool _isInitialLoad = true;
     private string? _error;
     private readonly HashSet<string> _expandedInvoices = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _expandedSalesOrders = new(StringComparer.OrdinalIgnoreCase);
 
     // One row per invoice; click a row to reveal its lines.
     private IReadOnlyList<InvoiceRevenueGroup> InvoiceGroups =>
         _detail is null ? [] : InvoiceRevenueGroups.From(_detail.Revenue);
+
+    // One row per sales order; click a row to reveal its lines.
+    private IReadOnlyList<SalesOrderGroup> OrderGroups =>
+        _detail is null ? [] : SalesOrderGroups.From(_detail.SalesOrders);
 
     // Footer totals make it easy to compare revenue with sales orders in the same period.
     private decimal RevenueTotal => _detail?.Revenue.Sum(row => row.Amount) ?? 0m;
@@ -246,6 +266,37 @@
         {
             ToggleInvoice(key);
         }
+    }
+
+    private bool IsSalesOrderExpanded(string key) => _expandedSalesOrders.Contains(key);
+
+    private void ToggleSalesOrder(string key)
+    {
+        if (!_expandedSalesOrders.Add(key))
+        {
+            _expandedSalesOrders.Remove(key);
+        }
+    }
+
+    private void HandleSalesOrderKeyDown(KeyboardEventArgs args, string key)
+    {
+        if (args.Key is "Enter" or " ")
+        {
+            ToggleSalesOrder(key);
+        }
+    }
+
+    // Expanded sales-order lines show the article, remaining qty, and status.
+    private static string SalesOrderLineLabel(OpenTransactionDto line)
+    {
+        var item = ItemLabel(line.ItemName, line.ItemId);
+        var quantity = line.QuantityOpen.ToString("N0");
+        if (string.IsNullOrWhiteSpace(item))
+        {
+            return $"{quantity} open · {line.Status}";
+        }
+
+        return $"{item} · {quantity} open · {line.Status}";
     }
 
     // Hide a bare NetSuite internal id (digits only) when the name never arrived.
@@ -313,6 +364,7 @@
 
             _detail = detail;
             _expandedInvoices.Clear();
+            _expandedSalesOrders.Clear();
 
             if (_detail is null)
             {
