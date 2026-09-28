@@ -42,7 +42,9 @@ public class AdminDashboardPageTests
         Assert.Contains("Administrator dashboard", cut.Markup);
         Assert.Contains("NetSuite data sync", cut.Markup);
         Assert.Contains("sales@tebi.nl", cut.Markup);
-        Assert.Contains("No sync has run", cut.Markup);
+        Assert.Contains("No successful NetSuite import", cut.Markup);
+        Assert.Contains("Lookback into NetSuite", cut.Markup);
+        Assert.Contains("365 days", cut.Markup);
         Assert.True(FindNetSuiteButton(cut, "Test connection").HasAttribute("disabled"));
         Assert.True(FindNetSuiteButton(cut, "Sync NetSuite data").HasAttribute("disabled"));
     }
@@ -63,7 +65,7 @@ public class AdminDashboardPageTests
             TimeSpan.FromSeconds(5));
 
         Assert.DoesNotContain("Not configured", cut.Markup);
-        Assert.Contains("Last sync: succeeded", cut.Markup);
+        Assert.Contains("Last successful import stored", cut.Markup);
         Assert.False(FindNetSuiteButton(cut, "Test connection").HasAttribute("disabled"));
         Assert.False(FindNetSuiteButton(cut, "Sync NetSuite data").HasAttribute("disabled"));
     }
@@ -155,8 +157,11 @@ public class AdminDashboardPageTests
             LastSync = new NetSuiteSyncStatusDto
             {
                 State = "Idle",
-                Message = "No sync has run since this API process started."
-            }
+                Message = "No successful NetSuite import is stored yet."
+            },
+            SuggestedLookbackDays = 365,
+            LookbackDaysMin = 1,
+            LookbackDaysMax = 730
         };
 
     private static NetSuiteSetupStatusDto CreateConfiguredSetup() =>
@@ -173,7 +178,12 @@ public class AdminDashboardPageTests
                 Message = "Imported NetSuite records.",
                 CompletedAt = DateTimeOffset.Parse("2026-09-24T10:00:00Z"),
                 Result = new NetSuiteSyncResultDto { Success = true, Message = "Imported NetSuite records." }
-            }
+            },
+            LastSucceededAt = DateTimeOffset.Parse("2026-09-24T10:00:00Z"),
+            LastLookbackDays = 365,
+            SuggestedLookbackDays = 30,
+            LookbackDaysMin = 1,
+            LookbackDaysMax = 730
         };
 
     private static NetSuiteSyncStatusDto CreateRunningStatus() =>
