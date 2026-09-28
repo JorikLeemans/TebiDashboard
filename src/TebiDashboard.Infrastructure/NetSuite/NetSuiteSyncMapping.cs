@@ -30,6 +30,7 @@ public static class NetSuiteSyncMapping
             CompletedAt = status.CompletedAt,
             CurrentStep = status.CurrentStep,
             CompletedSteps = status.CompletedSteps,
-            TotalSteps = status.TotalSteps
+            TotalSteps = status.TotalSteps,
+            LookbackDays = status.LookbackDays
         };
 }

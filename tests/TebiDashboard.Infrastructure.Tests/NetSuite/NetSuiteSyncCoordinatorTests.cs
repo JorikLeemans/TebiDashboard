@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using TebiDashboard.Application.Interfaces;
 using TebiDashboard.Infrastructure.NetSuite;
+using TebiDashboard.Shared.Constants;
 
 namespace TebiDashboard.Infrastructure.Tests.NetSuite;
 
@@ -27,7 +28,7 @@ public sealed class NetSuiteSyncCoordinatorTests
     public void ReportProgress_UpdatesCurrentStep_WhileRunning()
     {
         var coordinator = CreateCoordinator(out var hanging);
-        Assert.True(coordinator.TryStart());
+        Assert.True(coordinator.TryStart(14));
 
         coordinator.ReportProgress("invoices", 4, 8);
 
@@ -36,8 +37,18 @@ public sealed class NetSuiteSyncCoordinatorTests
         Assert.Equal("invoices", status.CurrentStep);
         Assert.Equal(4, status.CompletedSteps);
         Assert.Equal(8, status.TotalSteps);
+        Assert.Equal(14, status.LookbackDays);
         Assert.Contains("invoices", status.Message, StringComparison.OrdinalIgnoreCase);
 
+        hanging.Complete();
+    }
+
+    [Fact]
+    public void TryStart_ClampsLookbackDays()
+    {
+        var coordinator = CreateCoordinator(out var hanging);
+        Assert.True(coordinator.TryStart(10_000));
+        Assert.Equal(NetSuiteLookback.MaxDays, coordinator.GetStatus().LookbackDays);
         hanging.Complete();
     }
 
@@ -46,6 +57,7 @@ public sealed class NetSuiteSyncCoordinatorTests
         hanging = new HangingSyncService();
         var services = new ServiceCollection();
         services.AddSingleton<INetSuiteSyncService>(hanging);
+        services.AddSingleton<INetSuiteSyncCheckpointStore, InMemoryNetSuiteSyncCheckpointStore>();
         var provider = services.BuildServiceProvider();
         return new NetSuiteSyncCoordinator(
             provider.GetRequiredService<IServiceScopeFactory>(),
@@ -59,8 +71,13 @@ public sealed class NetSuiteSyncCoordinatorTests
     {
         private readonly TaskCompletionSource<NetSuiteSyncResult> _completion = new();
 
-        public Task<NetSuiteSyncResult> SyncDashboardDataAsync(CancellationToken cancellationToken = default) =>
-            _completion.Task;
+        public int? LastLookbackDays { get; private set; }
+
+        public Task<NetSuiteSyncResult> SyncDashboardDataAsync(int lookbackDays, CancellationToken cancellationToken = default)
+        {
+            LastLookbackDays = lookbackDays;
+            return _completion.Task;
+        }
 
         public void Complete() =>
             _completion.TrySetResult(new NetSuiteSyncResult(

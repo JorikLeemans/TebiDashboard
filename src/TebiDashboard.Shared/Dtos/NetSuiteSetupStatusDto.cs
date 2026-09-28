@@ -37,7 +37,23 @@ public sealed class NetSuiteSetupStatusDto
     public string DataSourceMessage { get; init; } = string.Empty;
 
     /// <summary>
-    /// Current or last background sync from this API process (in-memory; resets on restart).
+    /// Current or last background sync. When this API process is idle, LastSucceededAt from
+    /// the database is used so a restart still shows when NetSuite was last imported.
     /// </summary>
     public NetSuiteSyncStatusDto LastSync { get; init; } = new();
+
+    /// <summary>Lowest lookback the Admin slider and API accept.</summary>
+    public int LookbackDaysMin { get; init; } = 1;
+
+    /// <summary>Highest lookback the Admin slider and API accept.</summary>
+    public int LookbackDaysMax { get; init; } = 730;
+
+    /// <summary>Suggested slider value for the next sync.</summary>
+    public int SuggestedLookbackDays { get; init; } = 365;
+
+    /// <summary>Lookback used on the last completed run, or 0 if none.</summary>
+    public int LastLookbackDays { get; init; }
+
+    /// <summary>Persisted successful import time (survives API restart).</summary>
+    public DateTimeOffset? LastSucceededAt { get; init; }
 }

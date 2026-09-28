@@ -76,8 +76,51 @@
                     </div>
                     <p class="admin-netsuite__setup-message">@_netSuiteSetup.ConfigurationMessage</p>
                     <p class="admin-netsuite__setup-message">@_netSuiteSetup.DataSourceMessage</p>
+                    @if (_netSuiteSetup.LastSucceededAt is { } lastOk)
+                    {
+                        <p class="admin-netsuite__setup-message">
+                            Last successful import stored: @lastOk.LocalDateTime.ToString("g")
+                            @if (_netSuiteSetup.LastLookbackDays > 0)
+                            {
+                                <text> (lookback @_netSuiteSetup.LastLookbackDays days).</text>
+                            }
+                        </p>
+                    }
                 </div>
             }
+
+            @* Lookback slider: short refresh vs full-year backfill. *@
+            <div class="admin-netsuite__lookback">
+                <div class="admin-netsuite__lookback-row">
+                    <label for="netsuite-lookback">Lookback into NetSuite</label>
+                    <span class="admin-netsuite__lookback-value">@_lookbackDays days</span>
+                </div>
+                <input id="netsuite-lookback"
+                       type="range"
+                       class="admin-netsuite__lookback-slider"
+                       min="@_lookbackMin"
+                       max="@_lookbackMax"
+                       step="1"
+                       disabled="@_netSuiteBusy"
+                       value="@_lookbackDays"
+                       @oninput="OnLookbackSliderInput" />
+                <div class="admin-netsuite__lookback-row">
+                    <input type="number"
+                           class="admin-netsuite__lookback-number"
+                           min="@_lookbackMin"
+                           max="@_lookbackMax"
+                           disabled="@_netSuiteBusy"
+                           value="@_lookbackDays"
+                           @onchange="OnLookbackNumberChange" />
+                    <div class="admin-netsuite__lookback-presets">
+                        <button type="button" class="btn-admin btn-admin--secondary" disabled="@_netSuiteBusy" @onclick="() => SetLookback(7)">7 days</button>
+                        <button type="button" class="btn-admin btn-admin--secondary" disabled="@_netSuiteBusy" @onclick="() => SetLookback(30)">30 days</button>
+                        <button type="button" class="btn-admin btn-admin--secondary" disabled="@_netSuiteBusy" @onclick="() => SetLookback(90)">90 days</button>
+                        <button type="button" class="btn-admin btn-admin--secondary" disabled="@_netSuiteBusy" @onclick="() => SetLookback(365)">365 days</button>
+                    </div>
+                </div>
+                <p class="admin-netsuite__lookback-hint">@LookbackHint</p>
+            </div>
 
             @* Determinate bar while Sync runs; indeterminate while Test connection is in flight. *@
             @if (_netSuiteBusy)
@@ -226,6 +269,9 @@
   private NetSuiteConnectionResultDto? _netSuiteConnection;
   private NetSuiteSyncResultDto? _netSuiteSync;
   private NetSuiteSyncStatusDto? _syncProgress;
+  private int _lookbackDays = NetSuiteLookback.FirstImportDays;
+  private int _lookbackMin = NetSuiteLookback.MinDays;
+  private int _lookbackMax = NetSuiteLookback.MaxDays;
 
   /// <summary>
   /// Test and Sync stay disabled until credentials are present and no request is already running.
@@ -303,6 +349,11 @@
         parts.Add($"{SyncPercent}%");
       }
 
+      if (_syncProgress is { LookbackDays: > 0 })
+      {
+        parts.Add($"{_syncProgress.LookbackDays}-day lookback");
+      }
+
       if (_syncProgress?.StartedAt is { } started)
       {
         var elapsed = DateTimeOffset.UtcNow - started;
@@ -323,6 +374,34 @@
       return parts.Count == 0 ? "This can take several minutes." : string.Join(" · ", parts);
     }
   }
+
+  /// <summary>Explains why a short lookback is usually enough after the first import.</summary>
+  private string LookbackHint
+  {
+    get
+    {
+      if (_netSuiteSetup?.LastSucceededAt is { } lastOk)
+      {
+        var daysAgo = Math.Max(0, (int)Math.Ceiling((DateTimeOffset.UtcNow - lastOk).TotalDays));
+        return $"Shorter lookback is faster. Last success was {daysAgo} day(s) ago; {_netSuiteSetup.SuggestedLookbackDays} days is usually enough to catch late invoices. Use 365+ only to backfill.";
+      }
+
+      return "First import: 365 days covers a full year. After that, 7–30 days is enough for a quick refresh.";
+    }
+  }
+
+  /// <summary>Clamps Admin slider and number input to the API lookback range.</summary>
+  private void SetLookback(int days) => _lookbackDays = NetSuiteLookback.Clamp(days);
+
+  private void OnLookbackSliderInput(ChangeEventArgs args)
+  {
+    if (int.TryParse(Convert.ToString(args.Value), out var days))
+    {
+      SetLookback(days);
+    }
+  }
+
+  private void OnLookbackNumberChange(ChangeEventArgs args) => OnLookbackSliderInput(args);
 
   /// <summary>
   /// Setup is a convenience banner. Never block the admin page on it — Railway/proxy
@@ -416,6 +495,12 @@
       {
         _netSuiteSync = _netSuiteSetup.LastSync.Result;
       }
+
+      _lookbackMin = _netSuiteSetup.LookbackDaysMin > 0 ? _netSuiteSetup.LookbackDaysMin : NetSuiteLookback.MinDays;
+      _lookbackMax = _netSuiteSetup.LookbackDaysMax > 0 ? _netSuiteSetup.LookbackDaysMax : NetSuiteLookback.MaxDays;
+      SetLookback(_netSuiteSetup.SuggestedLookbackDays > 0
+        ? _netSuiteSetup.SuggestedLookbackDays
+        : NetSuiteLookback.FirstImportDays);
     }
     catch (Exception ex)
     {
@@ -552,12 +637,13 @@
       CurrentStep = "starting",
       CompletedSteps = 0,
       TotalSteps = 8,
+      LookbackDays = _lookbackDays,
       StartedAt = DateTimeOffset.UtcNow
     };
 
     try
     {
-      var start = await AdminApi.StartNetSuiteSyncAsync();
+      var start = await AdminApi.StartNetSuiteSyncAsync(NetSuiteLookback.Clamp(_lookbackDays));
       _syncProgress = start;
       if (start.State == "Failed" && start.Result is null)
       {
@@ -565,7 +651,7 @@
         return;
       }
 
-      _statusMessage = "NetSuite sync gestart. Dit kan bij de eerste import enkele minuten duren…";
+      _statusMessage = $"NetSuite sync gestart ({_lookbackDays} dagen lookback). Een korte lookback is sneller; 365 dagen is voor een eerste import of backfill.";
       await WatchRunningSyncAsync();
     }
     catch (TaskCanceledException ex) when (!ex.CancellationToken.IsCancellationRequested)

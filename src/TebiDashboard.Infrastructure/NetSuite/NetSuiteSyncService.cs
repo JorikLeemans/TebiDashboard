@@ -6,6 +6,7 @@ using TebiDashboard.Application.Interfaces;
 using TebiDashboard.Application.Options;
 using TebiDashboard.Infrastructure.Data;
 using TebiDashboard.Infrastructure.Data.Entities;
+using TebiDashboard.Shared.Constants;
 
 namespace TebiDashboard.Infrastructure.NetSuite;
 
@@ -21,7 +22,7 @@ public sealed class NetSuiteSyncService(
     ILogger<NetSuiteSyncService> logger,
     INetSuiteSyncCoordinator syncCoordinator) : INetSuiteSyncService
 {
-    public async Task<NetSuiteSyncResult> SyncDashboardDataAsync(CancellationToken cancellationToken = default)
+    public async Task<NetSuiteSyncResult> SyncDashboardDataAsync(int lookbackDays, CancellationToken cancellationToken = default)
     {
         var settings = options.Value;
         if (!settings.IsConfigured)
@@ -30,7 +31,8 @@ public sealed class NetSuiteSyncService(
                 + " Set NetSuite environment variables on the API service (e.g. NetSuite__Enabled=true).");
         }
 
-        var lookbackFrom = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-Math.Max(settings.SyncLookbackDays, 1)));
+        var days = NetSuiteLookback.Clamp(lookbackDays);
+        var lookbackFrom = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-days));
         var pageSize = settings.SyncPageSize;
         var progress = new SyncStepProgress
         {
@@ -159,7 +161,7 @@ public sealed class NetSuiteSyncService(
 
     private async Task ClearDashboardTablesAsync(CancellationToken cancellationToken)
     {
-        // Keep users and locally configured goals; replace imported dashboard facts.
+        // Keep users, goals, and the last-sync checkpoint; replace imported dashboard facts.
         await dbContext.StockLocations.ExecuteDeleteAsync(cancellationToken);
         await dbContext.OpenTransactions.ExecuteDeleteAsync(cancellationToken);
         await dbContext.RevenueRecords.ExecuteDeleteAsync(cancellationToken);

@@ -55,8 +55,9 @@ public sealed class NetSuiteOptions
 
     /// <summary>
     /// SuiteQL page size used while paging through NetSuite result sets.
+    /// REST SuiteQL allows at most 1000 rows per page (Oracle Collection Paging).
     /// </summary>
-    public int SyncPageSize { get; set; } = 200;
+    public int SyncPageSize { get; set; } = 1000;
 
     /// <summary>
     /// When true, dashboard tables are cleared before importing NetSuite data (users and goals are kept).

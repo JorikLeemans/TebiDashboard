@@ -24,4 +24,7 @@ public sealed class NetSuiteSyncStatusDto
 
     /// <summary>Total steps in this run. 0 when no run is in progress.</summary>
     public int TotalSteps { get; init; }
+
+    /// <summary>Invoice/bill lookback in days for this run.</summary>
+    public int LookbackDays { get; init; }
 }

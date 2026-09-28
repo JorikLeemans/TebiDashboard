@@ -360,6 +360,35 @@ namespace TebiDashboard.Infrastructure.Data.Migrations
 
                     b.ToTable("Users");
                 });
+
+            modelBuilder.Entity("TebiDashboard.Infrastructure.Data.Entities.NetSuiteSyncCheckpointRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("LastCompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("LastLookbackDays")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("LastMessage")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
+                    b.Property<string>("LastState")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset?>("LastSucceededAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("NetSuiteSyncCheckpoints");
+                });
 #pragma warning restore 612, 618
         }
     }
