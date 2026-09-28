@@ -48,6 +48,8 @@
             <article class="item-detail__kpi">
                 <h2>Reorder point</h2>
                 <p>@(_item.ReorderPoint?.ToString("N0") ?? "—")</p>
+                @* NetSuite stores reorder point per location; this KPI is the sum of those location values. *@
+                <p class="item-detail__kpi-hint">Sum of location reorder points</p>
             </article>
             <article class="item-detail__kpi">
                 <h2>Recent sales volume</h2>
@@ -72,14 +74,18 @@
                         <tr>
                             <th scope="col">Location</th>
                             <th scope="col">Quantity on hand</th>
+                            <th scope="col">Reorder point</th>
+                            <th scope="col">Preferred stock</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var location in _item.Locations)
                         {
-                            <tr>
-                                <td>@location.LocationName</td>
+                            <tr class="@(location.IsLowStock ? "item-detail__location-row--low" : null)">
+                                <td>@LocationLabel(location)</td>
                                 <td>@location.QuantityOnHand.ToString("N0")</td>
+                                <td>@(location.ReorderPoint > 0 ? location.ReorderPoint.ToString("N0") : "—")</td>
+                                <td>@(location.PreferredStockLevel > 0 ? location.PreferredStockLevel.ToString("N0") : "—")</td>
                             </tr>
                         }
                     </tbody>
@@ -107,32 +113,61 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var transaction in _item.OpenTransactions)
+                        @foreach (var order in TransactionGroups)
                         {
-                            <tr>
-                                <td>@transaction.TransactionDate.ToString("d")</td>
-                                <td><code>@transaction.TransactionId</code></td>
-                                <td>@transaction.Type</td>
+                            var expanded = IsOrderExpanded(order.Key);
+                            var canExpand = order.Lines.Count > 1;
+                            var first = order.Lines[0];
+                            <tr class="@(canExpand ? "item-detail__order-row" : null)"
+                                @onclick="() => ToggleOrder(order.Key)"
+                                tabindex="@(canExpand ? 0 : -1)"
+                                aria-expanded="@(canExpand ? expanded : null)"
+                                @onkeydown="(args) => HandleOrderKeyDown(args, order.Key)">
+                                <td>@order.Date.ToString("d")</td>
                                 <td>
-                                    @if (!string.IsNullOrWhiteSpace(transaction.CustomerId))
+                                    @if (canExpand)
                                     {
-                                        <a href="@($"/customers/{Uri.EscapeDataString(transaction.CustomerId)}")">@transaction.CustomerName</a>
+                                        <span class="item-detail__order-toggle" aria-hidden="true">@(expanded ? "▼" : "▶")</span>
                                     }
-                                    else if (!string.IsNullOrWhiteSpace(transaction.SupplierId))
+                                    <code>@order.OrderLabel</code>
+                                </td>
+                                <td>@first.Type</td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(first.CustomerId))
                                     {
-                                        <a href="@($"/suppliers/{Uri.EscapeDataString(transaction.SupplierId)}")">@transaction.SupplierName</a>
+                                        <a href="@($"/customers/{Uri.EscapeDataString(first.CustomerId)}")"
+                                           @onclick:stopPropagation="true">@PartyName(first.CustomerName, first.CustomerId)</a>
+                                    }
+                                    else if (!string.IsNullOrWhiteSpace(first.SupplierId))
+                                    {
+                                        <a href="@($"/suppliers/{Uri.EscapeDataString(first.SupplierId)}")"
+                                           @onclick:stopPropagation="true">@PartyName(first.SupplierName, first.SupplierId)</a>
                                     }
                                     else
                                     {
                                         @:—
                                     }
                                 </td>
-                                <td>@transaction.QuantityOpen.ToString("N0")</td>
+                                <td>@order.TotalQuantityOpen.ToString("N0")</td>
                                 <td>
                                     @* Compact NetSuite letter; hover the letter for the full status name. *@
-                                    <TransactionStatusMark Status="@transaction.Status" Type="@transaction.Type" />
+                                    <TransactionStatusMark Status="@order.Status" Type="@first.Type" />
                                 </td>
                             </tr>
+                            @if (expanded && canExpand)
+                            {
+                                @foreach (var line in order.Lines)
+                                {
+                                    <tr class="item-detail__line-row">
+                                        <td>@line.TransactionDate.ToString("d")</td>
+                                        <td colspan="3">@line.QuantityOpen.ToString("N0") open</td>
+                                        <td>@line.QuantityOpen.ToString("N0")</td>
+                                        <td>
+                                            <TransactionStatusMark Status="@line.Status" Type="@line.Type" />
+                                        </td>
+                                    </tr>
+                                }
+                            }
                         }
                     </tbody>
                 </table>
@@ -148,6 +183,50 @@
     private ItemDetailDto? _item;
     private bool _isLoading = true;
     private string? _error;
+    private readonly HashSet<string> _expandedOrders = new(StringComparer.OrdinalIgnoreCase);
+
+    // One row per parent order so "2136821-1" and "2136821-2" collapse to 2136821.
+    private IReadOnlyList<SalesOrderGroup> TransactionGroups =>
+        _item is null ? [] : SalesOrderGroups.From(_item.OpenTransactions);
+
+    // Hide a leftover NetSuite location internal id (digits only) until the next sync fills the name.
+    private static string LocationLabel(StockLocationDto location)
+    {
+        if (!string.IsNullOrWhiteSpace(location.LocationName)
+            && !location.LocationName.All(char.IsDigit))
+        {
+            return location.LocationName;
+        }
+
+        return "—";
+    }
+
+    private static string PartyName(string? name, string? id) =>
+        !string.IsNullOrWhiteSpace(name) ? name : id ?? string.Empty;
+
+    private bool IsOrderExpanded(string key) => _expandedOrders.Contains(key);
+
+    private void ToggleOrder(string key)
+    {
+        var group = TransactionGroups.FirstOrDefault(order => order.Key == key);
+        if (group is null || group.Lines.Count <= 1)
+        {
+            return;
+        }
+
+        if (!_expandedOrders.Add(key))
+        {
+            _expandedOrders.Remove(key);
+        }
+    }
+
+    private void HandleOrderKeyDown(KeyboardEventArgs args, string key)
+    {
+        if (args.Key is "Enter" or " ")
+        {
+            ToggleOrder(key);
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {

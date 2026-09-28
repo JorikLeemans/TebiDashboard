@@ -107,5 +107,17 @@ public sealed class NetSuiteSuiteQlQueriesTests
 
         Assert.Contains("quantityonhand AS quantity", sql);
         Assert.Contains("inventorybalance", sql);
+        Assert.Contains("BUILTIN.DF(ib.location) AS locationname", sql);
+    }
+
+    [Fact]
+    public void ItemLocationConfigurations_UsesReorderPointAndPreferredStockLevel()
+    {
+        var sql = NetSuiteSuiteQlQueries.ItemLocationConfigurations();
+
+        Assert.Contains("FROM itemlocationconfiguration", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("ilc.reorderpoint", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("ilc.preferredstocklevel", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("BUILTIN.DF(ilc.location) AS locationname", sql);
     }
 }

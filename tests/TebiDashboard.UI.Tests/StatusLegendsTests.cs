@@ -5,7 +5,7 @@ namespace TebiDashboard.UI.Tests;
 public sealed class StatusLegendsTests
 {
     [Theory]
-    [InlineData(StatusLegendKind.InventoryStock, "Low stock")]
+    [InlineData(StatusLegendKind.InventoryStock, "location")]
     [InlineData(StatusLegendKind.SalesOrder, "Pending Fulfillment")]
     [InlineData(StatusLegendKind.PurchaseOrder, "Pending Receipt")]
     [InlineData(StatusLegendKind.OpenTransaction, "Pending Fulfillment")]

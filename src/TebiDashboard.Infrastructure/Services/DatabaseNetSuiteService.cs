@@ -504,7 +504,9 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
         {
             LocationId = l.LocationId,
             LocationName = l.LocationName,
-            QuantityOnHand = l.QuantityOnHand
+            QuantityOnHand = l.QuantityOnHand,
+            ReorderPoint = l.ReorderPoint,
+            PreferredStockLevel = l.PreferredStockLevel
         }).ToList();
     }
 

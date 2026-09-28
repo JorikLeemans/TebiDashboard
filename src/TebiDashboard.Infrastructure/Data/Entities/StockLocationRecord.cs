@@ -14,4 +14,14 @@ public sealed class StockLocationRecord
     public string LocationName { get; set; } = string.Empty;
 
     public decimal QuantityOnHand { get; set; }
+
+    /// <summary>
+    /// NetSuite itemlocationconfiguration.reorderpoint for this item at this location.
+    /// </summary>
+    public decimal ReorderPoint { get; set; }
+
+    /// <summary>
+    /// NetSuite itemlocationconfiguration.preferredstocklevel for this item at this location.
+    /// </summary>
+    public decimal PreferredStockLevel { get; set; }
 }

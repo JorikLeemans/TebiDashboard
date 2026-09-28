@@ -171,6 +171,121 @@ public sealed class NetSuiteSyncServiceTests
     }
 
     [Fact]
+    public async Task Sync_StoresLocationDisplayName_AndDoesNotKeepNumericIds()
+    {
+        await using var db = CreateDbContext();
+        db.InventoryItems.Add(new InventoryItemRecord
+        {
+            ItemId = "item-1",
+            ItemName = "SKU-1",
+            QuantityOnHand = 3m
+        });
+        db.StockLocations.Add(new StockLocationRecord
+        {
+            ItemId = "item-1",
+            LocationId = "16",
+            LocationName = "16",
+            QuantityOnHand = 3m
+        });
+        await db.SaveChangesAsync();
+
+        var restClient = new FakeNetSuiteRestClient
+        {
+            InventoryItems =
+            [
+                Row(("id", "\"item-1\""), ("itemId", "\"SKU-1\""), ("upcCode", "\"123\""))
+            ],
+            StockLocations =
+            [
+                Row(("item", "\"item-1\""), ("location", "\"16\""), ("locationname", "\"Hoofdmagazijn\""), ("quantity", "8"))
+            ]
+        };
+
+        var result = await CreateSut(db, restClient, clearOnSync: false)
+            .SyncDashboardDataAsync(365);
+
+        Assert.True(result.Success, result.Message);
+        var location = await db.StockLocations.SingleAsync();
+        Assert.Equal("Hoofdmagazijn", location.LocationName);
+        Assert.Equal("16", location.LocationId);
+    }
+
+    [Fact]
+    public async Task Sync_ClearsNumericLocationNames_WhenDisplayNameIsMissing()
+    {
+        await using var db = CreateDbContext();
+        db.InventoryItems.Add(new InventoryItemRecord
+        {
+            ItemId = "item-1",
+            ItemName = "SKU-1",
+            QuantityOnHand = 3m
+        });
+        db.StockLocations.Add(new StockLocationRecord
+        {
+            ItemId = "item-1",
+            LocationId = "16",
+            LocationName = "16",
+            QuantityOnHand = 3m
+        });
+        await db.SaveChangesAsync();
+
+        var restClient = new FakeNetSuiteRestClient
+        {
+            InventoryItems =
+            [
+                Row(("id", "\"item-1\""), ("itemId", "\"SKU-1\""), ("upcCode", "\"123\""))
+            ],
+            StockLocations =
+            [
+                Row(("item", "\"item-1\""), ("location", "\"16\""), ("quantity", "8"))
+            ]
+        };
+
+        var result = await CreateSut(db, restClient, clearOnSync: false)
+            .SyncDashboardDataAsync(365);
+
+        Assert.True(result.Success, result.Message);
+        Assert.Equal(string.Empty, (await db.StockLocations.SingleAsync()).LocationName);
+    }
+
+    [Fact]
+    public async Task Sync_UsesLocationReorderPoint_ForLowStockEvenWhenTotalIsAboveThreshold()
+    {
+        await using var db = CreateDbContext();
+        var restClient = new FakeNetSuiteRestClient
+        {
+            InventoryItems =
+            [
+                Row(("id", "\"item-1\""), ("itemId", "\"SKU-1\""), ("upcCode", "\"123\""))
+            ],
+            StockLocations =
+            [
+                Row(("item", "\"item-1\""), ("location", "\"1\""), ("locationname", "\"Hoofdmagazijn\""), ("quantity", "100")),
+                Row(("item", "\"item-1\""), ("location", "\"2\""), ("locationname", "\"Terrein A\""), ("quantity", "5"))
+            ],
+            ItemLocationConfigurations =
+            [
+                Row(("item", "\"item-1\""), ("location", "\"1\""), ("locationname", "\"Hoofdmagazijn\""), ("reorderpoint", "20"), ("preferredstocklevel", "50")),
+                Row(("item", "\"item-1\""), ("location", "\"2\""), ("locationname", "\"Terrein A\""), ("reorderpoint", "40"), ("preferredstocklevel", "80"))
+            ]
+        };
+
+        var result = await CreateSut(db, restClient, clearOnSync: false)
+            .SyncDashboardDataAsync(365);
+
+        Assert.True(result.Success, result.Message);
+        var item = await db.InventoryItems.SingleAsync();
+        Assert.Equal(105m, item.QuantityOnHand);
+        Assert.Equal(60m, item.ReorderPoint);
+        Assert.True(item.IsLowStock);
+
+        var terrein = await db.StockLocations.SingleAsync(location => location.LocationId == "2");
+        Assert.Equal(40m, terrein.ReorderPoint);
+        Assert.Equal(80m, terrein.PreferredStockLevel);
+        Assert.Equal(5m, terrein.QuantityOnHand);
+    }
+
+    [Fact]
     public async Task Sync_ReportsStepProgress_ToCoordinator()
     {
         await using var db = CreateDbContext();
@@ -265,6 +380,8 @@ public sealed class NetSuiteSyncServiceTests
 
         public List<IReadOnlyDictionary<string, JsonElement>> StockLocations { get; init; } = [];
 
+        public List<IReadOnlyDictionary<string, JsonElement>> ItemLocationConfigurations { get; init; } = [];
+
         public List<IReadOnlyDictionary<string, JsonElement>> Invoices { get; init; } = [];
 
         public List<IReadOnlyDictionary<string, JsonElement>> VendorBills { get; init; } = [];
@@ -282,6 +399,7 @@ public sealed class NetSuiteSyncServiceTests
         {
             IReadOnlyList<IReadOnlyDictionary<string, JsonElement>> rows = sql switch
             {
+                _ when sql.Contains("itemlocationconfiguration", StringComparison.OrdinalIgnoreCase) => ItemLocationConfigurations,
                 _ when sql.Contains("recentsalesvolume", StringComparison.OrdinalIgnoreCase) => RecentItemSales,
                 _ when sql.Contains("FROM customer", StringComparison.OrdinalIgnoreCase) => Customers,
                 _ when sql.Contains("FROM vendor", StringComparison.OrdinalIgnoreCase) => Vendors,

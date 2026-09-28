@@ -75,16 +75,38 @@ internal static class NetSuiteSuiteQlQueries
     /// <summary>
     /// Stock per item and location. TEBI maps inventorydetail (item, location, quantity);
     /// SuiteQL exposes on-hand stock via inventorybalance (quantityonhand aliased as quantity).
+    /// ib.location is the internal id; BUILTIN.DF returns the location name without joining location.
+    /// Oracle: https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/article_1029114613.html
     /// </summary>
     public static string StockLocations() =>
         """
         SELECT
             ib.item,
             ib.location,
+            BUILTIN.DF(ib.location) AS locationname,
             ib.quantityonhand AS quantity
         FROM inventorybalance ib
         WHERE ib.quantityonhand > 0
         ORDER BY ib.item, ib.location
+        """;
+
+    /// <summary>
+    /// Per-item, per-location reorder point and preferred stock.
+    /// Record id itemlocationconfiguration; fields reorderpoint and preferredstocklevel.
+    /// Oracle: https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/section_1504729157.html
+    /// Records Browser: itemlocationconfiguration.reorderpoint / preferredstocklevel.
+    /// Requires Multi-Location Inventory, Advanced Inventory Management, and Advanced Item Location Configuration.
+    /// </summary>
+    public static string ItemLocationConfigurations() =>
+        """
+        SELECT
+            ilc.item,
+            ilc.location,
+            BUILTIN.DF(ilc.location) AS locationname,
+            NVL(ilc.reorderpoint, 0) AS reorderpoint,
+            NVL(ilc.preferredstocklevel, 0) AS preferredstocklevel
+        FROM itemlocationconfiguration ilc
+        ORDER BY ilc.item, ilc.location
         """;
 
     /// <summary>

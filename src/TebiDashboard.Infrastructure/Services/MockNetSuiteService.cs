@@ -369,8 +369,8 @@ public sealed class MockNetSuiteService : INetSuiteService
     {
         IReadOnlyList<StockLocationDto> locations =
         [
-            new() { LocationId = "loc1", LocationName = "Hoofdmagazijn", QuantityOnHand = 300 },
-            new() { LocationId = "loc2", LocationName = "Terrein A", QuantityOnHand = 150 }
+            new() { LocationId = "loc1", LocationName = "Hoofdmagazijn", QuantityOnHand = 300, ReorderPoint = 50, PreferredStockLevel = 80 },
+            new() { LocationId = "loc2", LocationName = "Terrein A", QuantityOnHand = 150, ReorderPoint = 50, PreferredStockLevel = 80 }
         ];
 
         return Task.FromResult(locations);
@@ -486,8 +486,8 @@ public sealed class MockNetSuiteService : INetSuiteService
             IsLowStock = false,
             Locations =
             [
-                new StockLocationDto { LocationId = "loc1", LocationName = "Hoofdmagazijn", QuantityOnHand = 300 },
-                new StockLocationDto { LocationId = "loc2", LocationName = "Terrein A", QuantityOnHand = 150 }
+                new StockLocationDto { LocationId = "loc1", LocationName = "Hoofdmagazijn", QuantityOnHand = 300, ReorderPoint = 50, PreferredStockLevel = 80 },
+                new StockLocationDto { LocationId = "loc2", LocationName = "Terrein A", QuantityOnHand = 150, ReorderPoint = 50, PreferredStockLevel = 80 }
             ],
             OpenTransactionCount = 2,
             OpenTransactions =
