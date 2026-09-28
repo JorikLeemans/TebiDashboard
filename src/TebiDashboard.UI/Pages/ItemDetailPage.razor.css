@@ -133,6 +133,14 @@
   cursor: pointer;
 }
 
+.item-detail__order-row--link {
+  cursor: pointer;
+}
+
+.item-detail__order-row--link code {
+  color: #2a8a4a;
+}
+
 .item-detail__order-row:hover,
 .item-detail__order-row:focus {
   background: #f0f7f2;

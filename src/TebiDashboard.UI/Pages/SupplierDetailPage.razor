@@ -75,8 +75,8 @@
                 <table class="supplier-detail__table" aria-label="Purchased items">
                     <thead>
                         <tr>
-                            <th scope="col">Item</th>
-                            <th scope="col">Total qty open</th>
+                            <SortableHeader Column="name" Label="Item" Sort="_itemsSort" />
+                            <SortableHeader Column="qty" Label="Total qty open" Sort="_itemsSort" />
                         </tr>
                     </thead>
                     <tbody>
@@ -109,16 +109,16 @@
                 <table class="supplier-detail__table" aria-label="Supplier purchase orders">
                     <thead>
                         <tr>
-                            <th scope="col">Date</th>
-                            <th scope="col">Order</th>
-                            <th scope="col">Amount</th>
+                            <SortableHeader Column="date" Label="Date" Sort="_ordersSort" />
+                            <SortableHeader Column="order" Label="Order" Sort="_ordersSort" />
+                            <SortableHeader Column="amount" Label="Amount" Sort="_ordersSort" />
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var order in OrderGroupsPreview)
                         {
                             var expanded = IsPurchaseOrderExpanded(order.Key);
-                            <tr class="supplier-detail__order-row"
+                            <tr class="@(PurchaseOrderRowClass(order.Key))"
                                 @onclick="() => TogglePurchaseOrder(order.Key)"
                                 tabindex="0"
                                 aria-expanded="@expanded"
@@ -166,7 +166,7 @@
                 </table>
                 @if (OrderGroups.Count > DashboardHomePreview.MaxRows)
                 {
-                    <p class="supplier-detail__preview-note">@DashboardHomePreview.TruncationNote(OrderGroups.Count, mostRecent: true, includeChart: false)</p>
+                    <p class="supplier-detail__preview-note">@DashboardHomePreview.TruncationNote(OrderGroups.Count, mostRecent: !_ordersSort.IsActive, includeChart: false)</p>
                 }
             }
         </section>
@@ -182,10 +182,10 @@
                 <table class="supplier-detail__table" aria-label="Supplier expenses">
                     <thead>
                         <tr>
-                            <th scope="col">Date</th>
-                            <th scope="col">Category</th>
-                            <th scope="col">Vendor</th>
-                            <th scope="col">Amount</th>
+                            <SortableHeader Column="date" Label="Date" Sort="_expensesSort" />
+                            <SortableHeader Column="category" Label="Category" Sort="_expensesSort" />
+                            <SortableHeader Column="vendor" Label="Vendor" Sort="_expensesSort" />
+                            <SortableHeader Column="amount" Label="Amount" Sort="_expensesSort" />
                         </tr>
                     </thead>
                     <tbody>
@@ -211,7 +211,7 @@
                 </table>
                 @if (_detail.Expenses.Count > DashboardHomePreview.MaxRows)
                 {
-                    <p class="supplier-detail__preview-note">@DashboardHomePreview.TruncationNote(_detail.Expenses.Count, mostRecent: true, includeChart: false)</p>
+                    <p class="supplier-detail__preview-note">@DashboardHomePreview.TruncationNote(_detail.Expenses.Count, mostRecent: !_expensesSort.IsActive, includeChart: false)</p>
                 }
             }
         </section>
@@ -230,27 +230,99 @@
     [Parameter]
     public string SupplierId { get; set; } = string.Empty;
 
+    /// <summary>Order id from inventory (?order=) so that purchase order is expanded on arrival.</summary>
+    [Parameter]
+    [SupplyParameterFromQuery(Name = OpenTransactionLinks.OrderQueryName)]
+    public string? FocusOrder { get; set; }
+
     private SupplierDetailDto? _detail;
     private bool _isLoading = true;
     private bool _isInitialLoad = true;
     private string? _error;
     private readonly HashSet<string> _expandedPurchaseOrders = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ListSortState _itemsSort = new();
+    private readonly ListSortState _ordersSort = new();
+    private readonly ListSortState _expensesSort = new();
 
     /// <summary>One row per purchase order; click a row to reveal its lines.</summary>
-    private IReadOnlyList<SalesOrderGroup> OrderGroups =>
-        _detail is null ? [] : SalesOrderGroups.From(_detail.PurchaseOrders);
+    private IReadOnlyList<SalesOrderGroup> OrderGroups
+    {
+        get
+        {
+            if (_detail is null)
+            {
+                return [];
+            }
 
-    /// <summary>Newest 20 grouped purchase orders; KPIs still use the full list.</summary>
-    private IReadOnlyList<SalesOrderGroup> OrderGroupsPreview =>
-        DashboardHomePreview.MostRecent(OrderGroups);
+            var groups = SalesOrderGroups.From(_detail.PurchaseOrders);
+            return ListSort.Apply(groups, _ordersSort, order => _ordersSort.Column switch
+            {
+                "date" => order.Date,
+                "order" => order.OrderLabel,
+                "amount" => order.TotalAmount,
+                _ => order.Date
+            });
+        }
+    }
 
-    /// <summary>First 20 purchased items (name order from the API).</summary>
+    /// <summary>Newest 20 grouped purchase orders unless a column sort is active; KPIs still use the full list.</summary>
+    private IReadOnlyList<SalesOrderGroup> OrderGroupsPreview
+    {
+        get
+        {
+            var groups = OrderGroups;
+            if (string.IsNullOrWhiteSpace(FocusOrder))
+            {
+                return DashboardHomePreview.MostRecent(groups);
+            }
+
+            var focused = groups.FirstOrDefault(order => IsFocusedOrder(order.Key));
+            if (focused is null)
+            {
+                return DashboardHomePreview.MostRecent(groups);
+            }
+
+            var preview = new List<SalesOrderGroup> { focused };
+            foreach (var group in groups)
+            {
+                if (preview.Count >= DashboardHomePreview.MaxRows)
+                {
+                    break;
+                }
+
+                if (!IsFocusedOrder(group.Key))
+                {
+                    preview.Add(group);
+                }
+            }
+
+            return preview;
+        }
+    }
+
+    /// <summary>First 20 purchased items unless a column sort is active.</summary>
     private IReadOnlyList<SupplierPurchasedItemDto> PurchasedItemsPreview =>
-        _detail is null ? [] : DashboardHomePreview.MostRecent(_detail.PurchasedItems);
+        _detail is null
+            ? []
+            : ListSort.ApplyThenPreview(_detail.PurchasedItems, _itemsSort, item => _itemsSort.Column switch
+            {
+                "name" => ItemLabel(item.ItemName, item.ItemId),
+                "qty" => item.TotalQuantityOpen,
+                _ => ItemLabel(item.ItemName, item.ItemId)
+            });
 
-    /// <summary>Newest 20 expenses; footer totals still use the full period list.</summary>
+    /// <summary>Newest 20 expenses unless a column sort is active; footer totals still use the full period list.</summary>
     private IReadOnlyList<ExpenseDto> ExpensesPreview =>
-        _detail is null ? [] : DashboardHomePreview.MostRecent(_detail.Expenses);
+        _detail is null
+            ? []
+            : ListSort.ApplyThenPreview(_detail.Expenses, _expensesSort, expense => _expensesSort.Column switch
+            {
+                "date" => expense.Date,
+                "category" => expense.Category,
+                "vendor" => ExpensePartyName(expense),
+                "amount" => expense.Amount,
+                _ => expense.Date
+            });
 
     // Footer totals show how expenses and purchase orders add up to Total purchased.
     private decimal ExpensesTotal => _detail?.Expenses.Sum(row => row.Amount) ?? 0m;
@@ -295,6 +367,31 @@
 
     private bool IsPurchaseOrderExpanded(string key) => _expandedPurchaseOrders.Contains(key);
 
+    private bool IsFocusedOrder(string key) =>
+        !string.IsNullOrWhiteSpace(FocusOrder)
+        && string.Equals(key, FocusOrder, StringComparison.OrdinalIgnoreCase);
+
+    private string PurchaseOrderRowClass(string key) =>
+        IsFocusedOrder(key)
+            ? "supplier-detail__order-row supplier-detail__order-row--focus"
+            : "supplier-detail__order-row";
+
+    private void ExpandFocusedOrder()
+    {
+        // Query string may arrive after first init; keep reading it until the matching row exists.
+        FocusOrder ??= OpenTransactionLinks.OrderKeyFromUri(Navigation.Uri);
+        if (string.IsNullOrWhiteSpace(FocusOrder))
+        {
+            return;
+        }
+
+        var match = OrderGroups.FirstOrDefault(order => IsFocusedOrder(order.Key));
+        if (match is not null)
+        {
+            _expandedPurchaseOrders.Add(match.Key);
+        }
+    }
+
     private void TogglePurchaseOrder(string key)
     {
         if (!_expandedPurchaseOrders.Add(key))
@@ -314,6 +411,7 @@
     protected override void OnParametersSet()
     {
         _periodSubscription.Bind(CascadedPeriodFilter, InjectedPeriodFilter, OnPeriodChanged);
+        ExpandFocusedOrder();
     }
 
     protected override async Task OnInitializedAsync()
@@ -369,6 +467,7 @@
 
             _detail = detail;
             _expandedPurchaseOrders.Clear();
+            ExpandFocusedOrder();
 
             if (_detail is null)
             {

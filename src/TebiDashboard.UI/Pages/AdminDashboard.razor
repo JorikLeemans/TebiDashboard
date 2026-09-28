@@ -185,15 +185,15 @@
                 <table class="admin-table">
                     <thead>
                         <tr>
-                            <th>Email</th>
-                            <th>Role</th>
+                            <SortableHeader Column="email" Label="Email" Sort="_usersSort" />
+                            <SortableHeader Column="role" Label="Role" Sort="_usersSort" />
                             <th>New password</th>
                             <th>Confirm password</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var user in _users)
+                        @foreach (var user in SortedUsers)
                         {
                             var edit = GetEditState(user.Email);
                             <tr>
@@ -257,7 +257,17 @@
 
 @code {
   private readonly List<UserAccountDto> _users = [];
+  private readonly ListSortState _usersSort = new();
   private readonly Dictionary<string, UserEditState> _editStates = new(StringComparer.OrdinalIgnoreCase);
+
+  /// <summary>Accounts table order after a header click.</summary>
+  private IReadOnlyList<UserAccountDto> SortedUsers =>
+      ListSort.Apply(_users, _usersSort, user => _usersSort.Column switch
+      {
+          "email" => user.Email,
+          "role" => user.Role,
+          _ => user.Email
+      });
   private bool _isLoading = true;
   private bool _accessDenied;
   private string? _pageError;

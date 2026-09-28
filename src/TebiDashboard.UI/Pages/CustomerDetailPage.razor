@@ -74,9 +74,9 @@
                 <table class="customer-detail__table" aria-label="Customer revenue">
                     <thead>
                         <tr>
-                            <th scope="col">Date</th>
-                            <th scope="col">Invoice</th>
-                            <th scope="col">Amount</th>
+                            <SortableHeader Column="date" Label="Date" Sort="_revenueSort" />
+                            <SortableHeader Column="invoice" Label="Invoice" Sort="_revenueSort" />
+                            <SortableHeader Column="amount" Label="Amount" Sort="_revenueSort" />
                         </tr>
                     </thead>
                     <tbody>
@@ -133,16 +133,16 @@
                 <table class="customer-detail__table" aria-label="Customer sales orders">
                     <thead>
                         <tr>
-                            <th scope="col">Date</th>
-                            <th scope="col">Order</th>
-                            <th scope="col">Amount</th>
+                            <SortableHeader Column="date" Label="Date" Sort="_ordersSort" />
+                            <SortableHeader Column="order" Label="Order" Sort="_ordersSort" />
+                            <SortableHeader Column="amount" Label="Amount" Sort="_ordersSort" />
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var order in OrderGroups)
                         {
                             var expanded = IsSalesOrderExpanded(order.Key);
-                            <tr class="customer-detail__invoice-row"
+                            <tr class="@(SalesOrderRowClass(order.Key))"
                                 @onclick="() => ToggleSalesOrder(order.Key)"
                                 tabindex="0"
                                 aria-expanded="@expanded"
@@ -205,20 +205,61 @@
     [Parameter]
     public string CustomerId { get; set; } = string.Empty;
 
+    /// <summary>Order id from inventory (?order=) so that sales order is expanded on arrival.</summary>
+    [Parameter]
+    [SupplyParameterFromQuery(Name = OpenTransactionLinks.OrderQueryName)]
+    public string? FocusOrder { get; set; }
+
     private CustomerDetailDto? _detail;
     private bool _isLoading = true;
     private bool _isInitialLoad = true;
     private string? _error;
     private readonly HashSet<string> _expandedInvoices = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _expandedSalesOrders = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ListSortState _revenueSort = new();
+    private readonly ListSortState _ordersSort = new();
 
     // One row per invoice; click a row to reveal its lines.
-    private IReadOnlyList<InvoiceRevenueGroup> InvoiceGroups =>
-        _detail is null ? [] : InvoiceRevenueGroups.From(_detail.Revenue);
+    private IReadOnlyList<InvoiceRevenueGroup> InvoiceGroups
+    {
+        get
+        {
+            if (_detail is null)
+            {
+                return [];
+            }
+
+            var groups = InvoiceRevenueGroups.From(_detail.Revenue);
+            return ListSort.Apply(groups, _revenueSort, invoice => _revenueSort.Column switch
+            {
+                "date" => invoice.Date,
+                "invoice" => invoice.InvoiceLabel,
+                "amount" => invoice.TotalAmount,
+                _ => invoice.Date
+            });
+        }
+    }
 
     // One row per sales order; click a row to reveal its lines.
-    private IReadOnlyList<SalesOrderGroup> OrderGroups =>
-        _detail is null ? [] : SalesOrderGroups.From(_detail.SalesOrders);
+    private IReadOnlyList<SalesOrderGroup> OrderGroups
+    {
+        get
+        {
+            if (_detail is null)
+            {
+                return [];
+            }
+
+            var groups = SalesOrderGroups.From(_detail.SalesOrders);
+            return ListSort.Apply(groups, _ordersSort, order => _ordersSort.Column switch
+            {
+                "date" => order.Date,
+                "order" => order.OrderLabel,
+                "amount" => order.TotalAmount,
+                _ => order.Date
+            });
+        }
+    }
 
     // Footer totals make it easy to compare revenue with sales orders in the same period.
     private decimal RevenueTotal => _detail?.Revenue.Sum(row => row.Amount) ?? 0m;
@@ -278,6 +319,31 @@
 
     private bool IsSalesOrderExpanded(string key) => _expandedSalesOrders.Contains(key);
 
+    private bool IsFocusedOrder(string key) =>
+        !string.IsNullOrWhiteSpace(FocusOrder)
+        && string.Equals(key, FocusOrder, StringComparison.OrdinalIgnoreCase);
+
+    private string SalesOrderRowClass(string key) =>
+        IsFocusedOrder(key)
+            ? "customer-detail__invoice-row customer-detail__invoice-row--focus"
+            : "customer-detail__invoice-row";
+
+    private void ExpandFocusedOrder()
+    {
+        // Query string may arrive after first init; keep reading it until the matching row exists.
+        FocusOrder ??= OpenTransactionLinks.OrderKeyFromUri(Navigation.Uri);
+        if (string.IsNullOrWhiteSpace(FocusOrder))
+        {
+            return;
+        }
+
+        var match = OrderGroups.FirstOrDefault(order => IsFocusedOrder(order.Key));
+        if (match is not null)
+        {
+            _expandedSalesOrders.Add(match.Key);
+        }
+    }
+
     private void ToggleSalesOrder(string key)
     {
         if (!_expandedSalesOrders.Add(key))
@@ -317,6 +383,7 @@
     protected override void OnParametersSet()
     {
         _periodSubscription.Bind(CascadedPeriodFilter, InjectedPeriodFilter, OnPeriodChanged);
+        ExpandFocusedOrder();
     }
 
     protected override async Task OnInitializedAsync()
@@ -373,6 +440,7 @@
             _detail = detail;
             _expandedInvoices.Clear();
             _expandedSalesOrders.Clear();
+            ExpandFocusedOrder();
 
             if (_detail is null)
             {

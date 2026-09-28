@@ -67,12 +67,12 @@
                 <table class="inventory-table" aria-label="Inventory items">
                     <thead>
                         <tr>
-                            <th scope="col">Item</th>
-                            <th scope="col">Barcode</th>
-                            <th scope="col">On hand</th>
-                            <th scope="col">Reorder point</th>
-                            <th scope="col">Recent sales</th>
-                            <StatusColumnHeader Kind="StatusLegendKind.InventoryStock" />
+                            <SortableHeader Column="name" Label="Item" Sort="_sort" OnSorted="ResetPage" />
+                            <SortableHeader Column="barcode" Label="Barcode" Sort="_sort" OnSorted="ResetPage" />
+                            <SortableHeader Column="onhand" Label="On hand" Sort="_sort" OnSorted="ResetPage" />
+                            <SortableHeader Column="reorder" Label="Reorder point" Sort="_sort" OnSorted="ResetPage" />
+                            <SortableHeader Column="sales" Label="Recent sales" Sort="_sort" OnSorted="ResetPage" />
+                            <StatusColumnHeader Kind="StatusLegendKind.InventoryStock" Sort="_sort" OnSorted="ResetPage" />
                         </tr>
                     </thead>
                     <tbody>
@@ -113,6 +113,7 @@
     private readonly PeriodFilterSubscription _periodSubscription = new();
     private readonly PeriodFilterReload _periodReload = new();
     private IReadOnlyList<InventoryItemDto> _items = [];
+    private readonly ListSortState _sort = new();
     private string _searchText = string.Empty;
     private string _stockFilter = "all";
     private int _pageSize = ListPagination.DefaultPageSize;
@@ -121,7 +122,17 @@
     private bool _isInitialLoad = true;
     private string? _error;
 
-    private List<InventoryItemDto> FilteredItems => _items.Where(MatchesFilters).ToList();
+    private List<InventoryItemDto> FilteredItems =>
+        ListSort.Apply(_items.Where(MatchesFilters), _sort, item => _sort.Column switch
+        {
+            "name" => item.ItemName,
+            "barcode" => item.Barcode,
+            "onhand" => item.QuantityOnHand,
+            "reorder" => item.ReorderPoint,
+            "sales" => item.RecentSalesVolume,
+            "status" => item.IsLowStock,
+            _ => item.ItemName
+        });
 
     private List<InventoryItemDto> PagedItems =>
         ListPagination.GetPageSlice(FilteredItems, GetSafeCurrentPage(), _pageSize);

@@ -96,6 +96,33 @@ public class CustomersPageTests
         Assert.DoesNotContain("Customer 6", cut.Markup);
     }
 
+    [Fact]
+    public void CustomersPage_SortsByName_WhenHeaderIsClickedTwice()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        SetupCustomersOverview(mockHttp,
+        [
+            new CustomerOverviewDto { CustomerId = "c1", Name = "Zebra BV", City = "Utrecht", TotalSpent = 10m },
+            new CustomerOverviewDto { CustomerId = "c2", Name = "Alpha BV", City = "Utrecht", TotalSpent = 20m }
+        ]);
+
+        var cut = ctx.Render<CustomersPage>();
+        cut.WaitForElement(".customers-table", TimeSpan.FromSeconds(5));
+
+        var header = cut.Find("th[aria-sort]");
+        header.Click();
+
+        var ascending = cut.FindAll(".customers-table tbody tr").Select(row => row.Children[0].TextContent.Trim()).ToList();
+        Assert.Equal(["Alpha BV", "Zebra BV"], ascending);
+        Assert.Equal("ascending", cut.Find("th[aria-sort='ascending']").GetAttribute("aria-sort"));
+
+        header.Click();
+
+        var descending = cut.FindAll(".customers-table tbody tr").Select(row => row.Children[0].TextContent.Trim()).ToList();
+        Assert.Equal(["Zebra BV", "Alpha BV"], descending);
+        Assert.Equal("descending", cut.Find("th[aria-sort='descending']").GetAttribute("aria-sort"));
+    }
+
     private static void SetupCustomersOverview(MockHttpMessageHandler mockHttp, IReadOnlyList<CustomerOverviewDto> customers)
     {
         mockHttp.When(HttpMethod.Get, "*/api/customers/overview*")
