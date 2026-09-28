@@ -39,7 +39,9 @@ public static class DemoDataSeeder
         await BackfillExpenseSuppliersAsync(dbContext, cancellationToken);
         await EnsureDemoGoalsForYearAsync(dbContext, today, today.Year - 1, cancellationToken);
         await EnsureDemoRevenueSpreadAsync(dbContext, today, cancellationToken);
+        await EnsureDemoInvoiceGroupingLinesAsync(dbContext, today, cancellationToken);
         await EnsureDemoSalesOrderSpreadAsync(dbContext, today, cancellationToken);
+        await EnsureDemoSalesOrderGroupingLinesAsync(dbContext, today, cancellationToken);
         await EnsureDemoExpenseSpreadAsync(dbContext, today, cancellationToken);
         await EnsureDemoPurchaseOrderSpreadAsync(dbContext, today, cancellationToken);
         await EnsureDemoOrderAmountAlignmentAsync(dbContext, today, cancellationToken);
@@ -160,7 +162,8 @@ public static class DemoDataSeeder
         CreateRevenue("r13", today.AddDays(-10), 27800m, "c5", "Aannemer Noord", "pg-edging"),
         CreateRevenue("r14", today.AddDays(-7), 46100m, "c4", "Woningbouw De Vliet", "pg-paving"),
         CreateRevenue("r15", today.AddDays(-3), 39500m, "c1", "Bouwbedrijf Jansen", "pg-tiles"),
-        ..BuildDemoRevenueSpread(today)
+        ..BuildDemoRevenueSpread(today),
+        ..BuildDemoInvoiceGroupingLines(today)
     ];
 
     private static RevenueRecord[] BuildDemoRevenueSpread(DateOnly today) =>
@@ -199,6 +202,7 @@ public static class DemoDataSeeder
         CreateTransaction("t5", "Sales Order", "i3", today.AddDays(-3), 30, "Pending Fulfillment", customerId: "c2"),
         CreateTransaction("t6", "Transfer Order", "i6", today.AddDays(-18), 45, "In Transit"),
         ..BuildDemoSalesOrderSpread(today),
+        ..BuildDemoSalesOrderGroupingLines(today),
         ..BuildDemoPurchaseOrderSpread(today)
     ];
 
@@ -236,13 +240,84 @@ public static class DemoDataSeeder
         CreateTransaction("t14", "Sales Order", "i5", today.AddDays(-40), 20, "Pending Fulfillment", customerId: "c2")
     ];
 
+    /// <summary>
+    /// Extra invoice lines for local grouping tests: extra rows on F-C1 plus distinct multi-line invoices.
+    /// </summary>
+    private static async Task EnsureDemoInvoiceGroupingLinesAsync(
+        TebiDashboardDbContext dbContext,
+        DateOnly today,
+        CancellationToken cancellationToken)
+    {
+        if (await dbContext.RevenueRecords.AnyAsync(revenue => revenue.Id == "1842-1", cancellationToken))
+        {
+            return;
+        }
+
+        dbContext.RevenueRecords.AddRange(BuildDemoInvoiceGroupingLines(today));
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Extra sales-order lines that reuse existing order prefixes and add a few new orders.
+    /// </summary>
+    private static async Task EnsureDemoSalesOrderGroupingLinesAsync(
+        TebiDashboardDbContext dbContext,
+        DateOnly today,
+        CancellationToken cancellationToken)
+    {
+        if (await dbContext.OpenTransactions.AnyAsync(order => order.TransactionId == "t1-2", cancellationToken))
+        {
+            return;
+        }
+
+        dbContext.OpenTransactions.AddRange(BuildDemoSalesOrderGroupingLines(today));
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    // Same invoice number with several item lines, plus extra lines on the original F-Cx invoices.
+    private static RevenueRecord[] BuildDemoInvoiceGroupingLines(DateOnly today) =>
+    [
+        CreateRevenue("c1-39", today.AddDays(-1), 2450.50m, "c1", "Bouwbedrijf Jansen", "pg-paving"),
+        CreateRevenue("c1-40", today.AddDays(-1), 890.25m, "c1", "Bouwbedrijf Jansen", "pg-tiles"),
+        CreateRevenue("c2-39", today.AddDays(-2), 3100.00m, "c2", "Gemeente Utrecht", "pg-edging"),
+        CreateRevenue("1842-1", today.AddDays(-2), 324.00m, "c1", "Bouwbedrijf Jansen", "pg-paving", "1842", "F-1842"),
+        CreateRevenue("1842-2", today.AddDays(-2), 45.76m, "c1", "Bouwbedrijf Jansen", "pg-tiles", "1842", "F-1842"),
+        CreateRevenue("1842-3", today.AddDays(-2), 984.94m, "c1", "Bouwbedrijf Jansen", "pg-edging", "1842", "F-1842"),
+        CreateRevenue("1842-4", today.AddDays(-2), 178.14m, "c1", "Bouwbedrijf Jansen", "pg-paving", "1842", "F-1842"),
+        CreateRevenue("1843-1", today.AddDays(-1), 1250.00m, "c1", "Bouwbedrijf Jansen", "pg-tiles", "1843", "F-1843"),
+        CreateRevenue("1843-2", today.AddDays(-1), 640.50m, "c1", "Bouwbedrijf Jansen", "pg-paving", "1843", "F-1843"),
+        CreateRevenue("2001-1", today.AddDays(-3), 2200.00m, "c2", "Gemeente Utrecht", "pg-tiles", "2001", "F-2001"),
+        CreateRevenue("2001-2", today.AddDays(-3), 880.00m, "c2", "Gemeente Utrecht", "pg-paving", "2001", "F-2001"),
+        CreateRevenue("2001-3", today.AddDays(-3), 410.00m, "c2", "Gemeente Utrecht", "pg-edging", "2001", "F-2001"),
+        CreateRevenue("3001-1", today.AddDays(-1), 1575.25m, "c3", "Stratenmakers BV", "pg-paving", "3001", "F-3001"),
+        CreateRevenue("3001-2", today.AddDays(-1), 620.00m, "c3", "Stratenmakers BV", "pg-edging", "3001", "F-3001"),
+        CreateRevenue("4001-1", today, 950.00m, "c4", "Woningbouw De Vliet", "pg-tiles", "4001", "F-4001"),
+        CreateRevenue("4001-2", today, 430.00m, "c4", "Woningbouw De Vliet", "pg-paving", "4001", "F-4001")
+    ];
+
+    // Extra lines on t1/t8/t3, plus new multi-line orders t23 and t25.
+    private static OpenTransactionRecord[] BuildDemoSalesOrderGroupingLines(DateOnly today) =>
+    [
+        CreateTransaction("t1-2", "Sales Order", "i2", today.AddDays(-1), 12, "Pending Fulfillment", customerId: "c1", amount: 14400m),
+        CreateTransaction("t1-3", "Sales Order", "i5", today.AddDays(-1), 8, "Pending Fulfillment", customerId: "c1", amount: 6240m),
+        CreateTransaction("t8-2", "Sales Order", "i1", today.AddDays(-11), 10, "Pending Fulfillment", customerId: "c1", amount: 8500m),
+        CreateTransaction("t3-2", "Sales Order", "i3", today.AddDays(-5), 15, "Pending Fulfillment", customerId: "c3", amount: 8100m),
+        CreateTransaction("t23-1", "Sales Order", "i1", today.AddDays(-2), 20, "Pending Fulfillment", customerId: "c1", amount: 17000m),
+        CreateTransaction("t23-2", "Sales Order", "i3", today.AddDays(-2), 14, "Pending Fulfillment", customerId: "c1", amount: 7560m),
+        CreateTransaction("t24", "Sales Order", "i2", today, 18, "Pending Fulfillment", customerId: "c1", amount: 21600m),
+        CreateTransaction("t25-1", "Sales Order", "i2", today.AddDays(-1), 9, "Pending Fulfillment", customerId: "c2", amount: 10800m),
+        CreateTransaction("t25-2", "Sales Order", "i5", today.AddDays(-1), 6, "Pending Fulfillment", customerId: "c2", amount: 4680m)
+    ];
+
     private static RevenueRecord CreateRevenue(
         string id,
         DateOnly date,
         decimal amount,
         string customerId,
         string customerName,
-        string productGroupId)
+        string productGroupId,
+        string? invoiceId = null,
+        string? invoiceNumber = null)
     {
         // Persist the representative item so detail rows do not depend on a later lookup.
         var linkedItemId = MapProductGroupToItem(productGroupId);
@@ -257,9 +332,9 @@ public static class DemoDataSeeder
             ProductGroupName = ResolveProductGroupName(productGroupId) ?? string.Empty,
             ItemId = linkedItemId,
             ItemName = DemoItemName(linkedItemId),
-            // Demo lines for one customer share one invoice so the new column has a parent id.
-            InvoiceId = customerId,
-            InvoiceNumber = $"F-{customerId.ToUpperInvariant()}"
+            // Default: one invoice per customer. Grouping lines pass a shared invoice id/number.
+            InvoiceId = invoiceId ?? customerId,
+            InvoiceNumber = invoiceNumber ?? $"F-{customerId.ToUpperInvariant()}"
         };
     }
 

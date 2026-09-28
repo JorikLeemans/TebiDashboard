@@ -418,7 +418,27 @@ public sealed class NetSuiteSyncService(
             imported++;
         }
 
+        // Incremental sync skips existing keys, so older credit-signed amounts stay until flipped here.
+        imported += await FlipNegativeRevenueAmountsAsync(cancellationToken);
+
         return imported;
+    }
+
+    /// <summary>
+    /// Turns stored invoice credits into positive omzet without rewriting names or dates.
+    /// </summary>
+    private async Task<int> FlipNegativeRevenueAmountsAsync(CancellationToken cancellationToken)
+    {
+        var negativeRows = await dbContext.RevenueRecords
+            .Where(record => record.Amount < 0m)
+            .ToListAsync(cancellationToken);
+
+        foreach (var record in negativeRows)
+        {
+            record.Amount = -record.Amount;
+        }
+
+        return negativeRows.Count;
     }
 
     private async Task<int> SyncExpensesAsync(DateOnly fromDate, int pageSize, CancellationToken cancellationToken)

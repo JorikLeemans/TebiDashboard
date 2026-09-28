@@ -92,6 +92,8 @@ internal static class NetSuiteSuiteQlQueries
     /// article name and artikelgroep (item class), not the numeric subsidiary internal id.
     /// Header-only invoice.subsidiary was previously stored as productgroupid, which is why
     /// both Item and Product group rendered as "16".
+    /// NetSuite stores invoice item lines as credits (debit-positive / credit-negative), so
+    /// tl.amount is negative when the customer owes us. Negate it for customer-facing omzet.
     /// </summary>
     public static string Invoices(DateOnly fromDate) =>
         $"""
@@ -105,7 +107,7 @@ internal static class NetSuiteSuiteQlQueries
             BUILTIN.DF(tl.item) AS itemname,
             it.class AS productgroupid,
             BUILTIN.DF(it.class) AS productgroupname,
-            NVL(tl.amount, 0) AS amount
+            -NVL(tl.amount, 0) AS amount
         FROM transactionline tl
         INNER JOIN invoice i ON i.id = tl.transaction
         LEFT JOIN item it ON it.id = tl.item
