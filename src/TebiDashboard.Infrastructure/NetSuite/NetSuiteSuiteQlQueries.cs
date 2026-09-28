@@ -91,6 +91,25 @@ internal static class NetSuiteSuiteQlQueries
         """;
 
     /// <summary>
+    /// Per-item, per-location reorder point and preferred stock.
+    /// Record id itemlocationconfiguration; fields reorderpoint and preferredstocklevel.
+    /// Oracle: https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/section_1504729157.html
+    /// Records Browser: itemlocationconfiguration.reorderpoint / preferredstocklevel.
+    /// Requires Multi-Location Inventory, Advanced Inventory Management, and Advanced Item Location Configuration.
+    /// </summary>
+    public static string ItemLocationConfigurations() =>
+        """
+        SELECT
+            ilc.item,
+            ilc.location,
+            BUILTIN.DF(ilc.location) AS locationname,
+            NVL(ilc.reorderpoint, 0) AS reorderpoint,
+            NVL(ilc.preferredstocklevel, 0) AS preferredstocklevel
+        FROM itemlocationconfiguration ilc
+        ORDER BY ilc.item, ilc.location
+        """;
+
+    /// <summary>
     /// Invoice line revenue (omzet): one row per item line so the dashboard can show the
     /// article name and artikelgroep (item class), not the numeric subsidiary internal id.
     /// Header-only invoice.subsidiary was previously stored as productgroupid, which is why

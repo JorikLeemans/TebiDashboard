@@ -304,7 +304,13 @@ namespace TebiDashboard.Infrastructure.Data.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<decimal>("PreferredStockLevel")
+                        .HasColumnType("numeric");
+
                     b.Property<decimal>("QuantityOnHand")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("ReorderPoint")
                         .HasColumnType("numeric");
 
                     b.HasKey("Id");

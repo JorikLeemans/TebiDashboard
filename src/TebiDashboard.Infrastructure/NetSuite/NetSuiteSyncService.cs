@@ -308,7 +308,7 @@ public sealed class NetSuiteSyncService(
                     ItemName = itemName,
                     Barcode = barcode,
                     QuantityOnHand = 0m,
-                    // reorderPoint is not queryable via SuiteQL on item; default to 0 until a custom field is mapped.
+                    // Item-header reorderPoint is not used; location configs fill this after stock sync.
                     ReorderPoint = 0m,
                     RecentSalesVolume = 0m,
                     IsLowStock = false
@@ -371,6 +371,79 @@ public sealed class NetSuiteSyncService(
             }
 
             imported++;
+        }
+
+        // Reorder point lives on itemlocationconfiguration (per item + location), not on SuiteQL item.
+        imported += await ApplyItemLocationConfigurationsAsync(pageSize, existing, cancellationToken);
+
+        return imported;
+    }
+
+    private async Task<int> ApplyItemLocationConfigurationsAsync(
+        int pageSize,
+        Dictionary<string, StockLocationRecord> existing,
+        CancellationToken cancellationToken)
+    {
+        var rows = NetSuiteSuiteQlRowDeduplicator.ByFields(
+            await restClient.QuerySuiteQlAsync(
+                NetSuiteSuiteQlQueries.ItemLocationConfigurations(),
+                pageSize,
+                cancellationToken),
+            "item",
+            "location");
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var imported = 0;
+        foreach (var row in rows)
+        {
+            var itemId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "item");
+            var locationId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "location");
+            var incomingName = ListFieldDisplayName(NetSuiteSuiteQlRowReader.GetString(row, "locationname"));
+            var reorderPoint = NetSuiteSuiteQlRowReader.GetDecimal(row, "reorderpoint");
+            var preferredStockLevel = NetSuiteSuiteQlRowReader.GetDecimal(row, "preferredstocklevel");
+            var key = StockLocationKey(itemId, locationId);
+            seen.Add(key);
+
+            if (existing.TryGetValue(key, out var location))
+            {
+                if (!string.IsNullOrEmpty(incomingName))
+                {
+                    location.LocationName = incomingName;
+                }
+                else if (location.LocationName.All(char.IsDigit))
+                {
+                    location.LocationName = string.Empty;
+                }
+
+                location.ReorderPoint = reorderPoint;
+                location.PreferredStockLevel = preferredStockLevel;
+            }
+            else
+            {
+                // Config can exist for a location with zero on-hand; still needed for low-stock.
+                var created = new StockLocationRecord
+                {
+                    ItemId = itemId,
+                    LocationId = locationId,
+                    LocationName = incomingName,
+                    QuantityOnHand = 0m,
+                    ReorderPoint = reorderPoint,
+                    PreferredStockLevel = preferredStockLevel
+                };
+                dbContext.StockLocations.Add(created);
+                existing[key] = created;
+            }
+
+            imported++;
+        }
+
+        foreach (var location in existing.Values)
+        {
+            if (!seen.Contains(StockLocationKey(location.ItemId, location.LocationId)))
+            {
+                location.ReorderPoint = 0m;
+                location.PreferredStockLevel = 0m;
+            }
         }
 
         return imported;
@@ -630,18 +703,34 @@ public sealed class NetSuiteSyncService(
 
     private async Task ApplyInventoryQuantitiesFromStockLocationsAsync(CancellationToken cancellationToken)
     {
-        var quantitiesByItem = await dbContext.StockLocations
-            .AsNoTracking()
-            .GroupBy(location => location.ItemId)
-            .Select(group => new { ItemId = group.Key, Quantity = group.Sum(location => location.QuantityOnHand) })
-            .ToDictionaryAsync(x => x.ItemId, x => x.Quantity, cancellationToken);
+        var locations = await dbContext.StockLocations.ToListAsync(cancellationToken);
+        var quantitiesByItem = locations
+            .GroupBy(location => location.ItemId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Sum(location => location.QuantityOnHand),
+                StringComparer.OrdinalIgnoreCase);
+        var reorderByItem = locations
+            .GroupBy(location => location.ItemId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Sum(location => location.ReorderPoint),
+                StringComparer.OrdinalIgnoreCase);
+        var lowStockByItem = locations
+            .GroupBy(location => location.ItemId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Any(location => location.ReorderPoint > 0 && location.QuantityOnHand <= location.ReorderPoint),
+                StringComparer.OrdinalIgnoreCase);
 
         var items = await dbContext.InventoryItems.ToListAsync(cancellationToken);
         foreach (var item in items)
         {
             var quantityOnHand = quantitiesByItem.GetValueOrDefault(item.ItemId);
             item.QuantityOnHand = quantityOnHand;
-            item.IsLowStock = item.ReorderPoint > 0 && quantityOnHand <= item.ReorderPoint;
+            // Item KPI shows the sum of location reorder points; the badge uses any-location low stock.
+            item.ReorderPoint = reorderByItem.GetValueOrDefault(item.ItemId);
+            item.IsLowStock = lowStockByItem.GetValueOrDefault(item.ItemId);
         }
     }
 

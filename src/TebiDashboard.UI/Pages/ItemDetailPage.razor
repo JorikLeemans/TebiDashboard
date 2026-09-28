@@ -48,6 +48,8 @@
             <article class="item-detail__kpi">
                 <h2>Reorder point</h2>
                 <p>@(_item.ReorderPoint?.ToString("N0") ?? "—")</p>
+                @* NetSuite stores reorder point per location; this KPI is the sum of those location values. *@
+                <p class="item-detail__kpi-hint">Sum of location reorder points</p>
             </article>
             <article class="item-detail__kpi">
                 <h2>Recent sales volume</h2>
@@ -72,14 +74,18 @@
                         <tr>
                             <th scope="col">Location</th>
                             <th scope="col">Quantity on hand</th>
+                            <th scope="col">Reorder point</th>
+                            <th scope="col">Preferred stock</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var location in _item.Locations)
                         {
-                            <tr>
+                            <tr class="@(location.IsLowStock ? "item-detail__location-row--low" : null)">
                                 <td>@LocationLabel(location)</td>
                                 <td>@location.QuantityOnHand.ToString("N0")</td>
+                                <td>@(location.ReorderPoint > 0 ? location.ReorderPoint.ToString("N0") : "—")</td>
+                                <td>@(location.PreferredStockLevel > 0 ? location.PreferredStockLevel.ToString("N0") : "—")</td>
                             </tr>
                         }
                     </tbody>

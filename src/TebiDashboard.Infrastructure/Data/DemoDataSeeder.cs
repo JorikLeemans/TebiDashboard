@@ -53,6 +53,7 @@ public static class DemoDataSeeder
         // running app shows "Bestrating" instead of "pg-paving" without a full reseed.
         await EnsureRevenueProductGroupNamesAsync(dbContext, cancellationToken);
         await EnsureRevenueAndTransactionItemNamesAsync(dbContext, cancellationToken);
+        await EnsureDemoLocationReorderPointsAsync(dbContext, cancellationToken);
 
         if (await dbContext.RevenueRecords.AnyAsync(cancellationToken))
         {
@@ -70,15 +71,15 @@ public static class DemoDataSeeder
         dbContext.InventoryItems.AddRange(GetDemoInventoryItems());
 
         dbContext.StockLocations.AddRange(
-            CreateLocation("i1", "loc1", "Hoofdmagazijn", 300),
-            CreateLocation("i1", "loc2", "Terrein A", 150),
-            CreateLocation("i2", "loc1", "Hoofdmagazijn", 22),
-            CreateLocation("i3", "loc1", "Hoofdmagazijn", 140),
-            CreateLocation("i3", "loc3", "Terrein B", 70),
-            CreateLocation("i4", "loc2", "Terrein A", 38),
-            CreateLocation("i5", "loc1", "Hoofdmagazijn", 520),
-            CreateLocation("i6", "loc4", "Bulkopslag", 18),
-            CreateLocation("i9", "loc1", "Hoofdmagazijn", 12));
+            CreateLocation("i1", "loc1", "Hoofdmagazijn", 300, 50, 80),
+            CreateLocation("i1", "loc2", "Terrein A", 150, 50, 80),
+            CreateLocation("i2", "loc1", "Hoofdmagazijn", 22, 80, 120),
+            CreateLocation("i3", "loc1", "Hoofdmagazijn", 140, 60, 90),
+            CreateLocation("i3", "loc3", "Terrein B", 70, 60, 90),
+            CreateLocation("i4", "loc2", "Terrein A", 38, 90, 120),
+            CreateLocation("i5", "loc1", "Hoofdmagazijn", 520, 150, 200),
+            CreateLocation("i6", "loc4", "Bulkopslag", 18, 60, 80),
+            CreateLocation("i9", "loc1", "Hoofdmagazijn", 12, 50, 80));
 
         dbContext.OpenTransactions.AddRange(BuildDemoOpenTransactions(today));
 
@@ -588,12 +589,59 @@ public static class DemoDataSeeder
         IsLowStock = isLowStock
     };
 
-    private static StockLocationRecord CreateLocation(string itemId, string locationId, string locationName, decimal quantity) => new()
+    private static StockLocationRecord CreateLocation(
+        string itemId,
+        string locationId,
+        string locationName,
+        decimal quantity,
+        decimal reorderPoint = 0m,
+        decimal preferredStockLevel = 0m) => new()
     {
         ItemId = itemId,
         LocationId = locationId,
         LocationName = locationName,
-        QuantityOnHand = quantity
+        QuantityOnHand = quantity,
+        ReorderPoint = reorderPoint,
+        PreferredStockLevel = preferredStockLevel
+    };
+
+    /// <summary>
+    /// Fills demo location reorder/preferred stock on databases seeded before those columns existed.
+    /// </summary>
+    private static async Task EnsureDemoLocationReorderPointsAsync(
+        TebiDashboardDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var locations = await dbContext.StockLocations
+            .Where(location => location.ReorderPoint == 0m)
+            .ToListAsync(cancellationToken);
+        if (locations.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var location in locations)
+        {
+            var (reorderPoint, preferredStockLevel) = DemoLocationStockLevels(location.ItemId, location.LocationId);
+            location.ReorderPoint = reorderPoint;
+            location.PreferredStockLevel = preferredStockLevel;
+        }
+    }
+
+    private static (decimal ReorderPoint, decimal PreferredStockLevel) DemoLocationStockLevels(
+        string itemId,
+        string locationId) => (itemId, locationId) switch
+    {
+        ("i1", "loc1") => (50m, 80m),
+        ("i1", "loc2") => (50m, 80m),
+        ("i2", "loc1") => (80m, 120m),
+        ("i3", "loc1") => (60m, 90m),
+        ("i3", "loc3") => (60m, 90m),
+        ("i4", "loc2") => (90m, 120m),
+        ("i5", "loc1") => (150m, 200m),
+        ("i6", "loc4") => (60m, 80m),
+        ("i9", "loc1") => (50m, 80m),
+        _ => (0m, 0m)
     };
 
     private static CustomerRecord[] GetDemoCustomers() =>

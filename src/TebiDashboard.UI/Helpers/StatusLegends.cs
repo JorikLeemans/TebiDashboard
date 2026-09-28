@@ -26,8 +26,8 @@ public static class StatusLegends
     public static string GetTooltip(StatusLegendKind kind) => kind switch
     {
         StatusLegendKind.InventoryStock =>
-            "OK — stock on hand is above the reorder point. " +
-            "Low stock — on-hand quantity is at or below the reorder point.",
+            "OK — every location is above its own reorder point. " +
+            "Low stock — at least one location's on-hand quantity is at or below that location's reorder point.",
 
         StatusLegendKind.SalesOrder =>
             "Pending Fulfillment — order confirmed; items still need to be shipped. " +

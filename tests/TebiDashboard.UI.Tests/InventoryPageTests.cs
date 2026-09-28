@@ -54,7 +54,7 @@ public class InventoryPageTests
                 IsLowStock = false,
                 Locations =
                 [
-                    new StockLocationDto { LocationId = "loc1", LocationName = "Hoofdmagazijn", QuantityOnHand = 300 }
+            new() { LocationId = "loc1", LocationName = "Hoofdmagazijn", QuantityOnHand = 300, ReorderPoint = 50, PreferredStockLevel = 80 }
                 ],
                 OpenTransactionCount = 1,
                 OpenTransactions =
@@ -79,6 +79,10 @@ public class InventoryPageTests
         Assert.Contains("Stock by location", cut.Markup);
         Assert.Contains("Open transactions", cut.Markup);
         Assert.Contains("Hoofdmagazijn", cut.Markup);
+        Assert.Contains("Preferred stock", cut.Markup);
+        var locations = cut.Find("table[aria-label='Stock locations']").TextContent;
+        Assert.Contains("50", locations);
+        Assert.Contains("80", locations);
         var status = cut.Find(".transaction-status");
         Assert.Equal("B", status.TextContent);
         Assert.Equal("Pending Fulfillment", status.GetAttribute("title"));
