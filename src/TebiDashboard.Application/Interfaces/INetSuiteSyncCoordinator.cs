@@ -8,7 +8,8 @@ public interface INetSuiteSyncCoordinator
     /// <summary>
     /// Starts a background sync when none is running.
     /// </summary>
-    bool TryStart();
+    /// <param name="lookbackDays">How many days of invoices and vendor bills to pull.</param>
+    bool TryStart(int lookbackDays);
 
     NetSuiteSyncRunStatus GetStatus();
 
@@ -41,6 +42,9 @@ public sealed class NetSuiteSyncRunStatus
 
     /// <summary>Total steps planned for this run.</summary>
     public int TotalSteps { get; init; }
+
+    /// <summary>Invoice/bill lookback in days for this run.</summary>
+    public int LookbackDays { get; init; }
 }
 
 /// <summary>

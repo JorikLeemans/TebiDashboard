@@ -7,7 +7,7 @@ namespace TebiDashboard.Infrastructure.NetSuite;
 /// </summary>
 public sealed class NullNetSuiteSyncService : INetSuiteSyncService
 {
-    public Task<NetSuiteSyncResult> SyncDashboardDataAsync(CancellationToken cancellationToken = default) =>
+    public Task<NetSuiteSyncResult> SyncDashboardDataAsync(int lookbackDays, CancellationToken cancellationToken = default) =>
         Task.FromResult(new NetSuiteSyncResult(
             Success: false,
             Message: "NetSuite sync requires a PostgreSQL database provider.",

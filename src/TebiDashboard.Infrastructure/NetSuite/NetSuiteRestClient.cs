@@ -34,6 +34,7 @@ public sealed class NetSuiteRestClient(
         var results = new List<IReadOnlyDictionary<string, JsonElement>>();
         var offset = 0;
         var limit = Math.Clamp(pageSize, 1, 1000);
+        // Oracle Collection Paging: max 1000 rows per page; offset must be divisible by limit.
         var retriedUnauthorized = false;
 
         while (true)

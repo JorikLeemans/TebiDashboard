@@ -54,7 +54,7 @@ public sealed class NetSuiteSyncServiceTests
         };
 
         var result = await CreateSut(db, restClient, clearOnSync: false)
-            .SyncDashboardDataAsync();
+            .SyncDashboardDataAsync(365);
 
         Assert.True(result.Success, result.Message);
         Assert.Equal(1, result.RevenueRecordsSynced);
@@ -95,7 +95,7 @@ public sealed class NetSuiteSyncServiceTests
         await db.SaveChangesAsync();
 
         var result = await CreateSut(db, new FakeNetSuiteRestClient(), clearOnSync: false)
-            .SyncDashboardDataAsync();
+            .SyncDashboardDataAsync(365);
 
         Assert.True(result.Success, result.Message);
         var stored = await db.RevenueRecords.SingleAsync(row => row.Id == "2136821-10");
@@ -121,7 +121,7 @@ public sealed class NetSuiteSyncServiceTests
         };
 
         var result = await CreateSut(db, restClient, clearOnSync: false)
-            .SyncDashboardDataAsync();
+            .SyncDashboardDataAsync(365);
 
         Assert.True(result.Success, result.Message);
         var customer = await db.Customers.SingleAsync();
@@ -161,7 +161,7 @@ public sealed class NetSuiteSyncServiceTests
         };
 
         var result = await CreateSut(db, restClient, clearOnSync: false)
-            .SyncDashboardDataAsync();
+            .SyncDashboardDataAsync(365);
 
         Assert.True(result.Success, result.Message);
         Assert.Equal(1, await db.StockLocations.CountAsync());
@@ -177,7 +177,7 @@ public sealed class NetSuiteSyncServiceTests
         var coordinator = new RecordingSyncCoordinator();
 
         var result = await CreateSut(db, new FakeNetSuiteRestClient(), clearOnSync: false, coordinator)
-            .SyncDashboardDataAsync();
+            .SyncDashboardDataAsync(365);
 
         Assert.True(result.Success, result.Message);
         Assert.Contains(coordinator.Reports, report => report.CurrentStep == "starting" && report.TotalSteps == 8);
@@ -302,7 +302,7 @@ public sealed class NetSuiteSyncServiceTests
     /// </summary>
     private sealed class NoOpSyncCoordinator : INetSuiteSyncCoordinator
     {
-        public bool TryStart() => true;
+        public bool TryStart(int lookbackDays) => true;
 
         public NetSuiteSyncRunStatus GetStatus() => new();
 
@@ -318,7 +318,7 @@ public sealed class NetSuiteSyncServiceTests
     {
         public List<(string CurrentStep, int CompletedSteps, int TotalSteps)> Reports { get; } = [];
 
-        public bool TryStart() => true;
+        public bool TryStart(int lookbackDays) => true;
 
         public NetSuiteSyncRunStatus GetStatus() => new();
 

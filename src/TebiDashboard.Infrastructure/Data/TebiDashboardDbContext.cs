@@ -26,6 +26,8 @@ public sealed class TebiDashboardDbContext(DbContextOptions<TebiDashboardDbConte
 
     public DbSet<ExpenseRecord> Expenses => Set<ExpenseRecord>();
 
+    public DbSet<NetSuiteSyncCheckpointRecord> NetSuiteSyncCheckpoints => Set<NetSuiteSyncCheckpointRecord>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<UserEntity>(entity =>
@@ -124,6 +126,15 @@ public sealed class TebiDashboardDbContext(DbContextOptions<TebiDashboardDbConte
             entity.Property(e => e.VendorName).HasMaxLength(256);
             entity.Property(e => e.SupplierId).HasMaxLength(64);
             entity.HasIndex(e => e.SupplierId);
+        });
+
+        modelBuilder.Entity<NetSuiteSyncCheckpointRecord>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.LastState).HasMaxLength(32);
+            entity.Property(e => e.LastMessage).HasMaxLength(1024);
+            entity.ToTable("NetSuiteSyncCheckpoints");
         });
     }
 }
