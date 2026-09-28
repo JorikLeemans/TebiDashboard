@@ -170,10 +170,29 @@ public sealed class NetSuiteSyncServiceTests
         Assert.Equal("SKU-1", (await db.InventoryItems.SingleAsync()).ItemName);
     }
 
+    [Fact]
+    public async Task Sync_ReportsStepProgress_ToCoordinator()
+    {
+        await using var db = CreateDbContext();
+        var coordinator = new RecordingSyncCoordinator();
+
+        var result = await CreateSut(db, new FakeNetSuiteRestClient(), clearOnSync: false, coordinator)
+            .SyncDashboardDataAsync();
+
+        Assert.True(result.Success, result.Message);
+        Assert.Contains(coordinator.Reports, report => report.CurrentStep == "starting" && report.TotalSteps == 8);
+        Assert.Contains(coordinator.Reports, report => report.CurrentStep == "customers");
+        Assert.Contains(coordinator.Reports, report => report.CurrentStep == "invoices");
+        Assert.Contains(coordinator.Reports, report => report.CurrentStep == "recent item sales");
+        Assert.Equal(8, coordinator.Reports.Max(report => report.CompletedSteps));
+        Assert.All(coordinator.Reports, report => Assert.Equal(8, report.TotalSteps));
+    }
+
     private static NetSuiteSyncService CreateSut(
         TebiDashboardDbContext db,
         INetSuiteRestClient restClient,
-        bool clearOnSync)
+        bool clearOnSync,
+        INetSuiteSyncCoordinator? coordinator = null)
     {
         var options = Options.Create(new NetSuiteOptions
         {
@@ -187,7 +206,12 @@ public sealed class NetSuiteSyncServiceTests
             SyncPageSize = 200
         });
 
-        return new NetSuiteSyncService(db, restClient, options, NullLogger<NetSuiteSyncService>.Instance);
+        return new NetSuiteSyncService(
+            db,
+            restClient,
+            options,
+            NullLogger<NetSuiteSyncService>.Instance,
+            coordinator ?? new NoOpSyncCoordinator());
     }
 
     private static TebiDashboardDbContext CreateDbContext()
@@ -271,5 +295,34 @@ public sealed class NetSuiteSyncServiceTests
 
             return Task.FromResult(rows);
         }
+    }
+
+    /// <summary>
+    /// Ignores progress reports so existing incremental-sync tests stay focused on database rows.
+    /// </summary>
+    private sealed class NoOpSyncCoordinator : INetSuiteSyncCoordinator
+    {
+        public bool TryStart() => true;
+
+        public NetSuiteSyncRunStatus GetStatus() => new();
+
+        public void ReportProgress(string currentStep, int completedSteps, int totalSteps)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Captures every progress callback so tests can assert step names and counts.
+    /// </summary>
+    private sealed class RecordingSyncCoordinator : INetSuiteSyncCoordinator
+    {
+        public List<(string CurrentStep, int CompletedSteps, int TotalSteps)> Reports { get; } = [];
+
+        public bool TryStart() => true;
+
+        public NetSuiteSyncRunStatus GetStatus() => new();
+
+        public void ReportProgress(string currentStep, int completedSteps, int totalSteps) =>
+            Reports.Add((currentStep, completedSteps, totalSteps));
     }
 }
