@@ -1,0 +1,51 @@
+@* Clickable column header: first click sorts ascending, second click reverses. *@
+<th scope="col"
+    class="sortable-header @CssClass"
+    aria-sort="@Sort.AriaSort(Column)"
+    title="@TitleText"
+    tabindex="0"
+    @onclick="OnClickAsync"
+    @onkeydown="OnKeyDownAsync">
+    <span class="sortable-header__label">@Label</span>
+    <span class="sortable-header__indicator" aria-hidden="true">@Sort.Indicator(Column)</span>
+</th>
+
+@code {
+    [Parameter, EditorRequired]
+    public ListSortState Sort { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string Column { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Label { get; set; } = string.Empty;
+
+    /// <summary>Optional extra tooltip, for example a status-letter legend.</summary>
+    [Parameter]
+    public string? ExtraTitle { get; set; }
+
+    [Parameter]
+    public string? CssClass { get; set; }
+
+    [Parameter]
+    public EventCallback OnSorted { get; set; }
+
+    private string TitleText =>
+        string.IsNullOrWhiteSpace(ExtraTitle)
+            ? Sort.Hint(Column)
+            : $"{ExtraTitle} {Sort.Hint(Column)}";
+
+    private async Task OnClickAsync()
+    {
+        Sort.Toggle(Column);
+        await OnSorted.InvokeAsync();
+    }
+
+    private async Task OnKeyDownAsync(KeyboardEventArgs args)
+    {
+        if (args.Key is "Enter" or " ")
+        {
+            await OnClickAsync();
+        }
+    }
+}

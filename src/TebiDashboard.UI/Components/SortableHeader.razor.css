@@ -1,0 +1,32 @@
+.sortable-header {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.sortable-header:hover,
+.sortable-header:focus {
+  color: #1a3d2b;
+  outline: none;
+}
+
+.sortable-header:focus-visible {
+  outline: 2px solid #2a8a4a;
+  outline-offset: 2px;
+}
+
+.sortable-header__indicator {
+  margin-left: 0.35rem;
+  font-size: 0.75em;
+  opacity: 0.45;
+}
+
+.sortable-header[aria-sort="ascending"] .sortable-header__indicator,
+.sortable-header[aria-sort="descending"] .sortable-header__indicator {
+  opacity: 1;
+}
+
+.sortable-header.status-column-header {
+  text-decoration: underline dotted;
+  text-underline-offset: 0.2em;
+}

@@ -63,11 +63,11 @@
                 <table class="dashboard-table" aria-label="Revenue in period">
                     <thead>
                         <tr>
-                            <th>Date</th>
-                            <th>Invoice</th>
-                            <th>Customer</th>
-                            <th>Product group</th>
-                            <th>Amount</th>
+                            <SortableHeader Column="date" Label="Date" Sort="_salesSort" />
+                            <SortableHeader Column="invoice" Label="Invoice" Sort="_salesSort" />
+                            <SortableHeader Column="customer" Label="Customer" Sort="_salesSort" />
+                            <SortableHeader Column="group" Label="Product group" Sort="_salesSort" />
+                            <SortableHeader Column="amount" Label="Amount" Sort="_salesSort" />
                         </tr>
                     </thead>
                     <tbody>
@@ -97,7 +97,7 @@
                 </table>
                 @if (_overview.Revenue.Count > DashboardHomePreview.MaxRows)
                 {
-                    <p class="dashboard-preview-note">@DashboardHomePreview.TruncationNote(_overview.Revenue.Count, mostRecent: true)</p>
+                    <p class="dashboard-preview-note">@DashboardHomePreview.TruncationNote(_overview.Revenue.Count, mostRecent: !_salesSort.IsActive)</p>
                 }
             }
         </section>
@@ -113,11 +113,11 @@
                 <table class="dashboard-table" aria-label="Customers in period">
                     <thead>
                         <tr>
-                            <th>Customer</th>
-                            <th>City</th>
-                            <th>Category</th>
-                            <th>Subcategory</th>
-                            <th>Contact</th>
+                            <SortableHeader Column="name" Label="Customer" Sort="_customersSort" />
+                            <SortableHeader Column="city" Label="City" Sort="_customersSort" />
+                            <SortableHeader Column="category" Label="Category" Sort="_customersSort" />
+                            <SortableHeader Column="subcategory" Label="Subcategory" Sort="_customersSort" />
+                            <SortableHeader Column="contact" Label="Contact" Sort="_customersSort" />
                         </tr>
                     </thead>
                     <tbody>
@@ -151,12 +151,12 @@
                 <table class="dashboard-table" aria-label="Open sales orders and period transactions">
                     <thead>
                         <tr>
-                            <th>Date</th>
-                            <th>Type</th>
-                            <th>Customer / Supplier</th>
-                            <th>Item</th>
-                            <th>Qty open</th>
-                            <StatusColumnHeader Kind="StatusLegendKind.OpenTransaction" />
+                            <SortableHeader Column="date" Label="Date" Sort="_transactionsSort" />
+                            <SortableHeader Column="type" Label="Type" Sort="_transactionsSort" />
+                            <SortableHeader Column="party" Label="Customer / Supplier" Sort="_transactionsSort" />
+                            <SortableHeader Column="item" Label="Item" Sort="_transactionsSort" />
+                            <SortableHeader Column="qty" Label="Qty open" Sort="_transactionsSort" />
+                            <StatusColumnHeader Kind="StatusLegendKind.OpenTransaction" Sort="_transactionsSort" />
                         </tr>
                     </thead>
                     <tbody>
@@ -197,7 +197,7 @@
                 </table>
                 @if (_overview.Transactions.Count > DashboardHomePreview.MaxRows)
                 {
-                    <p class="dashboard-preview-note">@DashboardHomePreview.TruncationNote(_overview.Transactions.Count, mostRecent: true)</p>
+                    <p class="dashboard-preview-note">@DashboardHomePreview.TruncationNote(_overview.Transactions.Count, mostRecent: !_transactionsSort.IsActive)</p>
                 }
             }
         </section>
@@ -213,10 +213,10 @@
                 <table class="dashboard-table" aria-label="Expenses in period">
                     <thead>
                         <tr>
-                            <th>Date</th>
-                            <th>Category</th>
-                            <th>Vendor</th>
-                            <th>Amount</th>
+                            <SortableHeader Column="date" Label="Date" Sort="_expensesSort" />
+                            <SortableHeader Column="category" Label="Category" Sort="_expensesSort" />
+                            <SortableHeader Column="vendor" Label="Vendor" Sort="_expensesSort" />
+                            <SortableHeader Column="amount" Label="Amount" Sort="_expensesSort" />
                         </tr>
                     </thead>
                     <tbody>
@@ -245,7 +245,7 @@
                 </table>
                 @if (_overview.Expenses.Count > DashboardHomePreview.MaxRows)
                 {
-                    <p class="dashboard-preview-note">@DashboardHomePreview.TruncationNote(_overview.Expenses.Count, mostRecent: true)</p>
+                    <p class="dashboard-preview-note">@DashboardHomePreview.TruncationNote(_overview.Expenses.Count, mostRecent: !_expensesSort.IsActive)</p>
                 }
             }
         </section>
@@ -261,9 +261,9 @@
                 <table class="dashboard-table" aria-label="Inventory with activity">
                     <thead>
                         <tr>
-                            <th>Item</th>
-                            <th>On hand</th>
-                            <StatusColumnHeader Kind="StatusLegendKind.InventoryStock" />
+                            <SortableHeader Column="name" Label="Item" Sort="_inventorySort" />
+                            <SortableHeader Column="onhand" Label="On hand" Sort="_inventorySort" />
+                            <StatusColumnHeader Kind="StatusLegendKind.InventoryStock" Sort="_inventorySort" />
                         </tr>
                     </thead>
                     <tbody>
@@ -301,26 +301,79 @@
     private bool _isLoading = true;
     private bool _isInitialLoad = true;
     private string? _error;
+    private readonly ListSortState _salesSort = new();
+    private readonly ListSortState _customersSort = new();
+    private readonly ListSortState _transactionsSort = new();
+    private readonly ListSortState _expensesSort = new();
+    private readonly ListSortState _inventorySort = new();
 
-    /// <summary>Newest 20 sales rows; KPIs still use the full period list.</summary>
+    /// <summary>Newest 20 sales rows unless a column sort is active; KPIs still use the full period list.</summary>
     private IReadOnlyList<RevenueDto> SalesPreview =>
-        _overview is null ? [] : DashboardHomePreview.MostRecent(_overview.Revenue);
+        _overview is null
+            ? []
+            : ListSort.ApplyThenPreview(_overview.Revenue, _salesSort, row => _salesSort.Column switch
+            {
+                "date" => row.Date,
+                "invoice" => InvoiceLabel.For(row),
+                "customer" => row.CustomerName,
+                "group" => ProductGroupLabel.For(row),
+                "amount" => row.Amount,
+                _ => row.Date
+            });
 
-    /// <summary>First 20 customers (name order from the API, not date-sorted).</summary>
+    /// <summary>First 20 customers unless a column sort is active.</summary>
     private IReadOnlyList<CustomerDto> CustomersPreview =>
-        _overview is null ? [] : DashboardHomePreview.MostRecent(_overview.Customers);
+        _overview is null
+            ? []
+            : ListSort.ApplyThenPreview(_overview.Customers, _customersSort, customer => _customersSort.Column switch
+            {
+                "name" => customer.Name,
+                "city" => customer.City,
+                "category" => customer.Category,
+                "subcategory" => customer.Subcategory,
+                "contact" => customer.ContactEmail,
+                _ => customer.Name
+            });
 
-    /// <summary>Newest 20 open sales orders / period transactions.</summary>
+    /// <summary>Newest 20 open sales orders / period transactions unless a column sort is active.</summary>
     private IReadOnlyList<OpenTransactionDto> TransactionsPreview =>
-        _overview is null ? [] : DashboardHomePreview.MostRecent(_overview.Transactions);
+        _overview is null
+            ? []
+            : ListSort.ApplyThenPreview(_overview.Transactions, _transactionsSort, row => _transactionsSort.Column switch
+            {
+                "date" => row.TransactionDate,
+                "type" => row.Type,
+                "party" => string.IsNullOrWhiteSpace(row.CustomerName) ? row.SupplierName : row.CustomerName,
+                "item" => row.ItemName,
+                "qty" => row.QuantityOpen,
+                "status" => row.Status,
+                _ => row.TransactionDate
+            });
 
-    /// <summary>Newest 20 expenses; totals stay in the period KPIs.</summary>
+    /// <summary>Newest 20 expenses unless a column sort is active; totals stay in the period KPIs.</summary>
     private IReadOnlyList<ExpenseDto> ExpensesPreview =>
-        _overview is null ? [] : DashboardHomePreview.MostRecent(_overview.Expenses);
+        _overview is null
+            ? []
+            : ListSort.ApplyThenPreview(_overview.Expenses, _expensesSort, row => _expensesSort.Column switch
+            {
+                "date" => row.Date,
+                "category" => row.Category,
+                "vendor" => row.VendorName,
+                "amount" => row.Amount,
+                _ => row.Date
+            });
 
-    /// <summary>First 20 inventory rows with activity (name order from the API).</summary>
+    /// <summary>First 20 inventory rows with activity unless a column sort is active.</summary>
     private IReadOnlyList<InventoryItemDto> InventoryPreview =>
-        _overview is null ? [] : DashboardHomePreview.MostRecent(_overview.InventoryWithActivity);
+        _overview is null
+            ? []
+            : ListSort.ApplyThenPreview(_overview.InventoryWithActivity, _inventorySort, item => _inventorySort.Column switch
+            {
+                "name" => item.ItemName,
+                "onhand" => item.QuantityOnHand,
+                "status" => item.IsLowStock,
+                _ => item.ItemName
+            });
 
     protected override void OnParametersSet()
     {

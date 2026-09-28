@@ -72,14 +72,14 @@
                 <table class="item-detail__table" aria-label="Stock locations">
                     <thead>
                         <tr>
-                            <th scope="col">Location</th>
-                            <th scope="col">Quantity on hand</th>
-                            <th scope="col">Reorder point</th>
-                            <th scope="col">Preferred stock</th>
+                            <SortableHeader Column="location" Label="Location" Sort="_locationSort" />
+                            <SortableHeader Column="onhand" Label="Quantity on hand" Sort="_locationSort" />
+                            <SortableHeader Column="reorder" Label="Reorder point" Sort="_locationSort" />
+                            <SortableHeader Column="preferred" Label="Preferred stock" Sort="_locationSort" />
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var location in _item.Locations)
+                        @foreach (var location in SortedLocations)
                         {
                             <tr class="@(location.IsLowStock ? "item-detail__location-row--low" : null)">
                                 <td>@LocationLabel(location)</td>
@@ -93,6 +93,7 @@
             }
         </section>
 
+        @* Click a sales or purchase order to open it on the customer or supplier page. *@
         <section class="item-detail__section">
             <h2>Open transactions</h2>
             @if (_item.OpenTransactions.Count == 0)
@@ -104,12 +105,12 @@
                 <table class="item-detail__table" aria-label="Open transactions">
                     <thead>
                         <tr>
-                            <th scope="col">Date</th>
-                            <th scope="col">Transaction</th>
-                            <th scope="col">Type</th>
-                            <th scope="col">Customer / Supplier</th>
-                            <th scope="col">Quantity open</th>
-                            <StatusColumnHeader Kind="StatusLegendKind.OpenTransaction" />
+                            <SortableHeader Column="date" Label="Date" Sort="_transactionSort" />
+                            <SortableHeader Column="order" Label="Transaction" Sort="_transactionSort" />
+                            <SortableHeader Column="type" Label="Type" Sort="_transactionSort" />
+                            <SortableHeader Column="party" Label="Customer / Supplier" Sort="_transactionSort" />
+                            <SortableHeader Column="qty" Label="Quantity open" Sort="_transactionSort" />
+                            <StatusColumnHeader Kind="StatusLegendKind.OpenTransaction" Sort="_transactionSort" />
                         </tr>
                     </thead>
                     <tbody>
@@ -118,16 +119,24 @@
                             var expanded = IsOrderExpanded(order.Key);
                             var canExpand = order.Lines.Count > 1;
                             var first = order.Lines[0];
-                            <tr class="@(canExpand ? "item-detail__order-row" : null)"
-                                @onclick="() => ToggleOrder(order.Key)"
-                                tabindex="@(canExpand ? 0 : -1)"
+                            @* Sales/purchase orders open the customer or supplier page; transfer orders only expand. *@
+                            var partyHref = OpenTransactionLinks.ForParty(first, order.Key);
+                            var isLink = partyHref is not null;
+                            <tr class="@OrderRowClass(canExpand, isLink)"
+                                @onclick="() => OnOrderRowClick(order)"
+                                tabindex="@(isLink || canExpand ? 0 : -1)"
+                                role="@(isLink ? "link" : null)"
+                                title="@(isLink ? "Open this order" : null)"
                                 aria-expanded="@(canExpand ? expanded : null)"
-                                @onkeydown="(args) => HandleOrderKeyDown(args, order.Key)">
+                                @onkeydown="(args) => HandleOrderKeyDown(args, order)">
                                 <td>@order.Date.ToString("d")</td>
                                 <td>
                                     @if (canExpand)
                                     {
-                                        <span class="item-detail__order-toggle" aria-hidden="true">@(expanded ? "▼" : "▶")</span>
+                                        <span class="item-detail__order-toggle"
+                                              aria-hidden="true"
+                                              @onclick="() => ToggleOrder(order.Key)"
+                                              @onclick:stopPropagation="true">@(expanded ? "▼" : "▶")</span>
                                     }
                                     <code>@order.OrderLabel</code>
                                 </td>
@@ -135,13 +144,11 @@
                                 <td>
                                     @if (!string.IsNullOrWhiteSpace(first.CustomerId))
                                     {
-                                        <a href="@($"/customers/{Uri.EscapeDataString(first.CustomerId)}")"
-                                           @onclick:stopPropagation="true">@PartyName(first.CustomerName, first.CustomerId)</a>
+                                        @PartyName(first.CustomerName, first.CustomerId)
                                     }
                                     else if (!string.IsNullOrWhiteSpace(first.SupplierId))
                                     {
-                                        <a href="@($"/suppliers/{Uri.EscapeDataString(first.SupplierId)}")"
-                                           @onclick:stopPropagation="true">@PartyName(first.SupplierName, first.SupplierId)</a>
+                                        @PartyName(first.SupplierName, first.SupplierId)
                                     }
                                     else
                                     {
@@ -184,10 +191,46 @@
     private bool _isLoading = true;
     private string? _error;
     private readonly HashSet<string> _expandedOrders = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ListSortState _locationSort = new();
+    private readonly ListSortState _transactionSort = new();
 
     // One row per parent order so "2136821-1" and "2136821-2" collapse to 2136821.
-    private IReadOnlyList<SalesOrderGroup> TransactionGroups =>
-        _item is null ? [] : SalesOrderGroups.From(_item.OpenTransactions);
+    private IReadOnlyList<SalesOrderGroup> TransactionGroups
+    {
+        get
+        {
+            if (_item is null)
+            {
+                return [];
+            }
+
+            var groups = SalesOrderGroups.From(_item.OpenTransactions);
+            return ListSort.Apply(groups, _transactionSort, order => _transactionSort.Column switch
+            {
+                "date" => order.Date,
+                "order" => order.OrderLabel,
+                "type" => order.Lines[0].Type,
+                "party" => PartyName(order.Lines[0].CustomerName, order.Lines[0].CustomerId) is { Length: > 0 } customer
+                    ? customer
+                    : PartyName(order.Lines[0].SupplierName, order.Lines[0].SupplierId),
+                "qty" => order.TotalQuantityOpen,
+                "status" => order.Status,
+                _ => order.Date
+            });
+        }
+    }
+
+    private IReadOnlyList<StockLocationDto> SortedLocations =>
+        _item is null
+            ? []
+            : ListSort.Apply(_item.Locations, _locationSort, location => _locationSort.Column switch
+            {
+                "location" => LocationLabel(location),
+                "onhand" => location.QuantityOnHand,
+                "reorder" => location.ReorderPoint,
+                "preferred" => location.PreferredStockLevel,
+                _ => LocationLabel(location)
+            });
 
     // Hide a leftover NetSuite location internal id (digits only) until the next sync fills the name.
     private static string LocationLabel(StockLocationDto location)
@@ -206,6 +249,30 @@
 
     private bool IsOrderExpanded(string key) => _expandedOrders.Contains(key);
 
+    private static string? OrderRowClass(bool canExpand, bool isLink)
+    {
+        if (isLink)
+        {
+            return "item-detail__order-row item-detail__order-row--link";
+        }
+
+        return canExpand ? "item-detail__order-row" : null;
+    }
+
+    // A sales or purchase order opens the customer/supplier page focused on that order.
+    // Transfer orders have no party here, so the row only expands when there are multiple lines.
+    private void OnOrderRowClick(SalesOrderGroup order)
+    {
+        var href = OpenTransactionLinks.ForParty(order.Lines[0], order.Key);
+        if (href is not null)
+        {
+            Navigation.NavigateTo(href);
+            return;
+        }
+
+        ToggleOrder(order.Key);
+    }
+
     private void ToggleOrder(string key)
     {
         var group = TransactionGroups.FirstOrDefault(order => order.Key == key);
@@ -220,11 +287,11 @@
         }
     }
 
-    private void HandleOrderKeyDown(KeyboardEventArgs args, string key)
+    private void HandleOrderKeyDown(KeyboardEventArgs args, SalesOrderGroup order)
     {
         if (args.Key is "Enter" or " ")
         {
-            ToggleOrder(key);
+            OnOrderRowClick(order);
         }
     }
 

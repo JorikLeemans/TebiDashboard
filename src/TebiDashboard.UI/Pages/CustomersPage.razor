@@ -63,13 +63,13 @@
                 <table class="customers-table" aria-label="All customers">
                     <thead>
                         <tr>
-                            <th scope="col">Customer</th>
-                            <th scope="col">City</th>
-                            <th scope="col">Category</th>
-                            <th scope="col">Subcategory</th>
-                            <th scope="col">Total spent</th>
-                            <th scope="col">Revenue entries</th>
-                            <th scope="col">Sales orders</th>
+                            <SortableHeader Column="name" Label="Customer" Sort="_sort" OnSorted="ResetPage" />
+                            <SortableHeader Column="city" Label="City" Sort="_sort" OnSorted="ResetPage" />
+                            <SortableHeader Column="category" Label="Category" Sort="_sort" OnSorted="ResetPage" />
+                            <SortableHeader Column="subcategory" Label="Subcategory" Sort="_sort" OnSorted="ResetPage" />
+                            <SortableHeader Column="spent" Label="Total spent" Sort="_sort" OnSorted="ResetPage" />
+                            <SortableHeader Column="revenue" Label="Revenue entries" Sort="_sort" OnSorted="ResetPage" />
+                            <SortableHeader Column="orders" Label="Sales orders" Sort="_sort" OnSorted="ResetPage" />
                         </tr>
                     </thead>
                     <tbody>
@@ -104,6 +104,7 @@
     private readonly PeriodFilterSubscription _periodSubscription = new();
     private readonly PeriodFilterReload _periodReload = new();
     private IReadOnlyList<CustomerOverviewDto> _customers = [];
+    private readonly ListSortState _sort = new();
     private string _searchText = string.Empty;
     private bool _activityOnly;
     private int _pageSize = ListPagination.DefaultPageSize;
@@ -112,7 +113,18 @@
     private bool _isInitialLoad = true;
     private string? _error;
 
-    private List<CustomerOverviewDto> FilteredCustomers => _customers.Where(MatchesFilters).ToList();
+    private List<CustomerOverviewDto> FilteredCustomers =>
+        ListSort.Apply(_customers.Where(MatchesFilters), _sort, customer => _sort.Column switch
+        {
+            "name" => customer.Name,
+            "city" => customer.City,
+            "category" => customer.Category,
+            "subcategory" => customer.Subcategory,
+            "spent" => customer.TotalSpent,
+            "revenue" => customer.RevenueEntryCount,
+            "orders" => customer.SalesOrderCount,
+            _ => customer.Name
+        });
 
     private List<CustomerOverviewDto> PagedCustomers =>
         ListPagination.GetPageSlice(FilteredCustomers, GetSafeCurrentPage(), _pageSize);

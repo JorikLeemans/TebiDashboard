@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Bunit;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using RichardSzalay.MockHttp;
 using TebiDashboard.Shared.Constants;
@@ -135,9 +136,9 @@ public class CustomerDetailPageTests
         var cut = ctx.Render<CustomerDetailPage>(parameters => parameters.Add(p => p.CustomerId, "c9"));
         cut.WaitForElement("table[aria-label='Customer revenue']", TimeSpan.FromSeconds(5));
 
-        cut.Find(".customer-detail__invoice-row").Click();
+        cut.Find("table[aria-label='Customer revenue'] tbody .customer-detail__invoice-row").Click();
         Assert.Contains("pg-unknown", cut.Find("table[aria-label='Customer revenue']").TextContent);
-        cut.Find("table[aria-label='Customer sales orders'] .customer-detail__invoice-row").Click();
+        cut.Find("table[aria-label='Customer sales orders'] tbody .customer-detail__invoice-row").Click();
         Assert.Contains("i-missing", cut.Find("table[aria-label='Customer sales orders']").TextContent);
     }
 
@@ -183,7 +184,7 @@ public class CustomerDetailPageTests
         Assert.DoesNotContain("Klinkers", collapsed);
         Assert.DoesNotContain("Zand", collapsed);
 
-        cut.Find(".customer-detail__invoice-row").Click();
+        cut.Find("table[aria-label='Customer revenue'] tbody .customer-detail__invoice-row").Click();
         var expanded = cut.Find("table[aria-label='Customer revenue']").TextContent;
         Assert.Contains("Klinkers", expanded);
         Assert.Contains("Zand", expanded);
@@ -236,6 +237,48 @@ public class CustomerDetailPageTests
         var expanded = cut.Find("table[aria-label='Customer sales orders']").TextContent;
         Assert.Contains("Betonstraatstenen Antraciet", expanded);
         Assert.Contains("Klinkers Rood-Bruin", expanded);
+    }
+
+    [Fact]
+    public void CustomerDetailPage_ExpandsSalesOrder_WhenFocusOrderQueryIsSet()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        mockHttp.When(HttpMethod.Get, "*/api/customers/c3*")
+            .Respond(HttpStatusCode.OK, _ => JsonContent.Create(new CustomerDetailDto
+            {
+                Customer = new CustomerDto { CustomerId = "c3", Name = "Bouwbedrijf Jansen" },
+                SalesOrders =
+                [
+                    new OpenTransactionDto
+                    {
+                        TransactionId = "t1-1",
+                        Type = "Sales Order",
+                        ItemName = "Betonstraatstenen Antraciet",
+                        TransactionDate = new DateOnly(2026, 9, 23),
+                        QuantityOpen = 40,
+                        Amount = 39500m,
+                        Status = "Pending Fulfillment"
+                    },
+                    new OpenTransactionDto
+                    {
+                        TransactionId = "t1-2",
+                        Type = "Sales Order",
+                        ItemName = "Klinkers Rood-Bruin",
+                        TransactionDate = new DateOnly(2026, 9, 23),
+                        QuantityOpen = 12,
+                        Amount = 14400m,
+                        Status = "Pending Fulfillment"
+                    }
+                ]
+            }));
+
+        var navigation = ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo(navigation.GetUriWithQueryParameter("order", "t1"));
+        var cut = ctx.Render<CustomerDetailPage>(parameters => parameters.Add(p => p.CustomerId, "c3"));
+        cut.WaitForElement("table[aria-label='Customer sales orders']", TimeSpan.FromSeconds(5));
+
+        Assert.Contains("Betonstraatstenen Antraciet", cut.Find("table[aria-label='Customer sales orders']").TextContent);
+        Assert.Contains("customer-detail__invoice-row--focus", cut.Markup);
     }
 
     private static BunitContext CreateAuthenticatedContext(out MockHttpMessageHandler mockHttp)

@@ -146,9 +146,109 @@ public class InventoryPageTests
         Assert.DoesNotContain("2136821-1", transactions.TextContent);
         Assert.Single(cut.FindAll("table[aria-label='Open transactions'] tbody .item-detail__order-row"));
 
-        cut.Find("table[aria-label='Open transactions'] .item-detail__order-row").Click();
+        cut.Find("table[aria-label='Open transactions'] .item-detail__order-toggle").Click();
         Assert.Contains("40 open", cut.Find("table[aria-label='Open transactions']").TextContent);
         Assert.Contains("12 open", cut.Find("table[aria-label='Open transactions']").TextContent);
+    }
+
+    [Fact]
+    public void ItemDetailPage_OpenTransactionRow_IsClickableLinkToCustomer()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        mockHttp.When(HttpMethod.Get, "*/api/items/i1*")
+            .Respond(HttpStatusCode.OK, _ => JsonContent.Create(new ItemDetailDto
+            {
+                ItemId = "i1",
+                ItemName = "Betonstraatstenen Antraciet",
+                OpenTransactionCount = 1,
+                OpenTransactions =
+                [
+                    new OpenTransactionDto
+                    {
+                        TransactionId = "t1",
+                        Type = "Sales Order",
+                        ItemId = "i1",
+                        ItemName = "Betonstraatstenen Antraciet",
+                        CustomerId = "c1",
+                        CustomerName = "Bouwbedrijf Jansen",
+                        TransactionDate = new DateOnly(2026, 6, 9),
+                        QuantityOpen = 40,
+                        Status = "Pending Fulfillment"
+                    }
+                ]
+            }));
+
+        var cut = ctx.Render<ItemDetailPage>(parameters => parameters.Add(p => p.ItemId, "i1"));
+        cut.WaitForElement("table[aria-label='Open transactions']", TimeSpan.FromSeconds(5));
+
+        Assert.Contains("item-detail__order-row--link", cut.Markup);
+        Assert.Contains("Bouwbedrijf Jansen", cut.Markup);
+        Assert.Contains("role=\"link\"", cut.Markup);
+    }
+
+    [Fact]
+    public void ItemDetailPage_OpenTransactionRow_IsClickableLinkToSupplier()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        mockHttp.When(HttpMethod.Get, "*/api/items/i4*")
+            .Respond(HttpStatusCode.OK, _ => JsonContent.Create(new ItemDetailDto
+            {
+                ItemId = "i4",
+                ItemName = "Betonblokken 40x20",
+                OpenTransactionCount = 1,
+                OpenTransactions =
+                [
+                    new OpenTransactionDto
+                    {
+                        TransactionId = "2136801-1",
+                        Type = "Purchase Order",
+                        ItemId = "i4",
+                        ItemName = "Betonblokken 40x20",
+                        SupplierId = "s1",
+                        SupplierName = "BetonCentrale Midden-NL",
+                        TransactionDate = new DateOnly(2026, 6, 9),
+                        QuantityOpen = 45,
+                        Status = "Pending Receipt"
+                    }
+                ]
+            }));
+
+        var cut = ctx.Render<ItemDetailPage>(parameters => parameters.Add(p => p.ItemId, "i4"));
+        cut.WaitForElement("table[aria-label='Open transactions']", TimeSpan.FromSeconds(5));
+
+        Assert.Contains("item-detail__order-row--link", cut.Markup);
+        Assert.Contains("BetonCentrale Midden-NL", cut.Markup);
+    }
+
+    [Fact]
+    public void ItemDetailPage_TransferOrderRow_IsNotAPartyLink()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        mockHttp.When(HttpMethod.Get, "*/api/items/i1*")
+            .Respond(HttpStatusCode.OK, _ => JsonContent.Create(new ItemDetailDto
+            {
+                ItemId = "i1",
+                ItemName = "Betonstraatstenen Antraciet",
+                OpenTransactionCount = 1,
+                OpenTransactions =
+                [
+                    new OpenTransactionDto
+                    {
+                        TransactionId = "t2",
+                        Type = "Transfer Order",
+                        ItemId = "i1",
+                        TransactionDate = new DateOnly(2026, 6, 8),
+                        QuantityOpen = 20,
+                        Status = "Pending Receipt"
+                    }
+                ]
+            }));
+
+        var cut = ctx.Render<ItemDetailPage>(parameters => parameters.Add(p => p.ItemId, "i1"));
+        cut.WaitForElement("table[aria-label='Open transactions']", TimeSpan.FromSeconds(5));
+
+        Assert.DoesNotContain("item-detail__order-row--link", cut.Markup);
+        Assert.Contains("Transfer Order", cut.Markup);
     }
 
     private static BunitContext CreateAuthenticatedContext(out MockHttpMessageHandler mockHttp)

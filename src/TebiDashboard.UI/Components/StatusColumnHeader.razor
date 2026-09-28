@@ -1,12 +1,24 @@
 @using TebiDashboard.UI.Helpers
 
-@* Table header for status columns; shows a legend on hover via the native title tooltip. *@
-<th scope="col"
-    class="status-column-header"
-    title="@StatusLegends.GetTooltip(Kind)"
-    aria-label="@($"{Label}. {StatusLegends.GetTooltip(Kind)}")">
-    @Label
-</th>
+@* Status column header: legend on hover, and click-to-sort when a sort state is supplied. *@
+@if (Sort is not null)
+{
+    <SortableHeader Column="@Column"
+                    Label="@Label"
+                    Sort="Sort"
+                    ExtraTitle="@StatusLegends.GetTooltip(Kind)"
+                    CssClass="status-column-header"
+                    OnSorted="OnSorted" />
+}
+else
+{
+    <th scope="col"
+        class="status-column-header"
+        title="@StatusLegends.GetTooltip(Kind)"
+        aria-label="@($"{Label}. {StatusLegends.GetTooltip(Kind)}")">
+        @Label
+    </th>
+}
 
 @code {
     [Parameter]
@@ -14,4 +26,13 @@
 
     [Parameter]
     public StatusLegendKind Kind { get; set; }
+
+    [Parameter]
+    public ListSortState? Sort { get; set; }
+
+    [Parameter]
+    public string Column { get; set; } = "status";
+
+    [Parameter]
+    public EventCallback OnSorted { get; set; }
 }
