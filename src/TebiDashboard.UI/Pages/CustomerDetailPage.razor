@@ -74,9 +74,9 @@
                 <table class="customer-detail__table" aria-label="Customer revenue">
                     <thead>
                         <tr>
-                            <th scope="col">Date</th>
-                            <th scope="col">Invoice</th>
-                            <th scope="col">Amount</th>
+                            <SortableHeader Column="date" Label="Date" Sort="_revenueSort" />
+                            <SortableHeader Column="invoice" Label="Invoice" Sort="_revenueSort" />
+                            <SortableHeader Column="amount" Label="Amount" Sort="_revenueSort" />
                         </tr>
                     </thead>
                     <tbody>
@@ -133,9 +133,9 @@
                 <table class="customer-detail__table" aria-label="Customer sales orders">
                     <thead>
                         <tr>
-                            <th scope="col">Date</th>
-                            <th scope="col">Order</th>
-                            <th scope="col">Amount</th>
+                            <SortableHeader Column="date" Label="Date" Sort="_ordersSort" />
+                            <SortableHeader Column="order" Label="Order" Sort="_ordersSort" />
+                            <SortableHeader Column="amount" Label="Amount" Sort="_ordersSort" />
                         </tr>
                     </thead>
                     <tbody>
@@ -211,14 +211,50 @@
     private string? _error;
     private readonly HashSet<string> _expandedInvoices = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _expandedSalesOrders = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ListSortState _revenueSort = new();
+    private readonly ListSortState _ordersSort = new();
 
     // One row per invoice; click a row to reveal its lines.
-    private IReadOnlyList<InvoiceRevenueGroup> InvoiceGroups =>
-        _detail is null ? [] : InvoiceRevenueGroups.From(_detail.Revenue);
+    private IReadOnlyList<InvoiceRevenueGroup> InvoiceGroups
+    {
+        get
+        {
+            if (_detail is null)
+            {
+                return [];
+            }
+
+            var groups = InvoiceRevenueGroups.From(_detail.Revenue);
+            return ListSort.Apply(groups, _revenueSort, invoice => _revenueSort.Column switch
+            {
+                "date" => invoice.Date,
+                "invoice" => invoice.InvoiceLabel,
+                "amount" => invoice.TotalAmount,
+                _ => invoice.Date
+            });
+        }
+    }
 
     // One row per sales order; click a row to reveal its lines.
-    private IReadOnlyList<SalesOrderGroup> OrderGroups =>
-        _detail is null ? [] : SalesOrderGroups.From(_detail.SalesOrders);
+    private IReadOnlyList<SalesOrderGroup> OrderGroups
+    {
+        get
+        {
+            if (_detail is null)
+            {
+                return [];
+            }
+
+            var groups = SalesOrderGroups.From(_detail.SalesOrders);
+            return ListSort.Apply(groups, _ordersSort, order => _ordersSort.Column switch
+            {
+                "date" => order.Date,
+                "order" => order.OrderLabel,
+                "amount" => order.TotalAmount,
+                _ => order.Date
+            });
+        }
+    }
 
     // Footer totals make it easy to compare revenue with sales orders in the same period.
     private decimal RevenueTotal => _detail?.Revenue.Sum(row => row.Amount) ?? 0m;

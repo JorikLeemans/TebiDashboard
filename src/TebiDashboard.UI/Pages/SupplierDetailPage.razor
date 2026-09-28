@@ -75,8 +75,8 @@
                 <table class="supplier-detail__table" aria-label="Purchased items">
                     <thead>
                         <tr>
-                            <th scope="col">Item</th>
-                            <th scope="col">Total qty open</th>
+                            <SortableHeader Column="name" Label="Item" Sort="_itemsSort" />
+                            <SortableHeader Column="qty" Label="Total qty open" Sort="_itemsSort" />
                         </tr>
                     </thead>
                     <tbody>
@@ -109,9 +109,9 @@
                 <table class="supplier-detail__table" aria-label="Supplier purchase orders">
                     <thead>
                         <tr>
-                            <th scope="col">Date</th>
-                            <th scope="col">Order</th>
-                            <th scope="col">Amount</th>
+                            <SortableHeader Column="date" Label="Date" Sort="_ordersSort" />
+                            <SortableHeader Column="order" Label="Order" Sort="_ordersSort" />
+                            <SortableHeader Column="amount" Label="Amount" Sort="_ordersSort" />
                         </tr>
                     </thead>
                     <tbody>
@@ -166,7 +166,7 @@
                 </table>
                 @if (OrderGroups.Count > DashboardHomePreview.MaxRows)
                 {
-                    <p class="supplier-detail__preview-note">@DashboardHomePreview.TruncationNote(OrderGroups.Count, mostRecent: true, includeChart: false)</p>
+                    <p class="supplier-detail__preview-note">@DashboardHomePreview.TruncationNote(OrderGroups.Count, mostRecent: !_ordersSort.IsActive, includeChart: false)</p>
                 }
             }
         </section>
@@ -182,10 +182,10 @@
                 <table class="supplier-detail__table" aria-label="Supplier expenses">
                     <thead>
                         <tr>
-                            <th scope="col">Date</th>
-                            <th scope="col">Category</th>
-                            <th scope="col">Vendor</th>
-                            <th scope="col">Amount</th>
+                            <SortableHeader Column="date" Label="Date" Sort="_expensesSort" />
+                            <SortableHeader Column="category" Label="Category" Sort="_expensesSort" />
+                            <SortableHeader Column="vendor" Label="Vendor" Sort="_expensesSort" />
+                            <SortableHeader Column="amount" Label="Amount" Sort="_expensesSort" />
                         </tr>
                     </thead>
                     <tbody>
@@ -211,7 +211,7 @@
                 </table>
                 @if (_detail.Expenses.Count > DashboardHomePreview.MaxRows)
                 {
-                    <p class="supplier-detail__preview-note">@DashboardHomePreview.TruncationNote(_detail.Expenses.Count, mostRecent: true, includeChart: false)</p>
+                    <p class="supplier-detail__preview-note">@DashboardHomePreview.TruncationNote(_detail.Expenses.Count, mostRecent: !_expensesSort.IsActive, includeChart: false)</p>
                 }
             }
         </section>
@@ -235,22 +235,58 @@
     private bool _isInitialLoad = true;
     private string? _error;
     private readonly HashSet<string> _expandedPurchaseOrders = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ListSortState _itemsSort = new();
+    private readonly ListSortState _ordersSort = new();
+    private readonly ListSortState _expensesSort = new();
 
     /// <summary>One row per purchase order; click a row to reveal its lines.</summary>
-    private IReadOnlyList<SalesOrderGroup> OrderGroups =>
-        _detail is null ? [] : SalesOrderGroups.From(_detail.PurchaseOrders);
+    private IReadOnlyList<SalesOrderGroup> OrderGroups
+    {
+        get
+        {
+            if (_detail is null)
+            {
+                return [];
+            }
 
-    /// <summary>Newest 20 grouped purchase orders; KPIs still use the full list.</summary>
+            var groups = SalesOrderGroups.From(_detail.PurchaseOrders);
+            return ListSort.Apply(groups, _ordersSort, order => _ordersSort.Column switch
+            {
+                "date" => order.Date,
+                "order" => order.OrderLabel,
+                "amount" => order.TotalAmount,
+                _ => order.Date
+            });
+        }
+    }
+
+    /// <summary>Newest 20 grouped purchase orders unless a column sort is active; KPIs still use the full list.</summary>
     private IReadOnlyList<SalesOrderGroup> OrderGroupsPreview =>
         DashboardHomePreview.MostRecent(OrderGroups);
 
-    /// <summary>First 20 purchased items (name order from the API).</summary>
+    /// <summary>First 20 purchased items unless a column sort is active.</summary>
     private IReadOnlyList<SupplierPurchasedItemDto> PurchasedItemsPreview =>
-        _detail is null ? [] : DashboardHomePreview.MostRecent(_detail.PurchasedItems);
+        _detail is null
+            ? []
+            : ListSort.ApplyThenPreview(_detail.PurchasedItems, _itemsSort, item => _itemsSort.Column switch
+            {
+                "name" => ItemLabel(item.ItemName, item.ItemId),
+                "qty" => item.TotalQuantityOpen,
+                _ => ItemLabel(item.ItemName, item.ItemId)
+            });
 
-    /// <summary>Newest 20 expenses; footer totals still use the full period list.</summary>
+    /// <summary>Newest 20 expenses unless a column sort is active; footer totals still use the full period list.</summary>
     private IReadOnlyList<ExpenseDto> ExpensesPreview =>
-        _detail is null ? [] : DashboardHomePreview.MostRecent(_detail.Expenses);
+        _detail is null
+            ? []
+            : ListSort.ApplyThenPreview(_detail.Expenses, _expensesSort, expense => _expensesSort.Column switch
+            {
+                "date" => expense.Date,
+                "category" => expense.Category,
+                "vendor" => ExpensePartyName(expense),
+                "amount" => expense.Amount,
+                _ => expense.Date
+            });
 
     // Footer totals show how expenses and purchase orders add up to Total purchased.
     private decimal ExpensesTotal => _detail?.Expenses.Sum(row => row.Amount) ?? 0m;

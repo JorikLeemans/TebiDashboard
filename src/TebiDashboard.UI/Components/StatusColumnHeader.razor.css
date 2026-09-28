@@ -1,5 +1,5 @@
 .status-column-header {
-  cursor: help;
+  cursor: pointer;
   text-decoration: underline dotted;
   text-underline-offset: 0.2em;
 }

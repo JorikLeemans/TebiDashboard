@@ -72,14 +72,14 @@
                 <table class="item-detail__table" aria-label="Stock locations">
                     <thead>
                         <tr>
-                            <th scope="col">Location</th>
-                            <th scope="col">Quantity on hand</th>
-                            <th scope="col">Reorder point</th>
-                            <th scope="col">Preferred stock</th>
+                            <SortableHeader Column="location" Label="Location" Sort="_locationSort" />
+                            <SortableHeader Column="onhand" Label="Quantity on hand" Sort="_locationSort" />
+                            <SortableHeader Column="reorder" Label="Reorder point" Sort="_locationSort" />
+                            <SortableHeader Column="preferred" Label="Preferred stock" Sort="_locationSort" />
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var location in _item.Locations)
+                        @foreach (var location in SortedLocations)
                         {
                             <tr class="@(location.IsLowStock ? "item-detail__location-row--low" : null)">
                                 <td>@LocationLabel(location)</td>
@@ -104,12 +104,12 @@
                 <table class="item-detail__table" aria-label="Open transactions">
                     <thead>
                         <tr>
-                            <th scope="col">Date</th>
-                            <th scope="col">Transaction</th>
-                            <th scope="col">Type</th>
-                            <th scope="col">Customer / Supplier</th>
-                            <th scope="col">Quantity open</th>
-                            <StatusColumnHeader Kind="StatusLegendKind.OpenTransaction" />
+                            <SortableHeader Column="date" Label="Date" Sort="_transactionSort" />
+                            <SortableHeader Column="order" Label="Transaction" Sort="_transactionSort" />
+                            <SortableHeader Column="type" Label="Type" Sort="_transactionSort" />
+                            <SortableHeader Column="party" Label="Customer / Supplier" Sort="_transactionSort" />
+                            <SortableHeader Column="qty" Label="Quantity open" Sort="_transactionSort" />
+                            <StatusColumnHeader Kind="StatusLegendKind.OpenTransaction" Sort="_transactionSort" />
                         </tr>
                     </thead>
                     <tbody>
@@ -184,10 +184,46 @@
     private bool _isLoading = true;
     private string? _error;
     private readonly HashSet<string> _expandedOrders = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ListSortState _locationSort = new();
+    private readonly ListSortState _transactionSort = new();
 
     // One row per parent order so "2136821-1" and "2136821-2" collapse to 2136821.
-    private IReadOnlyList<SalesOrderGroup> TransactionGroups =>
-        _item is null ? [] : SalesOrderGroups.From(_item.OpenTransactions);
+    private IReadOnlyList<SalesOrderGroup> TransactionGroups
+    {
+        get
+        {
+            if (_item is null)
+            {
+                return [];
+            }
+
+            var groups = SalesOrderGroups.From(_item.OpenTransactions);
+            return ListSort.Apply(groups, _transactionSort, order => _transactionSort.Column switch
+            {
+                "date" => order.Date,
+                "order" => order.OrderLabel,
+                "type" => order.Lines[0].Type,
+                "party" => PartyName(order.Lines[0].CustomerName, order.Lines[0].CustomerId) is { Length: > 0 } customer
+                    ? customer
+                    : PartyName(order.Lines[0].SupplierName, order.Lines[0].SupplierId),
+                "qty" => order.TotalQuantityOpen,
+                "status" => order.Status,
+                _ => order.Date
+            });
+        }
+    }
+
+    private IReadOnlyList<StockLocationDto> SortedLocations =>
+        _item is null
+            ? []
+            : ListSort.Apply(_item.Locations, _locationSort, location => _locationSort.Column switch
+            {
+                "location" => LocationLabel(location),
+                "onhand" => location.QuantityOnHand,
+                "reorder" => location.ReorderPoint,
+                "preferred" => location.PreferredStockLevel,
+                _ => LocationLabel(location)
+            });
 
     // Hide a leftover NetSuite location internal id (digits only) until the next sync fills the name.
     private static string LocationLabel(StockLocationDto location)

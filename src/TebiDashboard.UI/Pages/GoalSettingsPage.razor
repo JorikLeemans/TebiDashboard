@@ -58,12 +58,12 @@
             <table class="goal-settings__table" aria-label="Company goal targets">
                 <thead>
                     <tr>
-                        <th scope="col">Period</th>
-                        <th scope="col">Target (€)</th>
+                        <SortableHeader Column="period" Label="Period" Sort="_companySort" />
+                        <SortableHeader Column="target" Label="Target (€)" Sort="_companySort" />
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var period in GoalPeriods.CompanyPeriods)
+                    @foreach (var period in SortedCompanyPeriods)
                     {
                         <tr>
                             <th scope="row">@GoalIdHelper.FormatPeriodLabel(period)</th>
@@ -114,16 +114,16 @@
                     <table class="goal-settings__table goal-settings__table--items" aria-label="Item goal targets">
                         <thead>
                             <tr>
-                                <th scope="col">Item</th>
+                                <SortableHeader Column="item" Label="Item" Sort="_itemSort" />
                                 @foreach (var period in GoalPeriods.ItemPeriods)
                                 {
-                                    <th scope="col">@GoalIdHelper.FormatPeriodLabel(period)</th>
+                                    <SortableHeader Column="@period" Label="@GoalIdHelper.FormatPeriodLabel(period)" Sort="_itemSort" />
                                 }
                                 <th scope="col"></th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var row in _itemRows)
+                            @foreach (var row in SortedItemRows)
                             {
                                 <tr>
                                     <th scope="row">@row.ItemName</th>
@@ -176,7 +176,23 @@
         GoalPeriods.CompanyPeriods.ToDictionary(period => period, _ => (decimal?)null);
 
     private readonly List<ItemGoalRow> _itemRows = [];
+    private readonly ListSortState _companySort = new();
+    private readonly ListSortState _itemSort = new();
     private IReadOnlyList<InventoryItemDto> _inventoryItems = [];
+
+    private IReadOnlyList<string> SortedCompanyPeriods =>
+        ListSort.Apply(GoalPeriods.CompanyPeriods, _companySort, period => _companySort.Column switch
+        {
+            "period" => period,
+            "target" => _companyTargets.GetValueOrDefault(period),
+            _ => period
+        });
+
+    private IReadOnlyList<ItemGoalRow> SortedItemRows =>
+        ListSort.Apply(_itemRows, _itemSort, row =>
+            _itemSort.Column == "item"
+                ? row.ItemName
+                : row.Targets.GetValueOrDefault(_itemSort.Column ?? string.Empty));
 
     private int _selectedYear = Today.Year;
     private string _itemToAdd = string.Empty;

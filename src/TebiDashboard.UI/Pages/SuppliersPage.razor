@@ -63,12 +63,12 @@
                 <table class="suppliers-table" aria-label="All suppliers">
                     <thead>
                         <tr>
-                            <th scope="col">Supplier</th>
-                            <th scope="col">City</th>
-                            <th scope="col">Total purchased</th>
-                            <th scope="col">Expense entries</th>
-                            <th scope="col">Purchase orders</th>
-                            <th scope="col">Purchased items</th>
+                            <SortableHeader Column="name" Label="Supplier" Sort="_sort" OnSorted="ResetPage" />
+                            <SortableHeader Column="city" Label="City" Sort="_sort" OnSorted="ResetPage" />
+                            <SortableHeader Column="purchased" Label="Total purchased" Sort="_sort" OnSorted="ResetPage" />
+                            <SortableHeader Column="expenses" Label="Expense entries" Sort="_sort" OnSorted="ResetPage" />
+                            <SortableHeader Column="orders" Label="Purchase orders" Sort="_sort" OnSorted="ResetPage" />
+                            <SortableHeader Column="items" Label="Purchased items" Sort="_sort" OnSorted="ResetPage" />
                         </tr>
                     </thead>
                     <tbody>
@@ -102,6 +102,7 @@
     private readonly PeriodFilterSubscription _periodSubscription = new();
     private readonly PeriodFilterReload _periodReload = new();
     private IReadOnlyList<SupplierOverviewDto> _suppliers = [];
+    private readonly ListSortState _sort = new();
     private string _searchText = string.Empty;
     private bool _activityOnly;
     // Supplier list starts at 20 rows, matching the other dashboard previews.
@@ -111,7 +112,17 @@
     private bool _isInitialLoad = true;
     private string? _error;
 
-    private List<SupplierOverviewDto> FilteredSuppliers => _suppliers.Where(MatchesFilters).ToList();
+    private List<SupplierOverviewDto> FilteredSuppliers =>
+        ListSort.Apply(_suppliers.Where(MatchesFilters), _sort, supplier => _sort.Column switch
+        {
+            "name" => supplier.Name,
+            "city" => supplier.City,
+            "purchased" => supplier.TotalPurchased,
+            "expenses" => supplier.ExpenseEntryCount,
+            "orders" => supplier.PurchaseOrderCount,
+            "items" => supplier.PurchasedItemCount,
+            _ => supplier.Name
+        });
 
     private List<SupplierOverviewDto> PagedSuppliers =>
         ListPagination.GetPageSlice(FilteredSuppliers, GetSafeCurrentPage(), _pageSize);
