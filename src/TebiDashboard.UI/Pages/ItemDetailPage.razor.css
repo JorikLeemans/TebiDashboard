@@ -118,6 +118,34 @@
   color: #555;
 }
 
+.item-detail__order-row {
+  cursor: pointer;
+}
+
+.item-detail__order-row:hover,
+.item-detail__order-row:focus {
+  background: #f0f7f2;
+}
+
+.item-detail__order-row td {
+  font-weight: 600;
+}
+
+.item-detail__order-toggle {
+  display: inline-block;
+  width: 1rem;
+  color: #2a8a4a;
+}
+
+.item-detail__line-row td:first-child {
+  padding-left: 1.5rem;
+}
+
+.item-detail__line-row td {
+  color: #445;
+  font-weight: 400;
+}
+
 .error {
   color: #b00020;
 }

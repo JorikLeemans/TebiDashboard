@@ -75,12 +75,15 @@ internal static class NetSuiteSuiteQlQueries
     /// <summary>
     /// Stock per item and location. TEBI maps inventorydetail (item, location, quantity);
     /// SuiteQL exposes on-hand stock via inventorybalance (quantityonhand aliased as quantity).
+    /// ib.location is the internal id; BUILTIN.DF returns the location name without joining location.
+    /// Oracle: https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/article_1029114613.html
     /// </summary>
     public static string StockLocations() =>
         """
         SELECT
             ib.item,
             ib.location,
+            BUILTIN.DF(ib.location) AS locationname,
             ib.quantityonhand AS quantity
         FROM inventorybalance ib
         WHERE ib.quantityonhand > 0

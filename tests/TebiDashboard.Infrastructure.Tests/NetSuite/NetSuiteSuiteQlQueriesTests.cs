@@ -107,5 +107,6 @@ public sealed class NetSuiteSuiteQlQueriesTests
 
         Assert.Contains("quantityonhand AS quantity", sql);
         Assert.Contains("inventorybalance", sql);
+        Assert.Contains("BUILTIN.DF(ib.location) AS locationname", sql);
     }
 }

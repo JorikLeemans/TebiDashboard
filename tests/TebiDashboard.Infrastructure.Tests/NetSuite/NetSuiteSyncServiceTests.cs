@@ -171,6 +171,84 @@ public sealed class NetSuiteSyncServiceTests
     }
 
     [Fact]
+    public async Task Sync_StoresLocationDisplayName_AndDoesNotKeepNumericIds()
+    {
+        await using var db = CreateDbContext();
+        db.InventoryItems.Add(new InventoryItemRecord
+        {
+            ItemId = "item-1",
+            ItemName = "SKU-1",
+            QuantityOnHand = 3m
+        });
+        db.StockLocations.Add(new StockLocationRecord
+        {
+            ItemId = "item-1",
+            LocationId = "16",
+            LocationName = "16",
+            QuantityOnHand = 3m
+        });
+        await db.SaveChangesAsync();
+
+        var restClient = new FakeNetSuiteRestClient
+        {
+            InventoryItems =
+            [
+                Row(("id", "\"item-1\""), ("itemId", "\"SKU-1\""), ("upcCode", "\"123\""))
+            ],
+            StockLocations =
+            [
+                Row(("item", "\"item-1\""), ("location", "\"16\""), ("locationname", "\"Hoofdmagazijn\""), ("quantity", "8"))
+            ]
+        };
+
+        var result = await CreateSut(db, restClient, clearOnSync: false)
+            .SyncDashboardDataAsync(365);
+
+        Assert.True(result.Success, result.Message);
+        var location = await db.StockLocations.SingleAsync();
+        Assert.Equal("Hoofdmagazijn", location.LocationName);
+        Assert.Equal("16", location.LocationId);
+    }
+
+    [Fact]
+    public async Task Sync_ClearsNumericLocationNames_WhenDisplayNameIsMissing()
+    {
+        await using var db = CreateDbContext();
+        db.InventoryItems.Add(new InventoryItemRecord
+        {
+            ItemId = "item-1",
+            ItemName = "SKU-1",
+            QuantityOnHand = 3m
+        });
+        db.StockLocations.Add(new StockLocationRecord
+        {
+            ItemId = "item-1",
+            LocationId = "16",
+            LocationName = "16",
+            QuantityOnHand = 3m
+        });
+        await db.SaveChangesAsync();
+
+        var restClient = new FakeNetSuiteRestClient
+        {
+            InventoryItems =
+            [
+                Row(("id", "\"item-1\""), ("itemId", "\"SKU-1\""), ("upcCode", "\"123\""))
+            ],
+            StockLocations =
+            [
+                Row(("item", "\"item-1\""), ("location", "\"16\""), ("quantity", "8"))
+            ]
+        };
+
+        var result = await CreateSut(db, restClient, clearOnSync: false)
+            .SyncDashboardDataAsync(365);
+
+        Assert.True(result.Success, result.Message);
+        Assert.Equal(string.Empty, (await db.StockLocations.SingleAsync()).LocationName);
+    }
+
+    [Fact]
     public async Task Sync_ReportsStepProgress_ToCoordinator()
     {
         await using var db = CreateDbContext();

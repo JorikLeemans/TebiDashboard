@@ -339,15 +339,22 @@ public sealed class NetSuiteSyncService(
         {
             var itemId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "item");
             var locationId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "location");
-            var locationName = NetSuiteSuiteQlRowReader.GetString(row, "locationname")
-                ?? NetSuiteSuiteQlRowReader.GetString(row, "location")
-                ?? "Unknown location";
+            // Never store the internal location id as the name; the UI would then show "16".
+            var incomingName = ListFieldDisplayName(NetSuiteSuiteQlRowReader.GetString(row, "locationname"));
             var quantityOnHand = NetSuiteSuiteQlRowReader.GetDecimal(row, "quantity", "quantityonhand");
             var key = StockLocationKey(itemId, locationId);
 
             if (existing.TryGetValue(key, out var location))
             {
-                location.LocationName = locationName;
+                if (!string.IsNullOrEmpty(incomingName))
+                {
+                    location.LocationName = incomingName;
+                }
+                else if (location.LocationName.All(char.IsDigit))
+                {
+                    location.LocationName = string.Empty;
+                }
+
                 location.QuantityOnHand = quantityOnHand;
             }
             else
@@ -356,7 +363,7 @@ public sealed class NetSuiteSyncService(
                 {
                     ItemId = itemId,
                     LocationId = locationId,
-                    LocationName = locationName,
+                    LocationName = incomingName,
                     QuantityOnHand = quantityOnHand
                 };
                 dbContext.StockLocations.Add(created);
