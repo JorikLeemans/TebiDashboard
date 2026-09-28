@@ -27,6 +27,9 @@ public static class NetSuiteSyncMapping
             Message = status.Message,
             Result = status.Result?.ToDto(),
             StartedAt = status.StartedAt,
-            CompletedAt = status.CompletedAt
+            CompletedAt = status.CompletedAt,
+            CurrentStep = status.CurrentStep,
+            CompletedSteps = status.CompletedSteps,
+            TotalSteps = status.TotalSteps
         };
 }

@@ -253,6 +253,59 @@
   color: #5a6b62;
 }
 
+/* Live step progress under Test / Sync so operators can see the import is still moving. */
+.admin-netsuite__progress {
+  margin: 0 0 0.85rem;
+}
+
+.admin-netsuite__progress-bar {
+  display: block;
+  width: 100%;
+  height: 0.7rem;
+  border: none;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #e6ece8;
+  accent-color: #2a8a4a;
+}
+
+.admin-netsuite__progress-bar::-webkit-progress-bar {
+  background: #e6ece8;
+  border-radius: 999px;
+}
+
+.admin-netsuite__progress-bar::-webkit-progress-value {
+  background: linear-gradient(90deg, #2a8a4a 0%, #f4c430 100%);
+  border-radius: 999px;
+}
+
+.admin-netsuite__progress-bar::-moz-progress-bar {
+  background: linear-gradient(90deg, #2a8a4a 0%, #f4c430 100%);
+  border-radius: 999px;
+}
+
+.admin-netsuite__progress-bar--indeterminate {
+  background: linear-gradient(90deg, #e6ece8 0%, #b8e0c5 50%, #e6ece8 100%);
+  background-size: 200% 100%;
+  animation: admin-netsuite-progress-slide 1.4s linear infinite;
+}
+
+.admin-netsuite__progress-meta {
+  margin: 0.4rem 0 0;
+  color: #5a6b62;
+  font-size: 0.85rem;
+}
+
+@keyframes admin-netsuite-progress-slide {
+  from {
+    background-position: 100% 0;
+  }
+
+  to {
+    background-position: -100% 0;
+  }
+}
+
 .admin-netsuite__counts {
   margin: 0.5rem 0 0;
   padding-left: 1.2rem;

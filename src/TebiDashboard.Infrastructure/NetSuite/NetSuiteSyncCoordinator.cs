@@ -27,7 +27,11 @@ public sealed class NetSuiteSyncCoordinator(
             {
                 State = NetSuiteSyncStates.Running,
                 Message = "NetSuite sync started.",
-                StartedAt = DateTimeOffset.UtcNow
+                StartedAt = DateTimeOffset.UtcNow,
+                CurrentStep = "starting",
+                CompletedSteps = 0,
+                // Default import has eight steps; the service overwrites this if tables are cleared first.
+                TotalSteps = 8
             };
         }
 
@@ -40,6 +44,28 @@ public sealed class NetSuiteSyncCoordinator(
         lock (_gate)
         {
             return _status;
+        }
+    }
+
+    public void ReportProgress(string currentStep, int completedSteps, int totalSteps)
+    {
+        lock (_gate)
+        {
+            // Drop late reports after Succeeded/Failed so a finished run is not overwritten.
+            if (_status.State != NetSuiteSyncStates.Running)
+            {
+                return;
+            }
+
+            _status = new NetSuiteSyncRunStatus
+            {
+                State = NetSuiteSyncStates.Running,
+                Message = $"Importing {currentStep}…",
+                StartedAt = _status.StartedAt,
+                CurrentStep = currentStep,
+                CompletedSteps = completedSteps,
+                TotalSteps = totalSteps
+            };
         }
     }
 

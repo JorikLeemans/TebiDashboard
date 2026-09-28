@@ -18,7 +18,8 @@ public sealed class NetSuiteSyncService(
     TebiDashboardDbContext dbContext,
     INetSuiteRestClient restClient,
     IOptions<NetSuiteOptions> options,
-    ILogger<NetSuiteSyncService> logger) : INetSuiteSyncService
+    ILogger<NetSuiteSyncService> logger,
+    INetSuiteSyncCoordinator syncCoordinator) : INetSuiteSyncService
 {
     public async Task<NetSuiteSyncResult> SyncDashboardDataAsync(CancellationToken cancellationToken = default)
     {
@@ -31,48 +32,53 @@ public sealed class NetSuiteSyncService(
 
         var lookbackFrom = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-Math.Max(settings.SyncLookbackDays, 1)));
         var pageSize = settings.SyncPageSize;
+        var progress = new SyncStepProgress
+        {
+            Completed = 0,
+            Total = settings.ClearDashboardDataOnSync ? 9 : 8
+        };
+        // Publish the step count immediately so the admin bar is determinate from the first poll.
+        syncCoordinator.ReportProgress("starting", progress.Completed, progress.Total);
 
         try
         {
             // Full replace is opt-in. Normal syncs keep stored rows and only add or refresh what NetSuite returns.
             if (settings.ClearDashboardDataOnSync)
             {
-                await RunStepAsync("clear dashboard tables", () => ClearDashboardTablesAsync(cancellationToken));
+                await RunStepAsync("clear dashboard tables", () => ClearDashboardTablesAsync(cancellationToken), progress);
             }
 
-            var customers = await RunStepAsync("customers", SyncCustomersAsync, pageSize, cancellationToken);
+            var customers = await RunStepAsync("customers", () => SyncCustomersAsync(pageSize, cancellationToken), progress);
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            var suppliers = await RunStepAsync("suppliers", SyncSuppliersAsync, pageSize, cancellationToken);
+            var suppliers = await RunStepAsync("suppliers", () => SyncSuppliersAsync(pageSize, cancellationToken), progress);
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            var inventoryItems = await RunStepAsync("inventory items", SyncInventoryItemsAsync, pageSize, cancellationToken);
+            var inventoryItems = await RunStepAsync("inventory items", () => SyncInventoryItemsAsync(pageSize, cancellationToken), progress);
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            var stockLocations = await RunStepAsync("stock locations", SyncStockLocationsAsync, pageSize, cancellationToken);
+            var stockLocations = await RunStepAsync("stock locations", () => SyncStockLocationsAsync(pageSize, cancellationToken), progress);
             // Persist stock first so the on-hand rollup reads the rows just imported or refreshed.
             await dbContext.SaveChangesAsync(cancellationToken);
             await ApplyInventoryQuantitiesFromStockLocationsAsync(cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            var revenue = await RunStepAsync("invoices", SyncRevenueAsync, lookbackFrom, pageSize, cancellationToken);
+            var revenue = await RunStepAsync("invoices", () => SyncRevenueAsync(lookbackFrom, pageSize, cancellationToken), progress);
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            var expenses = await RunStepAsync("vendor bills", SyncExpensesAsync, lookbackFrom, pageSize, cancellationToken);
+            var expenses = await RunStepAsync("vendor bills", () => SyncExpensesAsync(lookbackFrom, pageSize, cancellationToken), progress);
             await dbContext.SaveChangesAsync(cancellationToken);
 
             var openTransactions = await RunStepAsync(
                 "open sales and purchase orders",
-                SyncOpenTransactionsAsync,
-                lookbackFrom,
-                pageSize,
-                cancellationToken);
+                () => SyncOpenTransactionsAsync(lookbackFrom, pageSize, cancellationToken),
+                progress);
             await dbContext.SaveChangesAsync(cancellationToken);
 
             await RunStepAsync(
                 "recent item sales",
-                ct => ApplyRecentSalesVolumeAsync(lookbackFrom, pageSize, ct),
-                cancellationToken);
+                () => ApplyRecentSalesVolumeAsync(lookbackFrom, pageSize, cancellationToken),
+                progress);
             await dbContext.SaveChangesAsync(cancellationToken);
 
             return new NetSuiteSyncResult(
@@ -98,12 +104,18 @@ public sealed class NetSuiteSyncService(
         }
     }
 
-    private async Task<int> RunStepAsync(string stepName, Func<Task<int>> step)
+    private async Task<int> RunStepAsync(
+        string stepName,
+        Func<Task<int>> step,
+        SyncStepProgress progress)
     {
         try
         {
             logger.LogInformation("NetSuite sync step started: {StepName}", stepName);
+            syncCoordinator.ReportProgress(stepName, progress.Completed, progress.Total);
             var count = await step();
+            progress.Completed++;
+            syncCoordinator.ReportProgress(stepName, progress.Completed, progress.Total);
             logger.LogInformation("NetSuite sync step completed: {StepName} ({Count} rows)", stepName, count);
             return count;
         }
@@ -114,12 +126,18 @@ public sealed class NetSuiteSyncService(
         }
     }
 
-    private async Task RunStepAsync(string stepName, Func<Task> step)
+    private async Task RunStepAsync(
+        string stepName,
+        Func<Task> step,
+        SyncStepProgress progress)
     {
         try
         {
             logger.LogInformation("NetSuite sync step started: {StepName}", stepName);
+            syncCoordinator.ReportProgress(stepName, progress.Completed, progress.Total);
             await step();
+            progress.Completed++;
+            syncCoordinator.ReportProgress(stepName, progress.Completed, progress.Total);
             logger.LogInformation("NetSuite sync step completed: {StepName}", stepName);
         }
         catch (Exception ex)
@@ -129,26 +147,15 @@ public sealed class NetSuiteSyncService(
         }
     }
 
-    private Task<int> RunStepAsync(
-        string stepName,
-        Func<int, CancellationToken, Task<int>> step,
-        int pageSize,
-        CancellationToken cancellationToken) =>
-        RunStepAsync(stepName, () => step(pageSize, cancellationToken));
+    /// <summary>
+    /// Mutable counters for one sync run. Async methods cannot take ref parameters.
+    /// </summary>
+    private sealed class SyncStepProgress
+    {
+        public int Completed { get; set; }
 
-    private Task<int> RunStepAsync(
-        string stepName,
-        Func<DateOnly, int, CancellationToken, Task<int>> step,
-        DateOnly fromDate,
-        int pageSize,
-        CancellationToken cancellationToken) =>
-        RunStepAsync(stepName, () => step(fromDate, pageSize, cancellationToken));
-
-    private Task RunStepAsync(
-        string stepName,
-        Func<CancellationToken, Task> step,
-        CancellationToken cancellationToken) =>
-        RunStepAsync(stepName, () => step(cancellationToken));
+        public int Total { get; init; }
+    }
 
     private async Task ClearDashboardTablesAsync(CancellationToken cancellationToken)
     {

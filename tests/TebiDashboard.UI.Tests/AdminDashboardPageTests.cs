@@ -69,6 +69,28 @@ public class AdminDashboardPageTests
     }
 
     [Fact]
+    public void AdminDashboard_ShowsProgressBar_WhenSyncIsAlreadyRunning()
+    {
+        using var ctx = CreateContext(isAdmin: true, out var mockHttp, CreateRunningSetup());
+        mockHttp.When(HttpMethod.Get, "*/api/admin/users*")
+            .Respond(HttpStatusCode.OK, _ => JsonContent.Create<IReadOnlyList<UserAccountDto>>(
+            [
+                new UserAccountDto { Email = "admin@tebi.nl", Role = Roles.Admin }
+            ]));
+        mockHttp.When(HttpMethod.Get, "*/api/netsuite/sync/status*")
+            .Respond(HttpStatusCode.OK, _ => JsonContent.Create(CreateRunningStatus()));
+
+        var cut = ctx.Render<AdminDashboard>();
+        cut.WaitForAssertion(
+            () => Assert.Contains("Importing invoices", cut.Markup, StringComparison.OrdinalIgnoreCase),
+            TimeSpan.FromSeconds(5));
+
+        Assert.Contains("admin-netsuite__progress", cut.Markup);
+        Assert.Contains("Step 5 of 8", cut.Markup);
+        Assert.True(FindNetSuiteButton(cut, "Sync NetSuite data").HasAttribute("disabled"));
+    }
+
+    [Fact]
     public void AdminDashboard_ShowsUsers_WhenSetupRequestNeverReturns()
     {
         using var ctx = CreateContext(isAdmin: true, out var mockHttp, registerDefaultSetup: false);
@@ -152,6 +174,28 @@ public class AdminDashboardPageTests
                 CompletedAt = DateTimeOffset.Parse("2026-09-24T10:00:00Z"),
                 Result = new NetSuiteSyncResultDto { Success = true, Message = "Imported NetSuite records." }
             }
+        };
+
+    private static NetSuiteSyncStatusDto CreateRunningStatus() =>
+        new()
+        {
+            State = "Running",
+            Message = "Importing invoices…",
+            CurrentStep = "invoices",
+            CompletedSteps = 4,
+            TotalSteps = 8,
+            StartedAt = DateTimeOffset.UtcNow.AddSeconds(-45)
+        };
+
+    private static NetSuiteSetupStatusDto CreateRunningSetup() =>
+        new()
+        {
+            IsConfigured = true,
+            CanTestConnection = true,
+            CanSync = true,
+            ConfigurationMessage = "NetSuite OAuth credentials are configured on the API.",
+            DataSourceMessage = "Dashboard pages show the last successful import in the local database.",
+            LastSync = CreateRunningStatus()
         };
 
     private static AngleSharp.Dom.IElement FindNetSuiteButton(IRenderedComponent<AdminDashboard> cut, string label) =>
