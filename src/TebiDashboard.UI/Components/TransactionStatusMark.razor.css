@@ -1,0 +1,4 @@
+.transaction-status {
+  cursor: help;
+  border-bottom: 1px dotted currentColor;
+}

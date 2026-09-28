@@ -28,6 +28,9 @@ public class SupplierDetailPageTests
 
         cut.Find("table[aria-label='Supplier purchase orders'] .supplier-detail__order-row").Click();
         Assert.Contains("Betonblokken 40x20", cut.Find("table[aria-label='Supplier purchase orders']").TextContent);
+        var status = cut.Find("table[aria-label='Supplier purchase orders'] .transaction-status");
+        Assert.Equal("B", status.TextContent);
+        Assert.Equal("Pending Receipt", status.GetAttribute("title"));
 
         var expenses = cut.Find("table[aria-label='Supplier expenses']").TextContent;
         Assert.Contains("Transport", expenses);

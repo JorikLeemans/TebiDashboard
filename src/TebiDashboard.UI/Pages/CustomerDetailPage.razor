@@ -163,7 +163,15 @@
                                         @onclick:stopPropagation="true"
                                         tabindex="0">
                                         <td>@line.TransactionDate.ToString("d")</td>
-                                        <td>@SalesOrderLineLabel(line)</td>
+                                        <td>
+                                            @SalesOrderLineLabel(line)
+                                            @if (!string.IsNullOrWhiteSpace(line.Status))
+                                            {
+                                                @* Status stays a compact letter; hover shows the full NetSuite name. *@
+                                                <text> · </text>
+                                                <TransactionStatusMark Status="@line.Status" Type="@line.Type" />
+                                            }
+                                        </td>
                                         <td>@EuroFormatting.Format(line.Amount)</td>
                                     </tr>
                                 }
@@ -286,17 +294,17 @@
         }
     }
 
-    // Expanded sales-order lines show the article, remaining qty, and status.
+    // Expanded sales-order lines show the article and remaining qty; status is a hover mark beside this text.
     private static string SalesOrderLineLabel(OpenTransactionDto line)
     {
         var item = ItemLabel(line.ItemName, line.ItemId);
         var quantity = line.QuantityOpen.ToString("N0");
         if (string.IsNullOrWhiteSpace(item))
         {
-            return $"{quantity} open · {line.Status}";
+            return $"{quantity} open";
         }
 
-        return $"{item} · {quantity} open · {line.Status}";
+        return $"{item} · {quantity} open";
     }
 
     // Hide a bare NetSuite internal id (digits only) when the name never arrived.
