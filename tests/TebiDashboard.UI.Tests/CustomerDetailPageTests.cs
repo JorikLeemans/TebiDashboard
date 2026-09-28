@@ -87,8 +87,12 @@ public class CustomerDetailPageTests
         Assert.Contains("pg-edging", expandedRevenue);
 
         var orders = cut.Find("table[aria-label='Customer sales orders']").TextContent;
-        Assert.Contains("Opsluitbanden Grijs", orders);
         Assert.Contains("t8", orders);
+        Assert.DoesNotContain("Opsluitbanden Grijs", orders);
+
+        cut.Find("table[aria-label='Customer sales orders'] .customer-detail__invoice-row").Click();
+        var expandedOrders = cut.Find("table[aria-label='Customer sales orders']").TextContent;
+        Assert.Contains("Opsluitbanden Grijs", expandedOrders);
     }
 
     [Fact]
@@ -130,6 +134,7 @@ public class CustomerDetailPageTests
 
         cut.Find(".customer-detail__invoice-row").Click();
         Assert.Contains("pg-unknown", cut.Find("table[aria-label='Customer revenue']").TextContent);
+        cut.Find("table[aria-label='Customer sales orders'] .customer-detail__invoice-row").Click();
         Assert.Contains("i-missing", cut.Find("table[aria-label='Customer sales orders']").TextContent);
     }
 
@@ -180,6 +185,54 @@ public class CustomerDetailPageTests
         Assert.Contains("Klinkers", expanded);
         Assert.Contains("Zand", expanded);
         Assert.Contains("Bestrating", expanded);
+    }
+
+    [Fact]
+    public void CustomerDetailPage_GroupsSalesOrders_AndExpandsLinesOnClick()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        mockHttp.When(HttpMethod.Get, "*/api/customers/c3*")
+            .Respond(HttpStatusCode.OK, _ => JsonContent.Create(new CustomerDetailDto
+            {
+                Customer = new CustomerDto { CustomerId = "c3", Name = "Stratenmakers BV" },
+                SalesOrders =
+                [
+                    new OpenTransactionDto
+                    {
+                        TransactionId = "t1",
+                        Type = "Sales Order",
+                        ItemName = "Betonstraatstenen Antraciet",
+                        TransactionDate = new DateOnly(2026, 9, 23),
+                        QuantityOpen = 40,
+                        Amount = 39500m,
+                        Status = "Pending Fulfillment"
+                    },
+                    new OpenTransactionDto
+                    {
+                        TransactionId = "t1-2",
+                        Type = "Sales Order",
+                        ItemName = "Klinkers Rood-Bruin",
+                        TransactionDate = new DateOnly(2026, 9, 23),
+                        QuantityOpen = 12,
+                        Amount = 14400m,
+                        Status = "Pending Fulfillment"
+                    }
+                ]
+            }));
+
+        var cut = ctx.Render<CustomerDetailPage>(parameters => parameters.Add(p => p.CustomerId, "c3"));
+        cut.WaitForElement("table[aria-label='Customer sales orders']", TimeSpan.FromSeconds(5));
+
+        var collapsed = cut.Find("table[aria-label='Customer sales orders']").TextContent;
+        Assert.Contains("t1", collapsed);
+        Assert.Contains("53.900,00", collapsed);
+        Assert.DoesNotContain("Betonstraatstenen Antraciet", collapsed);
+        Assert.DoesNotContain("Klinkers Rood-Bruin", collapsed);
+
+        cut.Find("table[aria-label='Customer sales orders'] .customer-detail__invoice-row").Click();
+        var expanded = cut.Find("table[aria-label='Customer sales orders']").TextContent;
+        Assert.Contains("Betonstraatstenen Antraciet", expanded);
+        Assert.Contains("Klinkers Rood-Bruin", expanded);
     }
 
     private static BunitContext CreateAuthenticatedContext(out MockHttpMessageHandler mockHttp)
