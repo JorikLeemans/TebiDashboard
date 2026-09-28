@@ -51,20 +51,9 @@ public static class InvoiceRevenueGroups
             .ToList();
 
     /// <summary>
-    /// Prefer the NetSuite invoice id, then the document number, then the line id.
+    /// Use the same invoice text the table shows. Older synced rows have empty InvoiceId /
+    /// InvoiceNumber and only a "{invoice}-{line}" key, so grouping by row id would split
+    /// one invoice across many header rows. A new incremental sync does not rewrite those rows.
     /// </summary>
-    public static string GroupKey(RevenueDto row)
-    {
-        if (!string.IsNullOrWhiteSpace(row.InvoiceId))
-        {
-            return $"id:{row.InvoiceId}";
-        }
-
-        if (!string.IsNullOrWhiteSpace(row.InvoiceNumber))
-        {
-            return $"num:{row.InvoiceNumber}";
-        }
-
-        return $"row:{row.Id}";
-    }
+    public static string GroupKey(RevenueDto row) => InvoiceLabel.For(row);
 }
