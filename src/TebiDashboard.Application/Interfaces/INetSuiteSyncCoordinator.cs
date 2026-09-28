@@ -11,6 +11,11 @@ public interface INetSuiteSyncCoordinator
     bool TryStart();
 
     NetSuiteSyncRunStatus GetStatus();
+
+    /// <summary>
+    /// Updates the in-progress step so the admin page can show a progress bar.
+    /// </summary>
+    void ReportProgress(string currentStep, int completedSteps, int totalSteps);
 }
 
 /// <summary>
@@ -27,6 +32,15 @@ public sealed class NetSuiteSyncRunStatus
     public DateTimeOffset? StartedAt { get; init; }
 
     public DateTimeOffset? CompletedAt { get; init; }
+
+    /// <summary>Human-readable step name shown on the admin progress bar.</summary>
+    public string CurrentStep { get; init; } = string.Empty;
+
+    /// <summary>Finished steps in this run.</summary>
+    public int CompletedSteps { get; init; }
+
+    /// <summary>Total steps planned for this run.</summary>
+    public int TotalSteps { get; init; }
 }
 
 /// <summary>

@@ -79,9 +79,25 @@
                 </div>
             }
 
+            @* Determinate bar while Sync runs; indeterminate while Test connection is in flight. *@
             @if (_netSuiteBusy)
             {
-                <p class="admin-netsuite__status">Working with NetSuite…</p>
+                <div class="admin-netsuite__progress" role="status" aria-live="polite">
+                    <p class="admin-netsuite__status">@NetSuiteBusyLabel</p>
+                    @if (HasDeterminateProgress)
+                    {
+                        <progress class="admin-netsuite__progress-bar"
+                                  max="@_syncProgress!.TotalSteps"
+                                  value="@_syncProgress.CompletedSteps">
+                            @SyncPercent%
+                        </progress>
+                    }
+                    else
+                    {
+                        <progress class="admin-netsuite__progress-bar admin-netsuite__progress-bar--indeterminate"></progress>
+                    }
+                    <p class="admin-netsuite__progress-meta">@NetSuiteProgressMeta</p>
+                </div>
             }
 
             @if (!string.IsNullOrWhiteSpace(_netSuiteError))
@@ -204,10 +220,12 @@
   private string? _pageError;
   private string? _statusMessage;
   private bool _netSuiteBusy;
+  private bool _testingConnection;
   private string? _netSuiteError;
   private NetSuiteSetupStatusDto? _netSuiteSetup;
   private NetSuiteConnectionResultDto? _netSuiteConnection;
   private NetSuiteSyncResultDto? _netSuiteSync;
+  private NetSuiteSyncStatusDto? _syncProgress;
 
   /// <summary>
   /// Test and Sync stay disabled until credentials are present and no request is already running.
@@ -224,6 +242,87 @@
       : _netSuiteSetup is { IsConfigured: false }
         ? "NetSuite is not configured on the API."
         : null;
+
+  /// <summary>True when the API has reported a step count for the current import.</summary>
+  private bool HasDeterminateProgress =>
+    !_testingConnection && _syncProgress is { TotalSteps: > 0 };
+
+  /// <summary>Completed-step percentage for the determinate bar (0–100).</summary>
+  private int SyncPercent
+  {
+    get
+    {
+      if (_syncProgress is not { TotalSteps: > 0 })
+      {
+        return 0;
+      }
+
+      return Math.Clamp(
+        (int)Math.Round(100.0 * _syncProgress.CompletedSteps / _syncProgress.TotalSteps),
+        0,
+        100);
+    }
+  }
+
+  /// <summary>Headline shown while Test or Sync is in progress.</summary>
+  private string NetSuiteBusyLabel
+  {
+    get
+    {
+      if (_testingConnection)
+      {
+        return "Testing NetSuite connection…";
+      }
+
+      if (!string.IsNullOrWhiteSpace(_syncProgress?.CurrentStep)
+          && !string.Equals(_syncProgress.CurrentStep, "starting", StringComparison.OrdinalIgnoreCase))
+      {
+        return $"Importing {_syncProgress.CurrentStep}…";
+      }
+
+      return "Working with NetSuite…";
+    }
+  }
+
+  /// <summary>Step count, percent, and elapsed time under the bar.</summary>
+  private string NetSuiteProgressMeta
+  {
+    get
+    {
+      var parts = new List<string>();
+
+      if (HasDeterminateProgress && _syncProgress is not null)
+      {
+        var current = Math.Min(_syncProgress.CompletedSteps + 1, _syncProgress.TotalSteps);
+        if (_syncProgress.CompletedSteps >= _syncProgress.TotalSteps)
+        {
+          current = _syncProgress.TotalSteps;
+        }
+
+        parts.Add($"Step {current} of {_syncProgress.TotalSteps}");
+        parts.Add($"{SyncPercent}%");
+      }
+
+      if (_syncProgress?.StartedAt is { } started)
+      {
+        var elapsed = DateTimeOffset.UtcNow - started;
+        if (elapsed < TimeSpan.Zero)
+        {
+          elapsed = TimeSpan.Zero;
+        }
+
+        parts.Add(elapsed.TotalMinutes < 1
+          ? $"{Math.Max(0, (int)elapsed.TotalSeconds)}s elapsed"
+          : $"{(int)elapsed.TotalMinutes}m {elapsed.Seconds:00}s elapsed");
+      }
+      else if (_testingConnection)
+      {
+        parts.Add("This usually takes a few seconds.");
+      }
+
+      return parts.Count == 0 ? "This can take several minutes." : string.Join(" · ", parts);
+    }
+  }
 
   /// <summary>
   /// Setup is a convenience banner. Never block the admin page on it — Railway/proxy
@@ -256,7 +355,9 @@
 
     if (_netSuiteSetup?.LastSync.State == "Running")
     {
-      // Do not await inside OnInitialized — a long import would freeze this lifecycle again.
+      // Resume the bar immediately; do not await here or OnInitialized would freeze until the import ends.
+      _syncProgress = _netSuiteSetup.LastSync;
+      _netSuiteBusy = true;
       _ = InvokeAsync(WatchRunningSyncAsync);
     }
   }
@@ -417,6 +518,8 @@
   private async Task TestNetSuiteConnectionAsync()
   {
     _netSuiteBusy = true;
+    _testingConnection = true;
+    _syncProgress = null;
     _netSuiteError = null;
     _netSuiteConnection = null;
 
@@ -430,6 +533,7 @@
     }
     finally
     {
+      _testingConnection = false;
       _netSuiteBusy = false;
     }
   }
@@ -437,13 +541,24 @@
   private async Task SyncNetSuiteDataAsync()
   {
     _netSuiteBusy = true;
+    _testingConnection = false;
     _netSuiteError = null;
     _netSuiteSync = null;
     _statusMessage = null;
+    _syncProgress = new NetSuiteSyncStatusDto
+    {
+      State = "Running",
+      Message = "NetSuite sync started.",
+      CurrentStep = "starting",
+      CompletedSteps = 0,
+      TotalSteps = 8,
+      StartedAt = DateTimeOffset.UtcNow
+    };
 
     try
     {
       var start = await AdminApi.StartNetSuiteSyncAsync();
+      _syncProgress = start;
       if (start.State == "Failed" && start.Result is null)
       {
         _netSuiteError = start.Message;
@@ -464,21 +579,27 @@
     finally
     {
       _netSuiteBusy = false;
+      _testingConnection = false;
     }
   }
 
   /// <summary>
   /// Polls /api/netsuite/sync/status until the background import finishes, then refreshes setup.
+  /// Re-renders each poll so the progress bar moves while a long step (invoices) is still running.
   /// </summary>
   private async Task WatchRunningSyncAsync()
   {
     _netSuiteBusy = true;
+    _testingConnection = false;
 
     try
     {
       while (true)
       {
         var status = await AdminApi.GetNetSuiteSyncStatusAsync();
+        _syncProgress = status;
+        await InvokeAsync(StateHasChanged);
+
         if (status.State is not "Running")
         {
           _netSuiteSync = status.Result ?? new NetSuiteSyncResultDto
@@ -496,7 +617,7 @@
           break;
         }
 
-        await Task.Delay(TimeSpan.FromSeconds(3));
+        await Task.Delay(TimeSpan.FromSeconds(2));
       }
 
       // Refresh the configured / last-sync banner after the run completes.
@@ -505,6 +626,7 @@
     finally
     {
       _netSuiteBusy = false;
+      _testingConnection = false;
     }
   }
 
