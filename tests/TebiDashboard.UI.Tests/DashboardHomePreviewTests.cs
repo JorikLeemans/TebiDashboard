@@ -47,5 +47,8 @@ public sealed class DashboardHomePreviewTests
             "Showing the 20 most recent of 25. Period totals stay in the KPIs and chart.",
             DashboardHomePreview.TruncationNote(25, mostRecent: true));
         Assert.Equal("Showing 20 of 40.", DashboardHomePreview.TruncationNote(40, mostRecent: false));
+        Assert.Equal(
+            "Showing the 20 most recent of 25. Period totals stay in the KPIs.",
+            DashboardHomePreview.TruncationNote(25, mostRecent: true, includeChart: false));
     }
 }

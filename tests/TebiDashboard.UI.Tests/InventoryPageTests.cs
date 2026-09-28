@@ -79,6 +79,9 @@ public class InventoryPageTests
         Assert.Contains("Stock by location", cut.Markup);
         Assert.Contains("Open transactions", cut.Markup);
         Assert.Contains("Hoofdmagazijn", cut.Markup);
+        var status = cut.Find(".transaction-status");
+        Assert.Equal("B", status.TextContent);
+        Assert.Equal("Pending Fulfillment", status.GetAttribute("title"));
     }
 
     private static BunitContext CreateAuthenticatedContext(out MockHttpMessageHandler mockHttp)

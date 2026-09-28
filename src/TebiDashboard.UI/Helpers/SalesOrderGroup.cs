@@ -23,7 +23,7 @@ public sealed class SalesOrderGroup
 }
 
 /// <summary>
-/// Groups open sales-order lines by parent order so the customer page can show one row per order.
+/// Groups open sales-order or purchase-order lines by parent order so a detail page can show one row per order.
 /// </summary>
 public static class SalesOrderGroups
 {

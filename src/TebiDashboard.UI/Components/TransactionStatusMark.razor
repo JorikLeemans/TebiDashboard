@@ -1,0 +1,19 @@
+@using TebiDashboard.UI.Helpers
+
+@* Compact NetSuite status letter; native title tooltip shows the full name. *@
+@if (!string.IsNullOrWhiteSpace(Status))
+{
+    <span class="transaction-status"
+          title="@TransactionStatusLabel.Describe(Status, Type)"
+          aria-label="@TransactionStatusLabel.Describe(Status, Type)">
+        @TransactionStatusLabel.Display(Status)
+    </span>
+}
+
+@code {
+    [Parameter]
+    public string Status { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Type { get; set; }
+}

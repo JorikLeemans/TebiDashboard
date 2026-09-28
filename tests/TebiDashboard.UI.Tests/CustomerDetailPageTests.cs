@@ -93,6 +93,9 @@ public class CustomerDetailPageTests
         cut.Find("table[aria-label='Customer sales orders'] .customer-detail__invoice-row").Click();
         var expandedOrders = cut.Find("table[aria-label='Customer sales orders']").TextContent;
         Assert.Contains("Opsluitbanden Grijs", expandedOrders);
+        var status = cut.Find("table[aria-label='Customer sales orders'] .transaction-status");
+        Assert.Equal("B", status.TextContent);
+        Assert.Equal("Pending Fulfillment", status.GetAttribute("title"));
     }
 
     [Fact]

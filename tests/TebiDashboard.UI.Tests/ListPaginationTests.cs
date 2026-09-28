@@ -7,7 +7,7 @@ public sealed class ListPaginationTests
     [Fact]
     public void AllowedPageSizes_ContainsExpectedSteps()
     {
-        Assert.Equal([5, 10, 25, 50, 100], ListPagination.AllowedPageSizes);
+        Assert.Equal([5, 10, 20, 25, 50, 100], ListPagination.AllowedPageSizes);
     }
 
     [Theory]

@@ -49,6 +49,7 @@ public class SuppliersPageTests
         Assert.Contains("€", cut.Markup);
         Assert.Contains("Total purchased", cut.Markup);
         Assert.Contains("Purchase orders", cut.Markup);
+        Assert.Contains(",00", cut.Markup);
     }
 
     private static void SetupSuppliersOverview(MockHttpMessageHandler mockHttp, IReadOnlyList<SupplierOverviewDto> suppliers)

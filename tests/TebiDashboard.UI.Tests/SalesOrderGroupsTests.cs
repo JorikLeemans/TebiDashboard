@@ -56,4 +56,11 @@ public sealed class SalesOrderGroupsTests
         var key = SalesOrderLabel.For(new OpenTransactionDto { TransactionId = "t-so-12" });
         Assert.Equal("t-so-12", key);
     }
+
+    [Fact]
+    public void For_GroupsNetSuitePurchaseOrderLineIds()
+    {
+        var key = SalesOrderLabel.For(new OpenTransactionDto { TransactionId = "2136801-4" });
+        Assert.Equal("2136801", key);
+    }
 }
