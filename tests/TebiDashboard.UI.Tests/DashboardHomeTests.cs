@@ -116,6 +116,49 @@ public class DashboardHomeTests
     }
 
     [Fact]
+    public void DashboardHome_ShowsOnlyTwentyMostRecentSalesRows()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        var revenue = Enumerable.Range(1, 25)
+            .Select(index => new RevenueDto
+            {
+                Id = $"r{index}",
+                Date = new DateOnly(2026, 6, 10).AddDays(-index),
+                Amount = index,
+                CustomerName = $"Customer {index}",
+                InvoiceNumber = $"F-{index}"
+            })
+            .ToList();
+
+        SetupPeriodOverview(mockHttp, new PeriodOverviewDto
+        {
+            PeriodFrom = new DateOnly(2026, 5, 1),
+            PeriodTo = new DateOnly(2026, 6, 10),
+            Summary = new DashboardSummaryDto
+            {
+                Revenue = 1000m,
+                SalesVolume = 25m,
+                GoalPercentage = 80m,
+                RevenueTrend = "up",
+                LowStockAlertCount = 0,
+                PeriodFrom = new DateOnly(2026, 5, 1),
+                PeriodTo = new DateOnly(2026, 6, 10)
+            },
+            Revenue = revenue
+        });
+        SetupGoals(mockHttp);
+
+        var cut = ctx.Render<DashboardHome>();
+        cut.WaitForElement(".dashboard-table", TimeSpan.FromSeconds(5));
+
+        Assert.Contains("20 of 25", cut.Markup);
+        Assert.Contains("Showing the 20 most recent of 25", cut.Markup);
+        Assert.Contains("F-1", cut.Markup);
+        Assert.DoesNotContain("F-21", cut.Markup);
+        Assert.Equal(20, cut.FindAll("table[aria-label=\"Revenue in period\"] tbody tr").Count);
+    }
+
+    [Fact]
     public void DashboardHome_ShowsError_WhenApiFails()
     {
         using var ctx = CreateAuthenticatedContext(out var mockHttp);

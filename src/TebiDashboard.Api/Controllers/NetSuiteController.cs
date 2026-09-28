@@ -4,6 +4,7 @@ using TebiDashboard.Api.Authorization;
 using TebiDashboard.Application.Interfaces;
 using TebiDashboard.Application.Options;
 using TebiDashboard.Infrastructure.NetSuite;
+using TebiDashboard.Shared.Constants;
 using TebiDashboard.Shared.Dtos;
 
 namespace TebiDashboard.Api.Controllers;
@@ -16,14 +17,15 @@ namespace TebiDashboard.Api.Controllers;
 public class NetSuiteController(
     INetSuiteConnectionService connectionService,
     INetSuiteSyncCoordinator syncCoordinator,
+    INetSuiteSyncCheckpointStore checkpointStore,
     IOptions<NetSuiteOptions> netSuiteOptions) : ControllerBase
 {
     /// <summary>
-    /// Returns whether NetSuite credentials are present and the last sync for this API process (admin only).
-    /// Used by the admin page on load so operators do not have to guess if sync can work.
+    /// Returns whether NetSuite credentials are present and the last sync (admin only).
+    /// Last successful time comes from the database so it survives API restarts.
     /// </summary>
     [HttpGet("setup")]
-    public IActionResult GetSetupStatus()
+    public async Task<IActionResult> GetSetupStatus(CancellationToken cancellationToken)
     {
         if (!AdminRequestContext.IsAdmin(Request))
         {
@@ -31,8 +33,10 @@ public class NetSuiteController(
         }
 
         var settings = netSuiteOptions.Value;
-        var lastSync = MapLastSync(syncCoordinator.GetStatus());
+        var checkpoint = await checkpointStore.GetAsync(cancellationToken);
+        var lastSync = MapLastSync(syncCoordinator.GetStatus(), checkpoint);
         var isConfigured = settings.IsConfigured;
+        var utcNow = DateTimeOffset.UtcNow;
 
         return Ok(new NetSuiteSetupStatusDto
         {
@@ -46,7 +50,12 @@ public class NetSuiteController(
             DataSourceMessage = isConfigured
                 ? "Dashboard pages show the last successful import in the local database. Use Sync to refresh from NetSuite."
                 : "NetSuite is not configured, so dashboard pages show locally seeded demo data instead of a live import.",
-            LastSync = lastSync
+            LastSync = lastSync,
+            LookbackDaysMin = NetSuiteLookback.MinDays,
+            LookbackDaysMax = NetSuiteLookback.MaxDays,
+            SuggestedLookbackDays = NetSuiteLookback.Suggest(checkpoint.LastSucceededAt, utcNow),
+            LastLookbackDays = checkpoint.LastLookbackDays,
+            LastSucceededAt = checkpoint.LastSucceededAt
         });
     }
 
@@ -61,37 +70,52 @@ public class NetSuiteController(
     }
 
     /// <summary>
-    /// Turns in-memory coordinator state into a DTO. Idle means no sync has run since the API started.
+    /// Prefers the in-process run when one exists; otherwise shows the persisted last success.
     /// </summary>
-    private static NetSuiteSyncStatusDto MapLastSync(NetSuiteSyncRunStatus status)
+    private static NetSuiteSyncStatusDto MapLastSync(NetSuiteSyncRunStatus status, NetSuiteSyncCheckpoint checkpoint)
     {
-        var dto = status.ToStatusDto();
-        if (dto.State != NetSuiteSyncStates.Idle)
+        if (status.State != NetSuiteSyncStates.Idle)
         {
-            return dto;
+            return status.ToStatusDto();
+        }
+
+        if (checkpoint.LastSucceededAt is { } succeededAt)
+        {
+            return new NetSuiteSyncStatusDto
+            {
+                State = NetSuiteSyncStates.Succeeded,
+                Message = string.IsNullOrWhiteSpace(checkpoint.LastMessage)
+                    ? "Last successful NetSuite import."
+                    : checkpoint.LastMessage,
+                StartedAt = null,
+                CompletedAt = succeededAt,
+                LookbackDays = checkpoint.LastLookbackDays
+            };
         }
 
         return new NetSuiteSyncStatusDto
         {
             State = NetSuiteSyncStates.Idle,
-            Message = "No sync has run since this API process started.",
-            StartedAt = dto.StartedAt,
-            CompletedAt = dto.CompletedAt
+            Message = "No successful NetSuite import is stored yet.",
+            StartedAt = checkpoint.LastCompletedAt,
+            CompletedAt = checkpoint.LastCompletedAt,
+            LookbackDays = checkpoint.LastLookbackDays
         };
     }
 
     /// <summary>
     /// Starts importing NetSuite data in the background (admin only).
+    /// lookbackDays is the Admin slider value; SuiteQL invoices/bills use tranDate &gt;= today minus that many days.
     /// </summary>
     [HttpPost("sync")]
-    public IActionResult StartSyncDashboardData()
+    public IActionResult StartSyncDashboardData([FromQuery] int lookbackDays = NetSuiteLookback.DefaultDays)
     {
         if (!AdminRequestContext.IsAdmin(Request))
         {
             return StatusCode(StatusCodes.Status403Forbidden);
         }
 
-        if (!syncCoordinator.TryStart())
+        if (!syncCoordinator.TryStart(lookbackDays))
         {
             return Conflict(syncCoordinator.GetStatus().ToStatusDto());
         }

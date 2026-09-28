@@ -134,9 +134,13 @@ public sealed class AdminApiClient(HttpClient httpClient, IAuthStateService auth
     /// <summary>
     /// Starts a background NetSuite import on the API (returns quickly; poll status afterward).
     /// </summary>
-    public async Task<NetSuiteSyncStatusDto> StartNetSuiteSyncAsync(CancellationToken cancellationToken = default)
+    public async Task<NetSuiteSyncStatusDto> StartNetSuiteSyncAsync(
+        int lookbackDays,
+        CancellationToken cancellationToken = default)
     {
-        using var request = CreateAuthorizedRequest(HttpMethod.Post, "api/netsuite/sync");
+        using var request = CreateAuthorizedRequest(
+            HttpMethod.Post,
+            $"api/netsuite/sync?lookbackDays={Uri.EscapeDataString(lookbackDays.ToString())}");
         var response = await httpClient.SendAsync(request, cancellationToken);
 
         if (response.StatusCode is HttpStatusCode.Accepted or HttpStatusCode.Conflict)

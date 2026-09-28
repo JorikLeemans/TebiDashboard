@@ -5,7 +5,7 @@ namespace TebiDashboard.Application.Interfaces;
 /// </summary>
 public interface INetSuiteSyncService
 {
-    Task<NetSuiteSyncResult> SyncDashboardDataAsync(CancellationToken cancellationToken = default);
+    Task<NetSuiteSyncResult> SyncDashboardDataAsync(int lookbackDays, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

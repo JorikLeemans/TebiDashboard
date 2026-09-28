@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -28,15 +29,18 @@ public sealed class NetSuiteRestClient(
             throw new InvalidOperationException("NetSuite is not configured for SuiteQL queries.");
         }
 
-        var accessToken = await tokenProvider.GetAccessTokenAsync(cancellationToken);
         var baseUrl = NetSuiteOAuth2TokenProvider.BuildRestBaseUrl(settings.AccountId);
         var client = httpClientFactory.CreateClient(NetSuiteHttpClientNames.Api);
         var results = new List<IReadOnlyDictionary<string, JsonElement>>();
         var offset = 0;
         var limit = Math.Clamp(pageSize, 1, 1000);
+        // Oracle Collection Paging: max 1000 rows per page; offset must be divisible by limit.
+        var retriedUnauthorized = false;
 
         while (true)
         {
+            // Re-read the cached token each page so a long vendor-bill import can refresh after ~1 hour.
+            var accessToken = await tokenProvider.GetAccessTokenAsync(cancellationToken);
             var url = $"{baseUrl}/query/v1/suiteql?limit={limit}&offset={offset}";
             using var request = new HttpRequestMessage(HttpMethod.Post, url);
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
@@ -46,6 +50,14 @@ public sealed class NetSuiteRestClient(
 
             using var response = await client.SendAsync(request, cancellationToken);
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            if (response.StatusCode == HttpStatusCode.Unauthorized && !retriedUnauthorized)
+            {
+                logger.LogWarning("SuiteQL returned 401; refreshing the NetSuite access token and retrying the page.");
+                tokenProvider.InvalidateCachedToken();
+                retriedUnauthorized = true;
+                continue;
+            }
+
             if (!response.IsSuccessStatusCode)
             {
                 logger.LogWarning("SuiteQL request failed with status {StatusCode}: {Body}", response.StatusCode, body);
@@ -83,6 +95,7 @@ public sealed class NetSuiteRestClient(
             }
 
             offset += limit;
+            retriedUnauthorized = false;
         }
 
         return results;

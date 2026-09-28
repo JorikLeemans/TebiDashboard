@@ -248,9 +248,56 @@
   flex-wrap: wrap;
 }
 
-.admin-netsuite__status {
-  margin: 0 0 0.75rem;
+.admin-netsuite__lookback {
+  margin: 0 0 0.85rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid #dde3ea;
+  background: #f7faf8;
+}
+
+.admin-netsuite__lookback-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.admin-netsuite__lookback-row label {
+  font-weight: 600;
+  color: #145c32;
+}
+
+.admin-netsuite__lookback-value {
+  font-weight: 700;
+  color: #1a3d24;
+}
+
+.admin-netsuite__lookback-slider {
+  width: 100%;
+  margin: 0.65rem 0;
+  accent-color: #2a8a4a;
+}
+
+.admin-netsuite__lookback-number {
+  width: 6.5rem;
+  border: 1px solid #c9d8cf;
+  border-radius: 8px;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.9rem;
+}
+
+.admin-netsuite__lookback-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.admin-netsuite__lookback-hint {
+  margin: 0.55rem 0 0;
   color: #5a6b62;
+  font-size: 0.85rem;
 }
 
 /* Live step progress under Test / Sync so operators can see the import is still moving. */

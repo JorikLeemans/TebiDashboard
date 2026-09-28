@@ -11,6 +11,11 @@ public interface INetSuiteTokenProvider
     Task<string> GetAccessTokenAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Drops the cached bearer token so the next call signs a new client assertion.
+    /// </summary>
+    void InvalidateCachedToken();
+
+    /// <summary>
     /// True when account ID, client ID, certificate ID, and private key are configured.
     /// </summary>
     bool IsConfigured { get; }

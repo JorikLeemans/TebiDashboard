@@ -52,6 +52,22 @@ public sealed class NetSuiteSyncEndpointTests
     }
 
     [Fact]
+    public async Task Sync_AcceptsLookbackDaysQuery()
+    {
+        await using var factory = new TebiWebApplicationFactory();
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Tebi-Role", "Admin");
+
+        var response = await client.PostAsync("/api/netsuite/sync?lookbackDays=14", content: null);
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+
+        var status = await response.Content.ReadFromJsonAsync<NetSuiteSyncStatusDto>();
+        Assert.NotNull(status);
+        Assert.Equal(14, status.LookbackDays);
+    }
+
+    [Fact]
     public async Task Setup_RequiresAdminRole()
     {
         await using var factory = new TebiWebApplicationFactory();
@@ -81,6 +97,9 @@ public sealed class NetSuiteSyncEndpointTests
         Assert.Contains("Enabled", setup.MissingSettings);
         Assert.Contains("demo", setup.DataSourceMessage, StringComparison.OrdinalIgnoreCase);
         Assert.Equal("Idle", setup.LastSync.State);
-        Assert.Contains("No sync has run", setup.LastSync.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("No successful NetSuite import", setup.LastSync.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(1, setup.LookbackDaysMin);
+        Assert.Equal(730, setup.LookbackDaysMax);
+        Assert.Equal(365, setup.SuggestedLookbackDays);
     }
 }

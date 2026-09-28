@@ -94,6 +94,8 @@ internal static class NetSuiteSuiteQlQueries
     /// both Item and Product group rendered as "16".
     /// NetSuite stores invoice item lines as credits (debit-positive / credit-negative), so
     /// tl.amount is negative when the customer owes us. Negate it for customer-facing omzet.
+    /// fromDate is the Admin lookback (tranDate &gt;= fromDate). REST SuiteQL pages this result
+    /// (limit/offset, max 1000 rows per page).
     /// </summary>
     public static string Invoices(DateOnly fromDate) =>
         $"""
