@@ -1,6 +1,7 @@
 @page "/dashboard"
 @layout DashboardLayout
 @using TebiDashboard.Shared.Dtos
+@using TebiDashboard.UI.Helpers
 @inject DashboardApiClient ApiClient
 @inject IPeriodFilterService InjectedPeriodFilter
 @inject IAuthStateService AuthState
@@ -52,7 +53,7 @@
         </section>
 
         <section class="dashboard-section">
-            <h2>Sales in period (@_overview.Revenue.Count)</h2>
+            <h2>Sales in period (@DashboardHomePreview.TitleCount(SalesPreview.Count, _overview.Revenue.Count))</h2>
             @if (_overview.Revenue.Count == 0)
             {
                 <p class="dashboard-empty">No revenue records in this period.</p>
@@ -70,7 +71,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var row in _overview.Revenue)
+                        @foreach (var row in SalesPreview)
                         {
                             <tr>
                                 <td>@row.Date.ToString("d")</td>
@@ -94,11 +95,15 @@
                         }
                     </tbody>
                 </table>
+                @if (_overview.Revenue.Count > DashboardHomePreview.MaxRows)
+                {
+                    <p class="dashboard-preview-note">@DashboardHomePreview.TruncationNote(_overview.Revenue.Count, mostRecent: true)</p>
+                }
             }
         </section>
 
         <section class="dashboard-section">
-            <h2>Customers with sales orders (@_overview.Customers.Count)</h2>
+            <h2>Customers with sales orders (@DashboardHomePreview.TitleCount(CustomersPreview.Count, _overview.Customers.Count))</h2>
             @if (_overview.Customers.Count == 0)
             {
                 <p class="dashboard-empty">No customers linked to sales orders in this period.</p>
@@ -116,7 +121,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var customer in _overview.Customers)
+                        @foreach (var customer in CustomersPreview)
                         {
                             <tr>
                                 <td>@customer.Name</td>
@@ -128,11 +133,15 @@
                         }
                     </tbody>
                 </table>
+                @if (_overview.Customers.Count > DashboardHomePreview.MaxRows)
+                {
+                    <p class="dashboard-preview-note">@DashboardHomePreview.TruncationNote(_overview.Customers.Count, mostRecent: false)</p>
+                }
             }
         </section>
 
         <section class="dashboard-section">
-            <h2>Open sales orders and period transactions (@_overview.Transactions.Count)</h2>
+            <h2>Open sales orders and period transactions (@DashboardHomePreview.TitleCount(TransactionsPreview.Count, _overview.Transactions.Count))</h2>
             @if (_overview.Transactions.Count == 0)
             {
                 <p class="dashboard-empty">No open sales orders or other transactions in this period.</p>
@@ -151,7 +160,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var row in _overview.Transactions)
+                        @foreach (var row in TransactionsPreview)
                         {
                             <tr class="dashboard-table__link" @onclick="() => OpenItem(row.ItemId)" tabindex="0">
                                 <td>@row.TransactionDate.ToString("d")</td>
@@ -183,11 +192,15 @@
                         }
                     </tbody>
                 </table>
+                @if (_overview.Transactions.Count > DashboardHomePreview.MaxRows)
+                {
+                    <p class="dashboard-preview-note">@DashboardHomePreview.TruncationNote(_overview.Transactions.Count, mostRecent: true)</p>
+                }
             }
         </section>
 
         <section class="dashboard-section">
-            <h2>Expenses in period (@_overview.Expenses.Count)</h2>
+            <h2>Expenses in period (@DashboardHomePreview.TitleCount(ExpensesPreview.Count, _overview.Expenses.Count))</h2>
             @if (_overview.Expenses.Count == 0)
             {
                 <p class="dashboard-empty">No expenses in this period.</p>
@@ -204,7 +217,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var row in _overview.Expenses)
+                        @foreach (var row in ExpensesPreview)
                         {
                             <tr>
                                 <td>@row.Date.ToString("d")</td>
@@ -227,11 +240,15 @@
                         }
                     </tbody>
                 </table>
+                @if (_overview.Expenses.Count > DashboardHomePreview.MaxRows)
+                {
+                    <p class="dashboard-preview-note">@DashboardHomePreview.TruncationNote(_overview.Expenses.Count, mostRecent: true)</p>
+                }
             }
         </section>
 
         <section class="dashboard-section">
-            <h2>Inventory with activity (@_overview.InventoryWithActivity.Count)</h2>
+            <h2>Inventory with activity (@DashboardHomePreview.TitleCount(InventoryPreview.Count, _overview.InventoryWithActivity.Count))</h2>
             @if (_overview.InventoryWithActivity.Count == 0)
             {
                 <p class="dashboard-empty">No inventory items linked to transactions in this period.</p>
@@ -247,7 +264,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var item in _overview.InventoryWithActivity)
+                        @foreach (var item in InventoryPreview)
                         {
                             <tr class="dashboard-table__link" @onclick="() => OpenItem(item.ItemId)" tabindex="0">
                                 <td>@item.ItemName</td>
@@ -257,6 +274,10 @@
                         }
                     </tbody>
                 </table>
+                @if (_overview.InventoryWithActivity.Count > DashboardHomePreview.MaxRows)
+                {
+                    <p class="dashboard-preview-note">@DashboardHomePreview.TruncationNote(_overview.InventoryWithActivity.Count, mostRecent: false)</p>
+                }
             }
         </section>
     }
@@ -277,6 +298,26 @@
     private bool _isLoading = true;
     private bool _isInitialLoad = true;
     private string? _error;
+
+    /// <summary>Newest 20 sales rows; KPIs still use the full period list.</summary>
+    private IReadOnlyList<RevenueDto> SalesPreview =>
+        _overview is null ? [] : DashboardHomePreview.MostRecent(_overview.Revenue);
+
+    /// <summary>First 20 customers (name order from the API, not date-sorted).</summary>
+    private IReadOnlyList<CustomerDto> CustomersPreview =>
+        _overview is null ? [] : DashboardHomePreview.MostRecent(_overview.Customers);
+
+    /// <summary>Newest 20 open sales orders / period transactions.</summary>
+    private IReadOnlyList<OpenTransactionDto> TransactionsPreview =>
+        _overview is null ? [] : DashboardHomePreview.MostRecent(_overview.Transactions);
+
+    /// <summary>Newest 20 expenses; totals stay in the period KPIs.</summary>
+    private IReadOnlyList<ExpenseDto> ExpensesPreview =>
+        _overview is null ? [] : DashboardHomePreview.MostRecent(_overview.Expenses);
+
+    /// <summary>First 20 inventory rows with activity (name order from the API).</summary>
+    private IReadOnlyList<InventoryItemDto> InventoryPreview =>
+        _overview is null ? [] : DashboardHomePreview.MostRecent(_overview.InventoryWithActivity);
 
     protected override void OnParametersSet()
     {
