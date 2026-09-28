@@ -77,6 +77,31 @@ public sealed class NetSuiteSyncServiceTests
         Assert.Equal(string.Empty, (await db.Customers.SingleAsync(row => row.CustomerId == "c-new")).Subcategory);
     }
 
+    // Invoice item lines are stored as credits in NetSuite; flip leftover negatives on sync.
+    [Fact]
+    public async Task Sync_FlipsStoredNegativeInvoiceAmounts_ToPositiveOmzet()
+    {
+        await using var db = CreateDbContext();
+        db.RevenueRecords.Add(new RevenueRecord
+        {
+            Id = "2136821-10",
+            InvoiceId = "2136821",
+            InvoiceNumber = "2136821",
+            Date = new DateOnly(2026, 2, 12),
+            Amount = -324.00m,
+            CustomerId = "c-old",
+            CustomerName = "Existing customer"
+        });
+        await db.SaveChangesAsync();
+
+        var result = await CreateSut(db, new FakeNetSuiteRestClient(), clearOnSync: false)
+            .SyncDashboardDataAsync();
+
+        Assert.True(result.Success, result.Message);
+        var stored = await db.RevenueRecords.SingleAsync(row => row.Id == "2136821-10");
+        Assert.Equal(324.00m, stored.Amount);
+    }
+
     [Fact]
     public async Task Sync_UsesEntityId_WhenGlommedNameAndCompanyNameAreAlsoPresent()
     {
