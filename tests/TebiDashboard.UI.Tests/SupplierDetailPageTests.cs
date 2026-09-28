@@ -33,6 +33,7 @@ public class SupplierDetailPageTests
         Assert.Contains("Transport", expenses);
         Assert.Contains("Logistics Partner BV", expenses);
         Assert.Contains("Vendor", expenses);
+        Assert.Contains(",00", expenses);
     }
 
     [Fact]

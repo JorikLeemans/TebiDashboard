@@ -42,7 +42,7 @@
         <section class="supplier-detail__kpi-grid" aria-label="Supplier summary">
             <article class="supplier-detail__kpi">
                 <h2>Total purchased</h2>
-                <p>@EuroFormatting.FormatWhole(_detail.TotalPurchased)</p>
+                <p>@EuroFormatting.Format(_detail.TotalPurchased)</p>
                 @* Total purchased combines expense entries and purchase order amounts. *@
                 <p class="supplier-detail__kpi-hint">Expenses + purchase order amounts</p>
             </article>
@@ -187,7 +187,7 @@
                                 <td>@expense.Date.ToString("d")</td>
                                 <td>@expense.Category</td>
                                 <td>@ExpensePartyName(expense)</td>
-                                <td>@EuroFormatting.FormatWhole(expense.Amount)</td>
+                                <td>@EuroFormatting.Format(expense.Amount)</td>
                             </tr>
                         }
                     </tbody>
@@ -196,7 +196,7 @@
                         <tfoot>
                             <tr>
                                 <th scope="row" colspan="3">Total</th>
-                                <td>@EuroFormatting.FormatWhole(ExpensesTotal)</td>
+                                <td>@EuroFormatting.Format(ExpensesTotal)</td>
                             </tr>
                         </tfoot>
                     }
