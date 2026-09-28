@@ -113,3 +113,10 @@
   color: #666;
   margin: 0;
 }
+
+/* Note under a table that is capped at 20 rows. */
+.dashboard-preview-note {
+  margin: 0.65rem 0 0;
+  color: #5a6b62;
+  font-size: 0.85rem;
+}
