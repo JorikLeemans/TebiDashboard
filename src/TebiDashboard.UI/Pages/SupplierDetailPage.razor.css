@@ -104,8 +104,39 @@
   cursor: pointer;
 }
 
-.supplier-detail__link-row:hover {
+.supplier-detail__link-row:hover,
+.supplier-detail__order-row:hover,
+.supplier-detail__order-row:focus {
   background: #f0f7f2;
+}
+
+.supplier-detail__order-row {
+  cursor: pointer;
+}
+
+.supplier-detail__order-row td {
+  font-weight: 600;
+}
+
+.supplier-detail__order-toggle {
+  display: inline-block;
+  width: 1rem;
+  color: #2a8a4a;
+}
+
+.supplier-detail__line-row td:first-child {
+  padding-left: 1.5rem;
+}
+
+.supplier-detail__line-row td {
+  color: #445;
+  font-weight: 400;
+}
+
+.supplier-detail__preview-note {
+  margin: 0.65rem 0 0;
+  color: #5a6b62;
+  font-size: 0.85rem;
 }
 
 .error {

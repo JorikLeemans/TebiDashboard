@@ -44,6 +44,7 @@ public static class DemoDataSeeder
         await EnsureDemoSalesOrderGroupingLinesAsync(dbContext, today, cancellationToken);
         await EnsureDemoExpenseSpreadAsync(dbContext, today, cancellationToken);
         await EnsureDemoPurchaseOrderSpreadAsync(dbContext, today, cancellationToken);
+        await EnsureDemoPurchaseOrderGroupingLinesAsync(dbContext, today, cancellationToken);
         await EnsureDemoOrderAmountAlignmentAsync(dbContext, today, cancellationToken);
         // Spread rows are inserted before the full seed. Without this, transactions point at
         // item ids that were never inserted, and detail pages show "i5" instead of the item name.
@@ -203,7 +204,8 @@ public static class DemoDataSeeder
         CreateTransaction("t6", "Transfer Order", "i6", today.AddDays(-18), 45, "In Transit"),
         ..BuildDemoSalesOrderSpread(today),
         ..BuildDemoSalesOrderGroupingLines(today),
-        ..BuildDemoPurchaseOrderSpread(today)
+        ..BuildDemoPurchaseOrderSpread(today),
+        ..BuildDemoPurchaseOrderGroupingLines(today)
     ];
 
     private static ExpenseRecord[] BuildDemoExpenseSpread(DateOnly today) =>
@@ -773,6 +775,35 @@ public static class DemoDataSeeder
         dbContext.OpenTransactions.AddRange(missing);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// Extra purchase-order lines that share a parent id ("t19-2", "2136801-1") so the supplier page can group them.
+    /// </summary>
+    private static async Task EnsureDemoPurchaseOrderGroupingLinesAsync(
+        TebiDashboardDbContext dbContext,
+        DateOnly today,
+        CancellationToken cancellationToken)
+    {
+        if (await dbContext.OpenTransactions.AnyAsync(order => order.TransactionId == "t19-2", cancellationToken))
+        {
+            return;
+        }
+
+        dbContext.OpenTransactions.AddRange(BuildDemoPurchaseOrderGroupingLines(today));
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    // Extra lines on t19 plus a NetSuite-style "{order}-{line}" document for BetonCentrale.
+    private static OpenTransactionRecord[] BuildDemoPurchaseOrderGroupingLines(DateOnly today) =>
+    [
+        CreateTransaction("t19-2", "Purchase Order", "i2", today.AddDays(-2), 20, "Pending Receipt", supplierId: "s1", amount: 24000m),
+        CreateTransaction("t19-3", "Purchase Order", "i6", today.AddDays(-2), 15, "Pending Receipt", supplierId: "s1", amount: 6750m),
+        CreateTransaction("t19-4", "Purchase Order", "i8", today.AddDays(-2), 8, "Pending Receipt", supplierId: "s1", amount: 4000m),
+        CreateTransaction("2136801-1", "Purchase Order", "i4", today.AddDays(-1), 12, "Pending Receipt", supplierId: "s1", amount: 2880m),
+        CreateTransaction("2136801-2", "Purchase Order", "i2", today.AddDays(-1), 18, "Pending Receipt", supplierId: "s1", amount: 21600m),
+        CreateTransaction("2136801-3", "Purchase Order", "i3", today.AddDays(-1), 10, "Pending Receipt", supplierId: "s1", amount: 5400m),
+        CreateTransaction("2136801-4", "Purchase Order", "i6", today.AddDays(-1), 6, "Pending Receipt", supplierId: "s1", amount: 2700m)
+    ];
 
     /// <summary>
     /// Keeps sales and purchase order amounts aligned with revenue and expense totals.

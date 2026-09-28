@@ -73,6 +73,49 @@ public class DashboardHomeTests
     }
 
     [Fact]
+    public void DashboardHome_ShowsStatusLetterWithFullNameOnHover()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        SetupPeriodOverview(mockHttp, new PeriodOverviewDto
+        {
+            PeriodFrom = new DateOnly(2026, 6, 8),
+            PeriodTo = new DateOnly(2026, 6, 10),
+            Summary = new DashboardSummaryDto
+            {
+                Revenue = 0m,
+                SalesVolume = 0m,
+                GoalPercentage = 0m,
+                RevenueTrend = "flat",
+                LowStockAlertCount = 0,
+                PeriodFrom = new DateOnly(2026, 6, 8),
+                PeriodTo = new DateOnly(2026, 6, 10)
+            },
+            Transactions =
+            [
+                new OpenTransactionDto
+                {
+                    TransactionId = "t-status",
+                    Type = "Sales Order",
+                    ItemId = "i1",
+                    ItemName = "Betonstraatstenen",
+                    TransactionDate = new DateOnly(2026, 6, 9),
+                    QuantityOpen = 40,
+                    Status = "SalesOrd:B"
+                }
+            ]
+        });
+        SetupGoals(mockHttp);
+
+        var cut = ctx.Render<DashboardHome>();
+        cut.WaitForElement("table[aria-label='Open sales orders and period transactions']", TimeSpan.FromSeconds(5));
+
+        var status = cut.Find(".transaction-status");
+        Assert.Equal("B", status.TextContent);
+        Assert.Equal("Pending Fulfillment", status.GetAttribute("title"));
+        Assert.Equal("Pending Fulfillment", status.GetAttribute("aria-label"));
+    }
+
+    [Fact]
     public void DashboardHome_LinksCustomerInSalesTable_WhenCustomerIdPresent()
     {
         using var ctx = CreateAuthenticatedContext(out var mockHttp);

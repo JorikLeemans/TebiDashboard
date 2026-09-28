@@ -187,7 +187,10 @@
                                 </td>
                                 <td>@row.ItemName</td>
                                 <td>@row.QuantityOpen.ToString("N0")</td>
-                                <td>@row.Status</td>
+                                <td>
+                                    @* Compact NetSuite letter; hover the letter for the full status name. *@
+                                    <TransactionStatusMark Status="@row.Status" Type="@row.Type" />
+                                </td>
                             </tr>
                         }
                     </tbody>

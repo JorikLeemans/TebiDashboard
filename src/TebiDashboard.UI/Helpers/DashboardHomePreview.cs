@@ -27,10 +27,21 @@ public static class DashboardHomePreview
         total <= MaxRows ? total.ToString() : $"{shown} of {total}";
 
     /// <summary>Note under a truncated table; empty when everything fits.</summary>
-    public static string TruncationNote(int total, bool mostRecent) =>
-        total <= MaxRows
-            ? string.Empty
-            : mostRecent
-                ? $"Showing the {MaxRows} most recent of {total}. Period totals stay in the KPIs and chart."
-                : $"Showing {MaxRows} of {total}.";
+    public static string TruncationNote(int total, bool mostRecent, bool includeChart = true)
+    {
+        if (total <= MaxRows)
+        {
+            return string.Empty;
+        }
+
+        if (!mostRecent)
+        {
+            return $"Showing {MaxRows} of {total}.";
+        }
+
+        var totalsHint = includeChart
+            ? "Period totals stay in the KPIs and chart."
+            : "Period totals stay in the KPIs.";
+        return $"Showing the {MaxRows} most recent of {total}. {totalsHint}";
+    }
 }

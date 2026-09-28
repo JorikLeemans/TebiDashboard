@@ -42,7 +42,7 @@
         <section class="supplier-detail__kpi-grid" aria-label="Supplier summary">
             <article class="supplier-detail__kpi">
                 <h2>Total purchased</h2>
-                <p>@EuroFormatting.FormatWhole(_detail.TotalPurchased)</p>
+                <p>@EuroFormatting.Format(_detail.TotalPurchased)</p>
                 @* Total purchased combines expense entries and purchase order amounts. *@
                 <p class="supplier-detail__kpi-hint">Expenses + purchase order amounts</p>
             </article>
@@ -52,7 +52,7 @@
             </article>
             <article class="supplier-detail__kpi">
                 <h2>Purchase orders</h2>
-                <p>@_detail.PurchaseOrders.Count</p>
+                <p>@OrderGroups.Count</p>
             </article>
             <article class="supplier-detail__kpi">
                 <h2>Purchased items</h2>
@@ -65,7 +65,7 @@
         </section>
 
         <section class="supplier-detail__section">
-            <h2>Purchased items in period</h2>
+            <h2>Purchased items in period (@DashboardHomePreview.TitleCount(PurchasedItemsPreview.Count, _detail.PurchasedItems.Count))</h2>
             @if (_detail.PurchasedItems.Count == 0)
             {
                 <p class="supplier-detail__empty">No purchased items linked to this supplier in the selected period.</p>
@@ -80,7 +80,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var item in _detail.PurchasedItems)
+                        @foreach (var item in PurchasedItemsPreview)
                         {
                             <tr class="supplier-detail__link-row" @onclick="() => OpenItem(item.ItemId)" tabindex="0">
                                 @* Item name comes from the inventory item; the id is the fallback when it cannot be resolved. *@
@@ -90,11 +90,16 @@
                         }
                     </tbody>
                 </table>
+                @if (_detail.PurchasedItems.Count > DashboardHomePreview.MaxRows)
+                {
+                    <p class="supplier-detail__preview-note">@DashboardHomePreview.TruncationNote(_detail.PurchasedItems.Count, mostRecent: false)</p>
+                }
             }
         </section>
 
+        @* Open POs are grouped by parent order so "2136821-1/2/3" collapse to one row. *@
         <section class="supplier-detail__section">
-            <h2>Purchase orders in period</h2>
+            <h2>Purchase orders in period (@DashboardHomePreview.TitleCount(OrderGroupsPreview.Count, OrderGroups.Count))</h2>
             @if (_detail.PurchaseOrders.Count == 0)
             {
                 <p class="supplier-detail__empty">No open purchase orders linked to this supplier in the selected period.</p>
@@ -106,41 +111,68 @@
                         <tr>
                             <th scope="col">Date</th>
                             <th scope="col">Order</th>
-                            <th scope="col">Item</th>
-                            <th scope="col">Qty open</th>
                             <th scope="col">Amount</th>
-                            <StatusColumnHeader Kind="StatusLegendKind.PurchaseOrder" />
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var order in _detail.PurchaseOrders)
+                        @foreach (var order in OrderGroupsPreview)
                         {
-                            <tr class="supplier-detail__link-row" @onclick="() => OpenItem(order.ItemId)" tabindex="0">
-                                <td>@order.TransactionDate.ToString("d")</td>
-                                <td><code>@order.TransactionId</code></td>
-                                <td>@ItemLabel(order.ItemName, order.ItemId)</td>
-                                <td>@order.QuantityOpen.ToString("N0")</td>
-                                <td>@EuroFormatting.FormatWhole(order.Amount)</td>
-                                <td>@order.Status</td>
+                            var expanded = IsPurchaseOrderExpanded(order.Key);
+                            <tr class="supplier-detail__order-row"
+                                @onclick="() => TogglePurchaseOrder(order.Key)"
+                                tabindex="0"
+                                aria-expanded="@expanded"
+                                @onkeydown="(args) => HandlePurchaseOrderKeyDown(args, order.Key)">
+                                <td>@order.Date.ToString("d")</td>
+                                <td>
+                                    <span class="supplier-detail__order-toggle" aria-hidden="true">@(expanded ? "▼" : "▶")</span>
+                                    <code>@order.OrderLabel</code>
+                                </td>
+                                <td>@EuroFormatting.Format(order.TotalAmount)</td>
                             </tr>
+                            @if (expanded)
+                            {
+                                @foreach (var line in order.Lines)
+                                {
+                                    <tr class="supplier-detail__line-row supplier-detail__link-row"
+                                        @onclick="() => OpenItem(line.ItemId)"
+                                        @onclick:stopPropagation="true"
+                                        tabindex="0">
+                                        <td>@line.TransactionDate.ToString("d")</td>
+                                        <td>
+                                            @PurchaseOrderLineLabel(line)
+                                            @if (!string.IsNullOrWhiteSpace(line.Status))
+                                            {
+                                                @* Status stays a compact letter; hover shows the full NetSuite name. *@
+                                                <text> · </text>
+                                                <TransactionStatusMark Status="@line.Status" Type="@line.Type" />
+                                            }
+                                        </td>
+                                        <td>@EuroFormatting.Format(line.Amount)</td>
+                                    </tr>
+                                }
+                            }
                         }
                     </tbody>
-                    @if (_detail.PurchaseOrders.Count > 0)
+                    @if (OrderGroups.Count > 0)
                     {
                         <tfoot>
                             <tr>
-                                <th scope="row" colspan="4">Total</th>
-                                <td>@EuroFormatting.FormatWhole(PurchaseOrdersTotal)</td>
-                                <td></td>
+                                <th scope="row" colspan="2">Total</th>
+                                <td>@EuroFormatting.Format(PurchaseOrdersTotal)</td>
                             </tr>
                         </tfoot>
                     }
                 </table>
+                @if (OrderGroups.Count > DashboardHomePreview.MaxRows)
+                {
+                    <p class="supplier-detail__preview-note">@DashboardHomePreview.TruncationNote(OrderGroups.Count, mostRecent: true, includeChart: false)</p>
+                }
             }
         </section>
 
         <section class="supplier-detail__section">
-            <h2>Expenses in period</h2>
+            <h2>Expenses in period (@DashboardHomePreview.TitleCount(ExpensesPreview.Count, _detail.Expenses.Count))</h2>
             @if (_detail.Expenses.Count == 0)
             {
                 <p class="supplier-detail__empty">No expenses recorded for this supplier in the selected period.</p>
@@ -157,13 +189,13 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var expense in _detail.Expenses)
+                        @foreach (var expense in ExpensesPreview)
                         {
                             <tr>
                                 <td>@expense.Date.ToString("d")</td>
                                 <td>@expense.Category</td>
                                 <td>@ExpensePartyName(expense)</td>
-                                <td>@EuroFormatting.FormatWhole(expense.Amount)</td>
+                                <td>@EuroFormatting.Format(expense.Amount)</td>
                             </tr>
                         }
                     </tbody>
@@ -172,11 +204,15 @@
                         <tfoot>
                             <tr>
                                 <th scope="row" colspan="3">Total</th>
-                                <td>@EuroFormatting.FormatWhole(ExpensesTotal)</td>
+                                <td>@EuroFormatting.Format(ExpensesTotal)</td>
                             </tr>
                         </tfoot>
                     }
                 </table>
+                @if (_detail.Expenses.Count > DashboardHomePreview.MaxRows)
+                {
+                    <p class="supplier-detail__preview-note">@DashboardHomePreview.TruncationNote(_detail.Expenses.Count, mostRecent: true, includeChart: false)</p>
+                }
             }
         </section>
     }
@@ -198,9 +234,28 @@
     private bool _isLoading = true;
     private bool _isInitialLoad = true;
     private string? _error;
+    private readonly HashSet<string> _expandedPurchaseOrders = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>One row per purchase order; click a row to reveal its lines.</summary>
+    private IReadOnlyList<SalesOrderGroup> OrderGroups =>
+        _detail is null ? [] : SalesOrderGroups.From(_detail.PurchaseOrders);
+
+    /// <summary>Newest 20 grouped purchase orders; KPIs still use the full list.</summary>
+    private IReadOnlyList<SalesOrderGroup> OrderGroupsPreview =>
+        DashboardHomePreview.MostRecent(OrderGroups);
+
+    /// <summary>First 20 purchased items (name order from the API).</summary>
+    private IReadOnlyList<SupplierPurchasedItemDto> PurchasedItemsPreview =>
+        _detail is null ? [] : DashboardHomePreview.MostRecent(_detail.PurchasedItems);
+
+    /// <summary>Newest 20 expenses; footer totals still use the full period list.</summary>
+    private IReadOnlyList<ExpenseDto> ExpensesPreview =>
+        _detail is null ? [] : DashboardHomePreview.MostRecent(_detail.Expenses);
 
     // Footer totals show how expenses and purchase orders add up to Total purchased.
     private decimal ExpensesTotal => _detail?.Expenses.Sum(row => row.Amount) ?? 0m;
+
+    private decimal PurchaseOrdersTotal => _detail?.PurchaseOrders.Sum(order => order.Amount) ?? 0m;
 
     // Hide a bare NetSuite internal id when the name never arrived.
     private static string ItemLabel(string? itemName, string itemId) =>
@@ -224,7 +279,37 @@
 
         return expense.SupplierId ?? string.Empty;
     }
-    private decimal PurchaseOrdersTotal => _detail?.PurchaseOrders.Sum(order => order.Amount) ?? 0m;
+
+    // Expanded purchase-order lines show the article and remaining qty; status is a hover mark beside this text.
+    private static string PurchaseOrderLineLabel(OpenTransactionDto line)
+    {
+        var item = ItemLabel(line.ItemName, line.ItemId);
+        var quantity = line.QuantityOpen.ToString("N0");
+        if (string.IsNullOrWhiteSpace(item))
+        {
+            return $"{quantity} open";
+        }
+
+        return $"{item} · {quantity} open";
+    }
+
+    private bool IsPurchaseOrderExpanded(string key) => _expandedPurchaseOrders.Contains(key);
+
+    private void TogglePurchaseOrder(string key)
+    {
+        if (!_expandedPurchaseOrders.Add(key))
+        {
+            _expandedPurchaseOrders.Remove(key);
+        }
+    }
+
+    private void HandlePurchaseOrderKeyDown(KeyboardEventArgs args, string key)
+    {
+        if (args.Key is "Enter" or " ")
+        {
+            TogglePurchaseOrder(key);
+        }
+    }
 
     protected override void OnParametersSet()
     {
@@ -283,6 +368,7 @@
             }
 
             _detail = detail;
+            _expandedPurchaseOrders.Clear();
 
             if (_detail is null)
             {

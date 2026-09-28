@@ -80,7 +80,7 @@
                                 @onkeydown="(e) => HandleRowKeyDown(e, supplier.SupplierId)">
                                 <td class="suppliers-table__name">@supplier.Name</td>
                                 <td>@supplier.City</td>
-                                <td>@EuroFormatting.FormatWhole(supplier.TotalPurchased)</td>
+                                <td>@EuroFormatting.Format(supplier.TotalPurchased)</td>
                                 <td>@supplier.ExpenseEntryCount</td>
                                 <td>@supplier.PurchaseOrderCount</td>
                                 <td>@supplier.PurchasedItemCount</td>
@@ -104,7 +104,8 @@
     private IReadOnlyList<SupplierOverviewDto> _suppliers = [];
     private string _searchText = string.Empty;
     private bool _activityOnly;
-    private int _pageSize = ListPagination.DefaultPageSize;
+    // Supplier list starts at 20 rows, matching the other dashboard previews.
+    private int _pageSize = DashboardHomePreview.MaxRows;
     private int _currentPage = 1;
     private bool _isLoading = true;
     private bool _isInitialLoad = true;

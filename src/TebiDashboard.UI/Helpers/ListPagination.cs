@@ -5,7 +5,7 @@ namespace TebiDashboard.UI.Helpers;
 /// </summary>
 public static class ListPagination
 {
-    public static readonly int[] AllowedPageSizes = [5, 10, 25, 50, 100];
+    public static readonly int[] AllowedPageSizes = [5, 10, 20, 25, 50, 100];
 
     public const int DefaultPageSize = 25;
 
