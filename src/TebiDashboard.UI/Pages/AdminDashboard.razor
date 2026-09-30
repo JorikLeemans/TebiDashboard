@@ -79,7 +79,7 @@
                     @if (_netSuiteSetup.LastSucceededAt is { } lastOk)
                     {
                         <p class="admin-netsuite__setup-message">
-                            Last successful import stored: @lastOk.LocalDateTime.ToString("g")
+                            Last successful import stored: @AmsterdamTime.Format(lastOk)
                             @if (_netSuiteSetup.LastLookbackDays > 0)
                             {
                                 <text> (lookback @_netSuiteSetup.LastLookbackDays days).</text>
@@ -249,9 +249,6 @@
             </div>
         }
 
-        <p class="admin-dashboard__hint">
-            Demo admin: <strong>admin@tebi.nl</strong> / <strong>admin1234</strong>
-        </p>
     }
 </div>
 
@@ -526,13 +523,13 @@
     return lastSync.State switch
     {
       "Running" => lastSync.StartedAt is { } started
-        ? $"Last sync: in progress (started {started.LocalDateTime:g})."
+        ? $"Last sync: in progress (started {AmsterdamTime.Format(started)})."
         : "Last sync: in progress.",
       "Succeeded" => lastSync.CompletedAt is { } succeededAt
-        ? $"Last sync: succeeded at {succeededAt.LocalDateTime:g}."
+        ? $"Last sync: succeeded at {AmsterdamTime.Format(succeededAt)}."
         : "Last sync: succeeded.",
       "Failed" => lastSync.CompletedAt is { } failedAt
-        ? $"Last sync: failed at {failedAt.LocalDateTime:g}."
+        ? $"Last sync: failed at {AmsterdamTime.Format(failedAt)}."
         : "Last sync: failed.",
       _ => lastSync.Message
     };
@@ -707,7 +704,7 @@
 
           if (_netSuiteSync.Success)
           {
-            _statusMessage = "NetSuite data imported successfully.";
+            _statusMessage = _netSuiteSync.Message;
           }
 
           break;

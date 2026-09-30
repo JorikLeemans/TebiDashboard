@@ -66,6 +66,8 @@ public class AdminDashboardPageTests
 
         Assert.DoesNotContain("Not configured", cut.Markup);
         Assert.Contains("Last successful import stored", cut.Markup);
+        Assert.Contains(TebiDashboard.UI.Helpers.AmsterdamTime.Format(DateTimeOffset.Parse("2026-09-24T10:00:00Z")), cut.Markup);
+        Assert.DoesNotContain("Demo admin", cut.Markup);
         Assert.False(FindNetSuiteButton(cut, "Test connection").HasAttribute("disabled"));
         Assert.False(FindNetSuiteButton(cut, "Sync NetSuite data").HasAttribute("disabled"));
     }
