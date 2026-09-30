@@ -81,10 +81,9 @@ severity. Check off items as they are addressed.
   quantity vs amount, and which NetSuite source). Users should not have to guess
   the KPI.
 
-- [ ] **Take another look at customer names.** Some rows still show
-  "Unknown customer". Others show only the `K######` entity id and drop the
-  rest of the name that should come after it.
-  - Customer list, customer detail, and party columns on related lists.
+- [x] **Take another look at customer names.** Combine `entityId` (K######) with
+  `glommedName` when `isPerson = T` and with `companyName` when `isPerson = F`.
+  - `CustomerDisplayName` + SuiteQL `isPerson` / `companyName` on customer sync.
 
 - [ ] **Think about extra "quick" filters** so users can find what they want
   faster, or exclude certain results (status, type, location, low stock, party).
