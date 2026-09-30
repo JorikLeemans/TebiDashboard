@@ -7,8 +7,11 @@ namespace TebiDashboard.Infrastructure.NetSuite;
 internal static class NetSuiteSuiteQlQueries
 {
     /// <summary>
-    /// Customer: id, entityId (code), glommedName, email, city, and category labels.
-    /// entityId is the display name TEBI uses for both companies and persons; glommedName is a fallback.
+    /// Customer: id, entityId (auto-number code), isPerson, glommedName, companyName, email, city, categories.
+    /// Records Browser: entityId is the Customer ID (K###### when Auto-Generated Numbering is on);
+    /// companyName is the legal company name; isPerson switches Company vs Individual.
+    /// https://system.netsuite.com/help/helpcenter/en_US/srbrowser/Browser2026_1/schema/record/customer.html
+    /// glommedName is first+middle+last for Individual customers (SuiteQL; not in the Records Browser).
     /// City comes from the default billing address book row. defaultAddress is not exposed to SuiteQL SEARCH
     /// (NOT_EXPOSED). Analytics Browser join: customerAddressBook.entity + customerAddressBookEntityAddress.nkey.
     /// category and custentity_tebi_klant_subcategorie are list fields; BUILTIN.DF returns the text, not the id.
@@ -19,7 +22,9 @@ internal static class NetSuiteSuiteQlQueries
         SELECT DISTINCT
             c.id,
             c.entityId,
+            c.isPerson,
             c.glommedName,
+            c.companyName,
             c.email,
             ea.city,
             BUILTIN.DF(c.category) AS category,
