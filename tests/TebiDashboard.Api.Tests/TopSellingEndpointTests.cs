@@ -59,5 +59,6 @@ public class TopSellingEndpointTests : IClassFixture<TebiWebApplicationFactory>,
         Assert.InRange(items.Count, 1, 5);
         Assert.Equal("i1", items[0].ItemId);
         Assert.Equal(98_000m, items[0].SalesAmount);
+        Assert.Equal(420m, items[0].UnitsSold);
     }
 }

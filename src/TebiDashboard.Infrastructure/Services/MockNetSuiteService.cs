@@ -373,7 +373,8 @@ public sealed class MockNetSuiteService : INetSuiteService
                     ItemName = "Betonstraatstenen Antraciet",
                     ProductGroupId = "pg-paving",
                     ProductGroupName = "Bestrating",
-                    SalesAmount = 98_000m
+                    SalesAmount = 98_000m,
+                    UnitsSold = 420m
                 },
                 new TopSellingItemDto
                 {
@@ -381,7 +382,8 @@ public sealed class MockNetSuiteService : INetSuiteService
                     ItemName = "Tegels 60x60 Grijs",
                     ProductGroupId = "pg-paving",
                     ProductGroupName = "Bestrating",
-                    SalesAmount = 76_000m
+                    SalesAmount = 76_000m,
+                    UnitsSold = 310m
                 },
                 new TopSellingItemDto
                 {
@@ -389,7 +391,8 @@ public sealed class MockNetSuiteService : INetSuiteService
                     ItemName = "Klinkers Rood-Bruin",
                     ProductGroupId = "pg-paving",
                     ProductGroupName = "Bestrating",
-                    SalesAmount = 64_000m
+                    SalesAmount = 64_000m,
+                    UnitsSold = 180m
                 }
             ]
         };

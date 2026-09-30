@@ -497,7 +497,8 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
                 record.ItemName,
                 record.ProductGroupId,
                 record.ProductGroupName,
-                record.Amount
+                record.Amount,
+                record.Quantity
             })
             .ToListAsync(cancellationToken);
 
@@ -507,7 +508,8 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
                 record.ItemName,
                 record.ProductGroupId,
                 record.ProductGroupName,
-                record.Amount))
+                record.Amount,
+                record.Quantity))
             .ToList();
 
         var ranked = PeriodSales.Rank(lines, limit, productGroupId);
@@ -540,7 +542,8 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
                         ItemName = name,
                         ProductGroupId = item.ProductGroupId,
                         ProductGroupName = item.ProductGroupName,
-                        SalesAmount = item.SalesAmount
+                        SalesAmount = item.SalesAmount,
+                        UnitsSold = item.UnitsSold
                     }
                     : item)
                 .ToList()
