@@ -1,0 +1,77 @@
+.bestsellers-page {
+  padding: 1rem;
+  font-family: Segoe UI, sans-serif;
+}
+
+.bestsellers-page__header h1 {
+  margin: 0 0 0.25rem;
+}
+
+.bestsellers-page__subtitle {
+  margin: 0 0 1.25rem;
+  color: #555;
+}
+
+.bestsellers-page__status {
+  color: #555;
+}
+
+.bestsellers-page__filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-width: 20rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: #445;
+}
+
+.bestsellers-page__filter select {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #dde3ea;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.bestsellers-page__table-wrap {
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid #dde3ea;
+  border-radius: 8px;
+}
+
+.bestsellers-page__table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+.bestsellers-page__table th,
+.bestsellers-page__table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.bestsellers-page__table th {
+  background: #f7faf8;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #445;
+}
+
+.bestsellers-page__row {
+  cursor: pointer;
+}
+
+.bestsellers-page__row:hover,
+.bestsellers-page__row:focus {
+  background: #f0f7f2;
+  outline: none;
+}
+
+.bestsellers-page__name {
+  font-weight: 600;
+  color: #1a3d2b;
+}

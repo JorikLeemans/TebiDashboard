@@ -19,7 +19,7 @@ User stories voor de .NET MAUI-portfolio-app.
 | US-01 | Directeur | Omzet inzicht | Must | **Done** |
 | US-02 | Directeur | Doelen per periode | Must | **Done** |
 | US-03 | Inkoop | Veel verkocht + lage voorraad | Must | **Done** |
-| US-04 | Inkoop | Meest verkochte artikelen | Must | **Open** |
+| US-04 | Inkoop | Meest verkochte artikelen | Must | **Done** |
 | US-05 | Voorraad | Artikel op meerdere locaties | Must | **Done** |
 | US-06 | Voorraad | Openstaande transacties | Must | **Done** |
 | US-07 | Verkoop | Populaire artikelen | Must | **Open** |
@@ -82,17 +82,17 @@ User stories voor de .NET MAUI-portfolio-app.
 
 ---
 
-## US-04 — Meest verkochte artikelen (Inkoop) — **Open**
+## US-04 — Meest verkochte artikelen (Inkoop) — **Done**
 
 **Als** inkoopmedewerker  
 **wil ik** snel kunnen zien wat de meest verkochte artikelen zijn  
 **zodat** ik inkoop kan afstemmen op vraag.
 
 **Acceptatiecriteria:**
-- [ ] Given periode, When bestsellers-pagina opent, Then top-N artikelen gesorteerd op afzet
-- [ ] Given filter artikelgroep, When toegepast, Then lijst gefilterd
+- [x] Given periode, When bestsellers-pagina opent, Then top-N artikelen gesorteerd op omzet in die periode — `TopSellingPage.razor`
+- [x] Given filter artikelgroep, When toegepast, Then lijst gefilterd — productgroep-filter op dezelfde pagina
 
-**API:** `GET /api/sales-volume/top?from=&to=&limit=20` — service-methode `GetTopSellingItemsAsync` bestaat; endpoint en UI nog te bouwen
+**API:** `GET /api/sales-volume/top?from=&to=&limit=20&productGroupId=` — omzet uit gesynchroniseerde factuurregels (`RevenueRecord.Amount`)
 
 ---
 
@@ -246,7 +246,7 @@ User stories voor de .NET MAUI-portfolio-app.
 | US-01 | Done | `DashboardHome.razor` | `/api/dashboard/overview`, `/api/revenue` |
 | US-02 | Done | `GoalsPage.razor` | `/api/goals` |
 | US-03 | Done | `DashboardHome.razor`, `InventoryPage.razor` | `/api/inventory/low-stock` |
-| US-04 | Open | — | `/api/sales-volume/top` (nog te bouwen) |
+| US-04 | Done | `TopSellingPage.razor` | `/api/sales-volume/top` |
 | US-05 | Done | `ItemDetailPage.razor` | `/api/items/{id}` |
 | US-06 | Done | `ItemDetailPage.razor` | `/api/inventory/{id}/open-transactions` |
 | US-07 | Open | — | `/api/sales-volume/popular` (nog te bouwen) |

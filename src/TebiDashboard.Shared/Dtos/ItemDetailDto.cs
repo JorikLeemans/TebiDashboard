@@ -11,6 +11,9 @@ public sealed class ItemDetailDto
     public decimal TotalQuantityOnHand { get; init; }
     public decimal? ReorderPoint { get; init; }
     public decimal RecentSalesVolume { get; init; }
+
+    /// <summary>Invoice amount for this item in the period the page requested.</summary>
+    public decimal PeriodSalesAmount { get; init; }
     public bool IsLowStock { get; init; }
     public IReadOnlyList<StockLocationDto> Locations { get; init; } = [];
     public int OpenTransactionCount { get; init; }

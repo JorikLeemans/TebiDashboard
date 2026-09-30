@@ -1,9 +1,11 @@
 @page "/inventory/{ItemId}"
 @layout DashboardLayout
 @using TebiDashboard.Shared.Dtos
+@inject IPeriodFilterService InjectedPeriodFilter
 @inject DashboardApiClient ApiClient
 @inject IAuthStateService AuthState
 @inject NavigationManager Navigation
+@implements IDisposable
 
 <PageTitle>@(_item?.ItemName ?? "Item detail") — TEBI Dashboard</PageTitle>
 
@@ -52,8 +54,9 @@
                 <p class="item-detail__kpi-hint">Sum of location reorder points</p>
             </article>
             <article class="item-detail__kpi">
-                <h2>Recent sales volume</h2>
-                <p>@_item.RecentSalesVolume.ToString("N0")</p>
+                <h2>Sold in period</h2>
+                <p>@EuroFormatting.FormatWhole(_item.PeriodSalesAmount)</p>
+                <p class="item-detail__kpi-hint">@PeriodFilter.From.ToString("d") – @PeriodFilter.To.ToString("d")</p>
             </article>
             <article class="item-detail__kpi">
                 <h2>Open transactions</h2>
@@ -184,10 +187,18 @@
 </div>
 
 @code {
+    [CascadingParameter(Name = "PeriodFilter")]
+    private IPeriodFilterService? CascadedPeriodFilter { get; set; }
+
     [Parameter]
     public string ItemId { get; set; } = string.Empty;
 
+    private IPeriodFilterService PeriodFilter => CascadedPeriodFilter ?? InjectedPeriodFilter;
+
+    private readonly PeriodFilterSubscription _periodSubscription = new();
+    private readonly PeriodFilterReload _periodReload = new();
     private ItemDetailDto? _item;
+    private string _loadedForItemId = string.Empty;
     private bool _isLoading = true;
     private string? _error;
     private readonly HashSet<string> _expandedOrders = new(StringComparer.OrdinalIgnoreCase);
@@ -295,6 +306,11 @@
         }
     }
 
+    protected override void OnParametersSet()
+    {
+        _periodSubscription.Bind(CascadedPeriodFilter, InjectedPeriodFilter, OnPeriodChanged);
+    }
+
     protected override async Task OnInitializedAsync()
     {
         await AuthState.InitializeAsync();
@@ -305,22 +321,82 @@
             return;
         }
 
+        await LoadItemAsync(_periodReload.BeginReload(), showLoadingSpinner: true);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!AuthState.IsAuthenticated || string.Equals(_loadedForItemId, ItemId, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        await LoadItemAsync(_periodReload.BeginReload(), showLoadingSpinner: _item is null);
+    }
+
+    private void OnPeriodChanged()
+    {
+        _ = InvokeAsync(ReloadItemAsync);
+    }
+
+    private async Task ReloadItemAsync()
+    {
+        var generation = _periodReload.BeginReload();
+        await LoadItemAsync(generation, showLoadingSpinner: false);
+
+        if (!_periodReload.IsCurrent(generation))
+        {
+            return;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task LoadItemAsync(int generation, bool showLoadingSpinner)
+    {
+        var from = PeriodFilter.From;
+        var to = PeriodFilter.To;
+        var itemId = ItemId;
+        _loadedForItemId = itemId;
+
+        if (showLoadingSpinner)
+        {
+            _isLoading = true;
+            _error = null;
+        }
+
         try
         {
-            _item = await ApiClient.GetItemByIdAsync(ItemId);
+            var item = await ApiClient.GetItemByIdAsync(itemId, from, to);
 
-            if (_item is null)
+            if (!_periodReload.IsCurrent(generation))
             {
-                _error = $"No item found with id '{ItemId}'.";
+                return;
             }
+
+            _item = item;
+            _error = item is null ? $"No item found with id '{itemId}'." : null;
         }
         catch (Exception ex)
         {
+            if (!_periodReload.IsCurrent(generation))
+            {
+                return;
+            }
+
             _error = $"Failed to load item details: {ex.Message}";
         }
         finally
         {
-            _isLoading = false;
+            if (showLoadingSpinner && _periodReload.IsCurrent(generation))
+            {
+                _isLoading = false;
+            }
         }
+    }
+
+    public void Dispose()
+    {
+        _periodSubscription.Dispose();
     }
 }
