@@ -233,6 +233,9 @@ namespace TebiDashboard.Infrastructure.Data.Migrations
                     b.Property<decimal>("Amount")
                         .HasColumnType("numeric");
 
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("numeric");
+
                     b.Property<string>("CustomerId")
                         .IsRequired()
                         .HasMaxLength(64)

@@ -60,7 +60,8 @@ public class InventoryPageTests
                             ItemName = "Betonstraatstenen Antraciet",
                             ProductGroupId = "pg-paving",
                             ProductGroupName = "Bestrating",
-                            SalesAmount = 12_500m
+                            SalesAmount = 12_500m,
+                            UnitsSold = 40m
                         }
                     ]
                     : [];
@@ -85,6 +86,8 @@ public class InventoryPageTests
         Assert.Contains("Betonstraatstenen Antraciet", cut.Markup);
         Assert.Contains("Bestrating", cut.Markup);
         Assert.Contains("12.500", cut.Markup);
+        Assert.Contains("Units sold", cut.Markup);
+        Assert.Contains("40", cut.Markup);
         Assert.Contains("from=", requestedQuery);
 
         cut.Find("select").Change("pg-tiles");

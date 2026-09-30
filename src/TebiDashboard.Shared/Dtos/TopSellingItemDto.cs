@@ -15,4 +15,7 @@ public sealed class TopSellingItemDto
 
     /// <summary>Sum of invoice line amounts for this item in the selected period.</summary>
     public decimal SalesAmount { get; init; }
+
+    /// <summary>Sum of invoice line quantities for this item in the selected period.</summary>
+    public decimal UnitsSold { get; init; }
 }

@@ -9,10 +9,10 @@ public class PeriodSalesTests
     {
         var lines = new[]
         {
-            new PeriodSaleLine("a", "Alpha", "g1", "Stenen", 10m),
-            new PeriodSaleLine("a", "Alpha", "g1", "Stenen", 5m),
-            new PeriodSaleLine("b", "Beta", "g2", "Tegels", 20m),
-            new PeriodSaleLine("c", "", "g1", "Stenen", 100m)
+            new PeriodSaleLine("a", "Alpha", "g1", "Stenen", 10m, 4m),
+            new PeriodSaleLine("a", "Alpha", "g1", "Stenen", 5m, 2m),
+            new PeriodSaleLine("b", "Beta", "g2", "Tegels", 20m, 8m),
+            new PeriodSaleLine("c", "", "g1", "Stenen", 100m, 1m)
         };
 
         var all = PeriodSales.Rank(lines, limit: 20, productGroupId: null);
@@ -21,6 +21,7 @@ public class PeriodSalesTests
         Assert.Equal(100m, all.Items[0].SalesAmount);
         Assert.Equal("c", all.Items[0].ItemName);
         Assert.Equal(15m, all.Items.Single(item => item.ItemId == "a").SalesAmount);
+        Assert.Equal(6m, all.Items.Single(item => item.ItemId == "a").UnitsSold);
         Assert.Equal(["Stenen", "Tegels"], all.ProductGroups.Select(group => group.Name));
 
         var filtered = PeriodSales.Rank(lines, limit: 20, productGroupId: "g2");
@@ -35,9 +36,9 @@ public class PeriodSalesTests
     {
         var lines = new[]
         {
-            new PeriodSaleLine("", "Header only", "g1", "Stenen", 500m),
-            new PeriodSaleLine("a", "Alpha", "g1", "Stenen", 10m),
-            new PeriodSaleLine("b", "Beta", "g1", "Stenen", 20m)
+            new PeriodSaleLine("", "Header only", "g1", "Stenen", 500m, 1m),
+            new PeriodSaleLine("a", "Alpha", "g1", "Stenen", 10m, 2m),
+            new PeriodSaleLine("b", "Beta", "g1", "Stenen", 20m, 3m)
         };
 
         var ranked = PeriodSales.Rank(lines, limit: 1, productGroupId: null);

@@ -10,7 +10,8 @@ internal readonly record struct PeriodSaleLine(
     string ItemName,
     string ProductGroupId,
     string ProductGroupName,
-    decimal Amount);
+    decimal Amount,
+    decimal Quantity);
 
 /// <summary>
 /// Groups invoice lines into a top-N list and the product groups available in that period.
@@ -53,7 +54,8 @@ internal static class PeriodSales
                 ProductGroupName = FirstText(
                     group.Select(line => line.ProductGroupName),
                     FirstText(group.Select(line => line.ProductGroupId), string.Empty)),
-                SalesAmount = group.Sum(line => line.Amount)
+                SalesAmount = group.Sum(line => line.Amount),
+                UnitsSold = group.Sum(line => line.Quantity)
             })
             .OrderByDescending(item => item.SalesAmount)
             .ThenBy(item => item.ItemName, StringComparer.OrdinalIgnoreCase)

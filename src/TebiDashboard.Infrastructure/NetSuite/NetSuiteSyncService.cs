@@ -461,6 +461,7 @@ public sealed class NetSuiteSyncService(
             .Select(record => record.Id)
             .ToListAsync(cancellationToken))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var quantityByExistingId = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
         var imported = 0;
         foreach (var row in rows)
         {
@@ -477,9 +478,11 @@ public sealed class NetSuiteSyncService(
             var invoiceId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "invoiceid", "id");
             var lineId = NetSuiteSuiteQlRowReader.GetString(row, "lineid") ?? "0";
             var revenueId = $"{invoiceId}-{lineId}";
-            // Only append lines we have not stored yet; do not rewrite older amounts or names.
+            var quantity = NetSuiteSuiteQlRowReader.GetDecimal(row, "quantity");
+            // Lines imported before quantity was stored still need it filled on the next sync.
             if (!existingIds.Add(revenueId))
             {
+                quantityByExistingId[revenueId] = quantity;
                 continue;
             }
 
@@ -498,15 +501,59 @@ public sealed class NetSuiteSyncService(
                 ItemName = NetSuiteSuiteQlRowReader.GetString(row, "itemname") ?? string.Empty,
                 // Artikelgroep is item class, not subsidiary. Empty name is better than a raw id.
                 ProductGroupId = NetSuiteSuiteQlRowReader.GetString(row, "productgroupid") ?? string.Empty,
-                ProductGroupName = NetSuiteSuiteQlRowReader.GetString(row, "productgroupname", "productGroupName") ?? string.Empty
+                ProductGroupName = NetSuiteSuiteQlRowReader.GetString(row, "productgroupname", "productGroupName") ?? string.Empty,
+                Quantity = quantity
             });
             imported++;
         }
 
+        await ApplyInvoiceQuantitiesAsync(quantityByExistingId, cancellationToken);
+
         // Incremental sync skips existing keys, so older credit-signed amounts stay until flipped here.
         imported += await FlipNegativeRevenueAmountsAsync(cancellationToken);
+        await FlipNegativeRevenueQuantitiesAsync(cancellationToken);
 
         return imported;
+    }
+
+    /// <summary>
+    /// Writes units onto invoice lines that were stored before quantity was selected.
+    /// Only lines inside this sync's lookback are updated.
+    /// </summary>
+    private async Task ApplyInvoiceQuantitiesAsync(
+        Dictionary<string, decimal> quantityById,
+        CancellationToken cancellationToken)
+    {
+        foreach (var chunk in quantityById.Keys.Chunk(500))
+        {
+            var ids = chunk.ToList();
+            var records = await dbContext.RevenueRecords
+                .Where(record => ids.Contains(record.Id))
+                .ToListAsync(cancellationToken);
+
+            foreach (var record in records)
+            {
+                if (quantityById.TryGetValue(record.Id, out var quantity))
+                {
+                    record.Quantity = quantity;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Invoice line quantity is negative when the line reduces inventory. Store units sold as positive.
+    /// </summary>
+    private async Task FlipNegativeRevenueQuantitiesAsync(CancellationToken cancellationToken)
+    {
+        var negativeRows = await dbContext.RevenueRecords
+            .Where(record => record.Quantity < 0m)
+            .ToListAsync(cancellationToken);
+
+        foreach (var record in negativeRows)
+        {
+            record.Quantity = -record.Quantity;
+        }
     }
 
     /// <summary>

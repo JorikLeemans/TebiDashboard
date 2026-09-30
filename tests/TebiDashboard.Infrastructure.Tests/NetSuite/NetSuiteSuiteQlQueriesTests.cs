@@ -65,6 +65,7 @@ public sealed class NetSuiteSuiteQlQueriesTests
         Assert.Contains("it.class AS productgroupid", sql);
         Assert.Contains("BUILTIN.DF(it.class) AS productgroupname", sql);
         Assert.Contains("-NVL(tl.amount, 0) AS amount", sql);
+        Assert.Contains("-NVL(tl.quantity, 0) AS quantity", sql);
         Assert.DoesNotContain("subsidiary", sql, StringComparison.OrdinalIgnoreCase);
     }
 
