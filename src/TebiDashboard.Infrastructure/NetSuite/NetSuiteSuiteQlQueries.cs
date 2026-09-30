@@ -141,7 +141,7 @@ internal static class NetSuiteSuiteQlQueries
         INNER JOIN invoice i ON i.id = tl.transaction
         LEFT JOIN item it ON it.id = tl.item
         WHERE tl.mainline = 'F'
-          AND i.tranDate >= TO_DATE('{fromDate:yyyy-MM-dd}', 'YYYY-MM-DD')
+          AND i.tranDate >= TO_DATE('{SuiteQlDate(fromDate)}', 'YYYY-MM-DD')
         ORDER BY i.tranDate DESC
         """;
 
@@ -158,7 +158,7 @@ internal static class NetSuiteSuiteQlQueries
             t.entity AS supplierid
         FROM transaction t
         WHERE t.type = 'VendBill'
-          AND t.trandate >= TO_DATE('{fromDate:yyyy-MM-dd}', 'YYYY-MM-DD')
+          AND t.trandate >= TO_DATE('{SuiteQlDate(fromDate)}', 'YYYY-MM-DD')
         ORDER BY t.trandate DESC
         """;
 
@@ -207,7 +207,7 @@ internal static class NetSuiteSuiteQlQueries
         INNER JOIN purchaseorder po ON po.id = tl.transaction
         WHERE tl.mainline = 'F'
           AND tl.quantity > NVL(tl.quantityshiprecv, 0)
-          AND po.tranDate >= TO_DATE('{fromDate:yyyy-MM-dd}', 'YYYY-MM-DD')
+          AND po.tranDate >= TO_DATE('{SuiteQlDate(fromDate)}', 'YYYY-MM-DD')
         ORDER BY po.tranDate DESC
         """;
 
@@ -222,7 +222,14 @@ internal static class NetSuiteSuiteQlQueries
         FROM transactionline tl
         INNER JOIN invoice i ON i.id = tl.transaction
         WHERE tl.mainline = 'F'
-          AND i.tranDate >= TO_DATE('{fromDate:yyyy-MM-dd}', 'YYYY-MM-DD')
+          AND i.tranDate >= TO_DATE('{SuiteQlDate(fromDate)}', 'YYYY-MM-DD')
         GROUP BY tl.item
         """;
+
+    /// <summary>
+    /// Formats a date for SuiteQL TO_DATE. The parameter is DateOnly, so a future
+    /// free-text filter cannot be concatenated into the query.
+    /// </summary>
+    private static string SuiteQlDate(DateOnly date) =>
+        date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
 }

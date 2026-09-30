@@ -201,14 +201,9 @@ public sealed class AdminApiClient(HttpClient httpClient, IAuthStateService auth
     {
         var request = new HttpRequestMessage(method, relativeUrl);
 
-        if (authState.IsAuthenticated
-            && !string.IsNullOrWhiteSpace(authState.Token)
-            && !string.IsNullOrWhiteSpace(authState.Username)
-            && !string.IsNullOrWhiteSpace(authState.Role))
+        if (!string.IsNullOrWhiteSpace(authState.Token))
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", authState.Token);
-            request.Headers.TryAddWithoutValidation("X-Tebi-Username", authState.Username);
-            request.Headers.TryAddWithoutValidation("X-Tebi-Role", authState.Role);
         }
 
         return request;

@@ -3,7 +3,7 @@ using TebiDashboard.Shared.Dtos;
 
 namespace TebiDashboard.Api.Tests;
 
-public class CustomerSupplierDetailNameTests : IClassFixture<TebiWebApplicationFactory>
+public class CustomerSupplierDetailNameTests : IClassFixture<TebiWebApplicationFactory>, IAsyncLifetime
 {
     private readonly HttpClient _client;
 
@@ -11,6 +11,10 @@ public class CustomerSupplierDetailNameTests : IClassFixture<TebiWebApplicationF
     {
         _client = factory.CreateClient();
     }
+
+    public Task InitializeAsync() => TestAuth.SignInAsync(_client);
+
+    public Task DisposeAsync() => Task.CompletedTask;
 
     [Fact]
     public async Task CustomerDetail_IncludesResolvedItemNames_OnRevenueAndSalesOrders()

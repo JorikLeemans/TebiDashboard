@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace TebiDashboard.Api.Tests;
 
-public class HealthEndpointTests : IClassFixture<TebiWebApplicationFactory>
+public class HealthEndpointTests : IClassFixture<TebiWebApplicationFactory>, IAsyncLifetime
 {
     private readonly HttpClient _client;
 
@@ -12,6 +12,10 @@ public class HealthEndpointTests : IClassFixture<TebiWebApplicationFactory>
     {
         _client = factory.CreateClient();
     }
+
+    public Task InitializeAsync() => TestAuth.SignInAsync(_client);
+
+    public Task DisposeAsync() => Task.CompletedTask;
 
     [Fact]
     public async Task Health_ReturnsOk()
