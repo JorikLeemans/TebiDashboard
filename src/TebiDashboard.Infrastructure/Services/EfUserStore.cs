@@ -23,7 +23,7 @@ public sealed class EfUserStore(TebiDashboardDbContext dbContext) : IUserStore
             return false;
         }
 
-        if (password.Length < 8)
+        if (string.IsNullOrEmpty(password) || password.Length < 8)
         {
             errorMessage = "Password must be at least 8 characters.";
             return false;
@@ -38,7 +38,7 @@ public sealed class EfUserStore(TebiDashboardDbContext dbContext) : IUserStore
         dbContext.Users.Add(new UserEntity
         {
             Email = normalizedEmail,
-            Password = password,
+            Password = PasswordHasher.Hash(password),
             Role = Roles.Sales
         });
         dbContext.SaveChanges();
@@ -51,9 +51,20 @@ public sealed class EfUserStore(TebiDashboardDbContext dbContext) : IUserStore
         var key = NormalizeEmail(usernameOrEmail);
         var stored = dbContext.Users.AsNoTracking().FirstOrDefault(u => u.Email == key);
 
-        if (stored is null || stored.Password != password)
+        if (stored is null || !PasswordHasher.Verify(password, stored.Password, out var upgradedHash))
         {
             return false;
+        }
+
+        // Replace a leftover plaintext password the first time that account signs in.
+        if (upgradedHash is not null)
+        {
+            var tracked = dbContext.Users.FirstOrDefault(u => u.Email == stored.Email);
+            if (tracked is not null)
+            {
+                tracked.Password = upgradedHash;
+                dbContext.SaveChanges();
+            }
         }
 
         user = new AuthenticatedUser
@@ -108,7 +119,7 @@ public sealed class EfUserStore(TebiDashboardDbContext dbContext) : IUserStore
         errorMessage = null;
         var normalizedEmail = NormalizeEmail(email);
 
-        if (password.Length < 8)
+        if (string.IsNullOrEmpty(password) || password.Length < 8)
         {
             errorMessage = "Password must be at least 8 characters.";
             return false;
@@ -121,7 +132,7 @@ public sealed class EfUserStore(TebiDashboardDbContext dbContext) : IUserStore
             return false;
         }
 
-        existing.Password = password;
+        existing.Password = PasswordHasher.Hash(password);
         dbContext.SaveChanges();
         return true;
     }
@@ -153,5 +164,5 @@ public sealed class EfUserStore(TebiDashboardDbContext dbContext) : IUserStore
     private int CountAdmins() =>
         dbContext.Users.Count(u => u.Role == Roles.Admin);
 
-    private static string NormalizeEmail(string value) => value.Trim().ToLowerInvariant();
+    private static string NormalizeEmail(string? value) => (value ?? string.Empty).Trim().ToLowerInvariant();
 }

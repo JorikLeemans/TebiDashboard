@@ -17,7 +17,7 @@ public sealed class NetSuiteSyncEndpointTests
 
         var response = await client.PostAsync("/api/netsuite/sync", content: null);
 
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
@@ -25,7 +25,7 @@ public sealed class NetSuiteSyncEndpointTests
     {
         await using var factory = new TebiWebApplicationFactory();
         using var client = factory.CreateClient();
-        client.DefaultRequestHeaders.Add("X-Tebi-Role", "Admin");
+        await TestAuth.SignInAsync(client, "admin@tebi.nl", "admin1234");
 
         var response = await client.PostAsync("/api/netsuite/sync", content: null);
 
@@ -56,7 +56,7 @@ public sealed class NetSuiteSyncEndpointTests
     {
         await using var factory = new TebiWebApplicationFactory();
         using var client = factory.CreateClient();
-        client.DefaultRequestHeaders.Add("X-Tebi-Role", "Admin");
+        await TestAuth.SignInAsync(client, "admin@tebi.nl", "admin1234");
 
         var response = await client.PostAsync("/api/netsuite/sync?lookbackDays=14", content: null);
 
@@ -75,7 +75,7 @@ public sealed class NetSuiteSyncEndpointTests
 
         var response = await client.GetAsync("/api/netsuite/setup");
 
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
@@ -83,7 +83,7 @@ public sealed class NetSuiteSyncEndpointTests
     {
         await using var factory = new TebiWebApplicationFactory();
         using var client = factory.CreateClient();
-        client.DefaultRequestHeaders.Add("X-Tebi-Role", "Admin");
+        await TestAuth.SignInAsync(client, "admin@tebi.nl", "admin1234");
 
         var response = await client.GetAsync("/api/netsuite/setup");
 

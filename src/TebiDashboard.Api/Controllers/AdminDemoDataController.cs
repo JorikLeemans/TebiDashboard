@@ -30,5 +30,5 @@ public class AdminDemoDataController(IDemoDataAdminService demoDataAdminService)
     }
 
     private IActionResult? RequireAdmin() =>
-        AdminRequestContext.IsAdmin(Request) ? null : StatusCode(StatusCodes.Status403Forbidden);
+        AdminRequestContext.IsAdmin(User) ? null : StatusCode(StatusCodes.Status403Forbidden);
 }

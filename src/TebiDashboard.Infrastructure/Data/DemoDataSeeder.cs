@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TebiDashboard.Infrastructure.Data.Entities;
+using TebiDashboard.Infrastructure.Services;
 using TebiDashboard.Shared.Constants;
 using TebiDashboard.Shared.Periods;
 
@@ -23,10 +24,10 @@ public static class DemoDataSeeder
         if (!await dbContext.Users.AnyAsync(cancellationToken))
         {
             dbContext.Users.AddRange(
-                new UserEntity { Email = "admin@tebi.nl", Password = "admin1234", Role = Roles.Admin },
-                new UserEntity { Email = "finance@tebi.nl", Password = "finance123", Role = Roles.Finance },
-                new UserEntity { Email = "sales@tebi.nl", Password = "sales1234", Role = Roles.Sales },
-                new UserEntity { Email = "inventory@tebi.nl", Password = "inventory1", Role = Roles.Inventory });
+                new UserEntity { Email = "admin@tebi.nl", Password = PasswordHasher.Hash("admin1234"), Role = Roles.Admin },
+                new UserEntity { Email = "finance@tebi.nl", Password = PasswordHasher.Hash("finance123"), Role = Roles.Finance },
+                new UserEntity { Email = "sales@tebi.nl", Password = PasswordHasher.Hash("sales1234"), Role = Roles.Sales },
+                new UserEntity { Email = "inventory@tebi.nl", Password = PasswordHasher.Hash("inventory1"), Role = Roles.Inventory });
         }
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow);

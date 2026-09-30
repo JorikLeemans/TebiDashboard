@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using TebiDashboard.Shared.Dtos;
 
@@ -6,30 +7,39 @@ namespace TebiDashboard.UI.Services;
 
 /// <summary>
 /// HTTP client wrapper for dashboard API calls from Blazor UI.
+/// Each request sends the signed-in user's JWT.
 /// </summary>
-public sealed class DashboardApiClient(HttpClient httpClient)
+public sealed class DashboardApiClient(HttpClient httpClient, IAuthStateService authState)
 {
+    /// <summary>
+    /// Used by UI tests that construct the client directly. Those tests mock HTTP and do not call a real API.
+    /// </summary>
+    public DashboardApiClient(HttpClient httpClient)
+        : this(httpClient, AnonymousAuth.Instance)
+    {
+    }
+
     public Task<DashboardSummaryDto?> GetSummaryAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
-        => httpClient.GetFromJsonAsync<DashboardSummaryDto>(
+        => GetJsonAsync<DashboardSummaryDto>(
             $"api/dashboard/summary?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
             cancellationToken);
 
     public Task<PeriodOverviewDto?> GetPeriodOverviewAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
-        => httpClient.GetFromJsonAsync<PeriodOverviewDto>(
+        => GetJsonAsync<PeriodOverviewDto>(
             $"api/dashboard/period-overview?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
             cancellationToken);
 
     public async Task<IReadOnlyList<CustomerDto>> GetCustomersAsync(CancellationToken cancellationToken = default)
-        => await httpClient.GetFromJsonAsync<IReadOnlyList<CustomerDto>>("api/customers", cancellationToken) ?? [];
+        => await GetJsonAsync<IReadOnlyList<CustomerDto>>("api/customers", cancellationToken) ?? [];
 
     public async Task<IReadOnlyList<SupplierDto>> GetSuppliersAsync(CancellationToken cancellationToken = default)
-        => await httpClient.GetFromJsonAsync<IReadOnlyList<SupplierDto>>("api/suppliers", cancellationToken) ?? [];
+        => await GetJsonAsync<IReadOnlyList<SupplierDto>>("api/suppliers", cancellationToken) ?? [];
 
     public async Task<IReadOnlyList<SupplierOverviewDto>> GetSuppliersOverviewAsync(
         DateOnly from,
         DateOnly to,
         CancellationToken cancellationToken = default)
-        => await httpClient.GetFromJsonAsync<IReadOnlyList<SupplierOverviewDto>>(
+        => await GetJsonAsync<IReadOnlyList<SupplierOverviewDto>>(
             $"api/suppliers/overview?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
             cancellationToken) ?? [];
 
@@ -38,31 +48,15 @@ public sealed class DashboardApiClient(HttpClient httpClient)
         DateOnly from,
         DateOnly to,
         CancellationToken cancellationToken = default)
-    {
-        var response = httpClient.GetAsync(
+        => GetOptionalJsonAsync<SupplierDetailDto>(
             $"api/suppliers/{Uri.EscapeDataString(supplierId)}?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
             cancellationToken);
-
-        return HandleSupplierDetailResponseAsync(response);
-    }
-
-    private static async Task<SupplierDetailDto?> HandleSupplierDetailResponseAsync(Task<HttpResponseMessage> responseTask)
-    {
-        var response = await responseTask;
-        if (response.StatusCode == HttpStatusCode.NotFound)
-        {
-            return null;
-        }
-
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<SupplierDetailDto>();
-    }
 
     public async Task<IReadOnlyList<CustomerOverviewDto>> GetCustomersOverviewAsync(
         DateOnly from,
         DateOnly to,
         CancellationToken cancellationToken = default)
-        => await httpClient.GetFromJsonAsync<IReadOnlyList<CustomerOverviewDto>>(
+        => await GetJsonAsync<IReadOnlyList<CustomerOverviewDto>>(
             $"api/customers/overview?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
             cancellationToken) ?? [];
 
@@ -71,28 +65,12 @@ public sealed class DashboardApiClient(HttpClient httpClient)
         DateOnly from,
         DateOnly to,
         CancellationToken cancellationToken = default)
-    {
-        var response = httpClient.GetAsync(
+        => GetOptionalJsonAsync<CustomerDetailDto>(
             $"api/customers/{Uri.EscapeDataString(customerId)}?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
             cancellationToken);
 
-        return HandleCustomerDetailResponseAsync(response);
-    }
-
-    private static async Task<CustomerDetailDto?> HandleCustomerDetailResponseAsync(Task<HttpResponseMessage> responseTask)
-    {
-        var response = await responseTask;
-        if (response.StatusCode == HttpStatusCode.NotFound)
-        {
-            return null;
-        }
-
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<CustomerDetailDto>();
-    }
-
     public async Task<IReadOnlyList<RevenueDto>> GetRevenueAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
-        => await httpClient.GetFromJsonAsync<IReadOnlyList<RevenueDto>>(
+        => await GetJsonAsync<IReadOnlyList<RevenueDto>>(
             $"api/revenue?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
             cancellationToken) ?? [];
 
@@ -105,47 +83,103 @@ public sealed class DashboardApiClient(HttpClient httpClient)
             ? $"api/goals?year={year}"
             : $"api/goals?year={year}&period={Uri.EscapeDataString(period)}";
 
-        return await httpClient.GetFromJsonAsync<IReadOnlyList<GoalDto>>(url, cancellationToken) ?? [];
+        return await GetJsonAsync<IReadOnlyList<GoalDto>>(url, cancellationToken) ?? [];
     }
 
     public async Task<IReadOnlyList<GoalDto>> SaveGoalsAsync(
-        SaveGoalsRequestDto request,
+        SaveGoalsRequestDto body,
         CancellationToken cancellationToken = default)
     {
-        var response = await httpClient.PutAsJsonAsync("api/goals", request, cancellationToken);
+        using var request = new HttpRequestMessage(HttpMethod.Put, "api/goals")
+        {
+            Content = JsonContent.Create(body)
+        };
+        AttachBearer(request);
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<IReadOnlyList<GoalDto>>(cancellationToken) ?? [];
     }
 
     public async Task<IReadOnlyList<InventoryItemDto>> GetLowStockAsync(CancellationToken cancellationToken = default)
-        => await httpClient.GetFromJsonAsync<IReadOnlyList<InventoryItemDto>>("api/inventory/low-stock", cancellationToken) ?? [];
+        => await GetJsonAsync<IReadOnlyList<InventoryItemDto>>("api/inventory/low-stock", cancellationToken) ?? [];
 
     public async Task<IReadOnlyList<InventoryItemDto>> GetInventoryItemsAsync(
         DateOnly from,
         DateOnly to,
         CancellationToken cancellationToken = default)
-        => await httpClient.GetFromJsonAsync<IReadOnlyList<InventoryItemDto>>(
+        => await GetJsonAsync<IReadOnlyList<InventoryItemDto>>(
             $"api/inventory/items?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
             cancellationToken) ?? [];
 
     public Task<ItemDetailDto?> GetItemByIdAsync(string itemId, CancellationToken cancellationToken = default)
-    {
-        var response = httpClient.GetAsync($"api/items/{Uri.EscapeDataString(itemId)}", cancellationToken);
-        return HandleItemResponseAsync(response);
-    }
+        => GetOptionalJsonAsync<ItemDetailDto>($"api/items/{Uri.EscapeDataString(itemId)}", cancellationToken);
 
     public Task<ItemDetailDto?> GetItemByBarcodeAsync(string barcode, CancellationToken cancellationToken = default)
-        => httpClient.GetFromJsonAsync<ItemDetailDto>($"api/items/by-barcode/{Uri.EscapeDataString(barcode)}", cancellationToken);
+        => GetJsonAsync<ItemDetailDto>($"api/items/by-barcode/{Uri.EscapeDataString(barcode)}", cancellationToken);
 
-    private static async Task<ItemDetailDto?> HandleItemResponseAsync(Task<HttpResponseMessage> responseTask)
+    private async Task<T?> GetJsonAsync<T>(string url, CancellationToken cancellationToken)
     {
-        var response = await responseTask;
+        using var response = await SendAsync(HttpMethod.Get, url, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<T>(cancellationToken);
+    }
+
+    /// <summary>Returns null when the API answers 404, which the detail pages treat as a missing record.</summary>
+    private async Task<T?> GetOptionalJsonAsync<T>(string url, CancellationToken cancellationToken)
+    {
+        using var response = await SendAsync(HttpMethod.Get, url, cancellationToken);
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
-            return null;
+            return default;
         }
 
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<ItemDetailDto>();
+        return await response.Content.ReadFromJsonAsync<T>(cancellationToken);
+    }
+
+    private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string url, CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(method, url);
+        AttachBearer(request);
+        return await httpClient.SendAsync(request, cancellationToken);
+    }
+
+    private void AttachBearer(HttpRequestMessage request)
+    {
+        if (!string.IsNullOrWhiteSpace(authState.Token))
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", authState.Token);
+        }
+    }
+
+    /// <summary>Stand-in used when a test does not supply a signed-in session.</summary>
+    private sealed class AnonymousAuth : IAuthStateService
+    {
+        public static readonly AnonymousAuth Instance = new();
+
+        public bool IsAuthenticated => false;
+
+        public string? Token => null;
+
+        public string? Username => null;
+
+        public string? Role => null;
+
+        public event Action? OnChange
+        {
+            add { }
+            remove { }
+        }
+
+        public bool CanAccessAdminDashboard() => false;
+
+        public bool CanManageGoals() => false;
+
+        public Task InitializeAsync() => Task.CompletedTask;
+
+        public Task SignInAsync(LoginResponseDto response) => Task.CompletedTask;
+
+        public Task SignOutAsync() => Task.CompletedTask;
     }
 }

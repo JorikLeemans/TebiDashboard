@@ -1,4 +1,9 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.IdentityModel.Tokens;
+using TebiDashboard.Api.Authorization;
 using TebiDashboard.Application;
 using TebiDashboard.Infrastructure;
 
@@ -21,14 +26,62 @@ builder.Services.AddOpenApi();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
+var signingKey = AuthSigningKey.Resolve(builder.Configuration, builder.Environment);
+var issuer = builder.Configuration["Auth:Issuer"] ?? "TebiDashboard";
+var audience = builder.Configuration["Auth:Audience"] ?? "TebiDashboard";
+var lifetimeHours = Math.Clamp(builder.Configuration.GetValue("Auth:TokenLifetimeHours", 12), 1, 24);
+builder.Services.AddSingleton(new JwtAccessTokenFactory(
+    signingKey,
+    issuer,
+    audience,
+    TimeSpan.FromHours(lifetimeHours)));
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        // Keep the short "role" and "sub" claim names from the token.
+        options.MapInboundClaims = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = issuer,
+            ValidAudience = audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)),
+            RoleClaimType = "role",
+            NameClaimType = "sub",
+            ClockSkew = TimeSpan.FromMinutes(1)
+        };
+    });
+
+// Every endpoint requires a signed-in user unless it is marked AllowAnonymous.
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
+
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()?
+    .Where(origin => !string.IsNullOrWhiteSpace(origin))
+    .ToArray() ?? [];
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Clients", policy =>
     {
-        policy.AllowAnyHeader()
-            .AllowAnyMethod()
-            .SetIsOriginAllowed(_ => true)
-            .AllowCredentials();
+        policy.AllowAnyHeader().AllowAnyMethod();
+
+        // An empty list trusts no browser origin. Credentials are only sent to the configured hosts.
+        if (allowedOrigins.Length == 0)
+        {
+            policy.SetIsOriginAllowed(_ => false);
+            return;
+        }
+
+        policy.WithOrigins(allowedOrigins).AllowCredentials();
     });
 });
 
@@ -54,6 +107,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("Clients");
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseRequestTimeouts();
 app.MapControllers();
 
