@@ -95,23 +95,41 @@
   border-collapse: collapse;
 }
 
-.goal-settings__table th,
-.goal-settings__table td {
+.goal-settings__table td,
+.goal-settings__table :deep(th) {
   padding: 0.65rem 0.5rem;
   border-bottom: 1px solid #e8edf2;
   text-align: left;
+  vertical-align: middle;
 }
 
-.goal-settings__table thead th {
+/* SortableHeader owns the header cell, so these styles have to reach into that component.
+   Default header alignment is centered, which left Target (€) floating away from the input. */
+.goal-settings__table :deep(thead th) {
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   color: #667;
+  font-weight: 600;
+}
+
+/* Hug the period label and the target input so the header sits on the box. */
+.goal-settings__table--company {
+  width: auto;
+}
+
+.goal-settings__table--company td {
+  width: 12rem;
 }
 
 .goal-settings__input {
   width: 100%;
   max-width: 12rem;
+}
+
+.goal-settings__input--calculated {
+  background: #f4f7f5;
+  color: #243;
 }
 
 .goal-settings__input--compact {
