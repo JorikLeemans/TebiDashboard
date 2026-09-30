@@ -53,14 +53,8 @@
   color: #145c32;
 }
 
-.admin-dashboard__empty,
-.admin-dashboard__hint {
+.admin-dashboard__empty {
   color: #5a6b62;
-}
-
-.admin-dashboard__hint {
-  margin-top: 1rem;
-  font-size: 0.85rem;
 }
 
 .admin-table-wrapper {

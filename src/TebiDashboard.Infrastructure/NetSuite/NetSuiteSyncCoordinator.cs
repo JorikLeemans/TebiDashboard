@@ -86,6 +86,12 @@ public sealed class NetSuiteSyncCoordinator(
             var syncService = scope.ServiceProvider.GetRequiredService<INetSuiteSyncService>();
             var result = await syncService.SyncDashboardDataAsync(lookbackDays);
             var completedAt = DateTimeOffset.UtcNow;
+            var startedAt = _status.StartedAt;
+            // Include how long the import took in the message the admin page shows.
+            var message = result.Success
+                ? SyncDuration.Append(result.Message, startedAt, completedAt)
+                : result.Message;
+            var resultWithDuration = result with { Message = message };
             var state = result.Success ? NetSuiteSyncStates.Succeeded : NetSuiteSyncStates.Failed;
 
             lock (_gate)
@@ -93,9 +99,9 @@ public sealed class NetSuiteSyncCoordinator(
                 _status = new NetSuiteSyncRunStatus
                 {
                     State = state,
-                    Message = result.Message,
-                    Result = result,
-                    StartedAt = _status.StartedAt,
+                    Message = message,
+                    Result = resultWithDuration,
+                    StartedAt = startedAt,
                     CompletedAt = completedAt,
                     LookbackDays = lookbackDays
                 };
@@ -108,7 +114,7 @@ public sealed class NetSuiteSyncCoordinator(
                 completedAt,
                 lookbackDays,
                 state,
-                result.Message));
+                message));
         }
         catch (Exception ex)
         {
