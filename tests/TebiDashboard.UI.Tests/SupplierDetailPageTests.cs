@@ -36,7 +36,8 @@ public class SupplierDetailPageTests
         var expenses = cut.Find("table[aria-label='Supplier expenses']").TextContent;
         Assert.Contains("Transport", expenses);
         Assert.Contains("Logistics Partner BV", expenses);
-        Assert.Contains("Vendor", expenses);
+        Assert.Contains("Supplier", expenses);
+        Assert.Contains("e9", expenses);
         Assert.Contains(",00", expenses);
     }
 

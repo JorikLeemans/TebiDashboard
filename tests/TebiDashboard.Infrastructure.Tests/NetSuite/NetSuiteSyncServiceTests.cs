@@ -103,7 +103,7 @@ public sealed class NetSuiteSyncServiceTests
     }
 
     [Fact]
-    public async Task Sync_UsesEntityId_WhenGlommedNameAndCompanyNameAreAlsoPresent()
+    public async Task Sync_CombinesEntityId_WithCompanyNameOrGlommedName()
     {
         await using var db = CreateDbContext();
         var restClient = new FakeNetSuiteRestClient
@@ -111,10 +111,19 @@ public sealed class NetSuiteSyncServiceTests
             Customers =
             [
                 Row(
-                    ("id", "\"c-1\""),
-                    ("entityId", "\"Piet Jansen\""),
-                    ("companyName", "\"Company only\""),
-                    ("glommedName", "\"Jansen, Piet\""),
+                    ("id", "\"c-company\""),
+                    ("entityId", "\"K12345\""),
+                    ("isPerson", "\"F\""),
+                    ("companyName", "\"Bouwbedrijf Jansen\""),
+                    ("glommedName", "\"Should not use person name\""),
+                    ("email", "\"inkoop@jansen.nl\""),
+                    ("city", "\"Eindhoven\"")),
+                Row(
+                    ("id", "\"c-person\""),
+                    ("entityId", "\"K67890\""),
+                    ("isPerson", "\"T\""),
+                    ("companyName", "\"Should not use company name\""),
+                    ("glommedName", "\"Piet Jansen\""),
                     ("email", "\"piet@tebi.nl\""),
                     ("city", "\"Helmond\""))
             ]
@@ -124,9 +133,13 @@ public sealed class NetSuiteSyncServiceTests
             .SyncDashboardDataAsync(365);
 
         Assert.True(result.Success, result.Message);
-        var customer = await db.Customers.SingleAsync();
-        Assert.Equal("Piet Jansen", customer.Name);
-        Assert.Equal("Helmond", customer.City);
+        Assert.Equal(
+            "K12345 Bouwbedrijf Jansen",
+            (await db.Customers.SingleAsync(row => row.CustomerId == "c-company")).Name);
+        Assert.Equal(
+            "K67890 Piet Jansen",
+            (await db.Customers.SingleAsync(row => row.CustomerId == "c-person")).Name);
+        Assert.Equal("Helmond", (await db.Customers.SingleAsync(row => row.CustomerId == "c-person")).City);
     }
 
     [Fact]

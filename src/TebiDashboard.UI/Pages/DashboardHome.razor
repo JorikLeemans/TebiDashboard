@@ -52,8 +52,9 @@
                       EmptyMessage="No revenue records in this period to chart." />
         </section>
 
+        @* One row per invoice, same grouping as the customer page. Click a row to see its lines. *@
         <section class="dashboard-section">
-            <h2>Sales in period (@DashboardHomePreview.TitleCount(SalesPreview.Count, _overview.Revenue.Count))</h2>
+            <h2>Sales in period (@DashboardHomePreview.TitleCount(SalesPreview.Count, SalesGroups.Count))</h2>
             @if (_overview.Revenue.Count == 0)
             {
                 <p class="dashboard-empty">No revenue records in this period.</p>
@@ -66,38 +67,61 @@
                             <SortableHeader Column="date" Label="Date" Sort="_salesSort" />
                             <SortableHeader Column="invoice" Label="Invoice" Sort="_salesSort" />
                             <SortableHeader Column="customer" Label="Customer" Sort="_salesSort" />
-                            <SortableHeader Column="group" Label="Product group" Sort="_salesSort" />
                             <SortableHeader Column="amount" Label="Amount" Sort="_salesSort" />
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var row in SalesPreview)
+                        @foreach (var invoice in SalesPreview)
                         {
-                            <tr>
-                                <td>@row.Date.ToString("d")</td>
-                                <td>@InvoiceLabel.For(row)</td>
+                            var expanded = IsInvoiceExpanded(invoice.Key);
+                            var customer = invoice.Lines[0];
+                            <tr class="dashboard-table__group-row"
+                                @onclick="() => ToggleInvoice(invoice.Key)"
+                                tabindex="0"
+                                aria-expanded="@expanded"
+                                @onkeydown="(args) => HandleInvoiceKeyDown(args, invoice.Key)">
+                                <td>@invoice.Date.ToString("d")</td>
                                 <td>
-                                    @if (string.IsNullOrWhiteSpace(row.CustomerId))
+                                    <span class="dashboard-table__toggle" aria-hidden="true">@(expanded ? "▼" : "▶")</span>
+                                    <code>@invoice.InvoiceLabel</code>
+                                </td>
+                                <td>
+                                    @if (string.IsNullOrWhiteSpace(customer.CustomerId))
                                     {
-                                        @row.CustomerName
+                                        @CustomerLabel(customer)
                                     }
                                     else
                                     {
                                         <a class="dashboard-table__customer-link"
-                                           href="@($"/customers/{Uri.EscapeDataString(row.CustomerId)}")">
-                                            @row.CustomerName
+                                           href="@($"/customers/{Uri.EscapeDataString(customer.CustomerId)}")"
+                                           @onclick:stopPropagation="true">
+                                            @if (!string.IsNullOrWhiteSpace(customer.CustomerId))
+                                            {
+                                                <code>@customer.CustomerId</code>
+                                            }
+                                            @CustomerLabel(customer)
                                         </a>
                                     }
                                 </td>
-                                <td>@ProductGroupLabel.For(row)</td>
-                                <td>@EuroFormatting.Format(row.Amount)</td>
+                                <td>@EuroFormatting.Format(invoice.TotalAmount)</td>
                             </tr>
+                            @if (expanded)
+                            {
+                                @foreach (var line in invoice.Lines)
+                                {
+                                    <tr class="dashboard-table__line-row">
+                                        <td>@line.Date.ToString("d")</td>
+                                        <td colspan="2">@RevenueLineLabel(line)</td>
+                                        <td>@EuroFormatting.Format(line.Amount)</td>
+                                    </tr>
+                                }
+                            }
                         }
                     </tbody>
                 </table>
-                @if (_overview.Revenue.Count > DashboardHomePreview.MaxRows)
+                @if (SalesGroups.Count > DashboardHomePreview.MaxRows)
                 {
-                    <p class="dashboard-preview-note">@DashboardHomePreview.TruncationNote(_overview.Revenue.Count, mostRecent: !_salesSort.IsActive)</p>
+                    <p class="dashboard-preview-note">@DashboardHomePreview.TruncationNote(SalesGroups.Count, mostRecent: !_salesSort.IsActive)</p>
                 }
             }
         </section>
@@ -140,8 +164,9 @@
             }
         </section>
 
+        @* One row per order id, same grouping as the customer page. Click a row to see its lines. *@
         <section class="dashboard-section">
-            <h2>Open sales orders and period transactions (@DashboardHomePreview.TitleCount(TransactionsPreview.Count, _overview.Transactions.Count))</h2>
+            <h2>Open sales orders and period transactions (@DashboardHomePreview.TitleCount(TransactionsPreview.Count, TransactionGroups.Count))</h2>
             @if (_overview.Transactions.Count == 0)
             {
                 <p class="dashboard-empty">No open sales orders or other transactions in this period.</p>
@@ -152,32 +177,47 @@
                     <thead>
                         <tr>
                             <SortableHeader Column="date" Label="Date" Sort="_transactionsSort" />
+                            <SortableHeader Column="order" Label="Order" Sort="_transactionsSort" />
                             <SortableHeader Column="type" Label="Type" Sort="_transactionsSort" />
                             <SortableHeader Column="party" Label="Customer / Supplier" Sort="_transactionsSort" />
-                            <SortableHeader Column="item" Label="Item" Sort="_transactionsSort" />
                             <SortableHeader Column="qty" Label="Qty open" Sort="_transactionsSort" />
+                            <SortableHeader Column="amount" Label="Amount" Sort="_transactionsSort" />
                             <StatusColumnHeader Kind="StatusLegendKind.OpenTransaction" Sort="_transactionsSort" />
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var row in TransactionsPreview)
+                        @foreach (var order in TransactionsPreview)
                         {
-                            <tr class="dashboard-table__link" @onclick="() => OpenItem(row.ItemId)" tabindex="0">
-                                <td>@row.TransactionDate.ToString("d")</td>
-                                <td>@row.Type</td>
+                            var expanded = IsOrderExpanded(order.Key);
+                            var first = order.Lines[0];
+                            <tr class="dashboard-table__group-row"
+                                @onclick="() => ToggleOrder(order.Key)"
+                                tabindex="0"
+                                aria-expanded="@expanded"
+                                @onkeydown="(args) => HandleOrderKeyDown(args, order.Key)">
+                                <td>@order.Date.ToString("d")</td>
                                 <td>
-                                    @if (!string.IsNullOrWhiteSpace(row.CustomerId))
+                                    <span class="dashboard-table__toggle" aria-hidden="true">@(expanded ? "▼" : "▶")</span>
+                                    <code>@order.OrderLabel</code>
+                                </td>
+                                <td>@first.Type</td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(first.CustomerId))
                                     {
                                         <a class="dashboard-table__customer-link"
-                                           href="@($"/customers/{Uri.EscapeDataString(row.CustomerId)}")">
-                                            @row.CustomerName
+                                           href="@($"/customers/{Uri.EscapeDataString(first.CustomerId)}")"
+                                           @onclick:stopPropagation="true">
+                                            <code>@first.CustomerId</code>
+                                            @PartyName(first.CustomerName, first.CustomerId)
                                         </a>
                                     }
-                                    else if (!string.IsNullOrWhiteSpace(row.SupplierId))
+                                    else if (!string.IsNullOrWhiteSpace(first.SupplierId))
                                     {
                                         <a class="dashboard-table__customer-link"
-                                           href="@($"/suppliers/{Uri.EscapeDataString(row.SupplierId)}")">
-                                            @row.SupplierName
+                                           href="@($"/suppliers/{Uri.EscapeDataString(first.SupplierId)}")"
+                                           @onclick:stopPropagation="true">
+                                            <code>@first.SupplierId</code>
+                                            @PartyName(first.SupplierName, first.SupplierId)
                                         </a>
                                     }
                                     else
@@ -185,25 +225,53 @@
                                         @:—
                                     }
                                 </td>
-                                <td>@row.ItemName</td>
-                                <td>@row.QuantityOpen.ToString("N0")</td>
+                                <td>@order.TotalQuantityOpen.ToString("N0")</td>
+                                <td>@EuroFormatting.Format(order.TotalAmount)</td>
                                 <td>
                                     @* Compact NetSuite letter; hover the letter for the full status name. *@
-                                    <TransactionStatusMark Status="@row.Status" Type="@row.Type" />
+                                    <TransactionStatusMark Status="@order.Status" Type="@first.Type" />
                                 </td>
                             </tr>
+                            @if (expanded)
+                            {
+                                @foreach (var line in order.Lines)
+                                {
+                                    <tr class="dashboard-table__line-row">
+                                        <td>@line.TransactionDate.ToString("d")</td>
+                                        <td colspan="3">
+                                            @if (string.IsNullOrWhiteSpace(line.ItemId))
+                                            {
+                                                @line.ItemName
+                                            }
+                                            else
+                                            {
+                                                <a class="dashboard-table__customer-link"
+                                                   href="@($"/inventory/{Uri.EscapeDataString(line.ItemId)}")">
+                                                    @line.ItemName
+                                                </a>
+                                            }
+                                        </td>
+                                        <td>@line.QuantityOpen.ToString("N0")</td>
+                                        <td>@EuroFormatting.Format(line.Amount)</td>
+                                        <td>
+                                            <TransactionStatusMark Status="@line.Status" Type="@line.Type" />
+                                        </td>
+                                    </tr>
+                                }
+                            }
                         }
                     </tbody>
                 </table>
-                @if (_overview.Transactions.Count > DashboardHomePreview.MaxRows)
+                @if (TransactionGroups.Count > DashboardHomePreview.MaxRows)
                 {
-                    <p class="dashboard-preview-note">@DashboardHomePreview.TruncationNote(_overview.Transactions.Count, mostRecent: !_transactionsSort.IsActive)</p>
+                    <p class="dashboard-preview-note">@DashboardHomePreview.TruncationNote(TransactionGroups.Count, mostRecent: !_transactionsSort.IsActive)</p>
                 }
             }
         </section>
 
+        @* One row per supplier. Click a row to see that supplier's bills, including the bill id. *@
         <section class="dashboard-section">
-            <h2>Expenses in period (@DashboardHomePreview.TitleCount(ExpensesPreview.Count, _overview.Expenses.Count))</h2>
+            <h2>Expenses in period (@DashboardHomePreview.TitleCount(ExpensesPreview.Count, ExpenseGroups.Count))</h2>
             @if (_overview.Expenses.Count == 0)
             {
                 <p class="dashboard-empty">No expenses in this period.</p>
@@ -214,38 +282,64 @@
                     <thead>
                         <tr>
                             <SortableHeader Column="date" Label="Date" Sort="_expensesSort" />
-                            <SortableHeader Column="category" Label="Category" Sort="_expensesSort" />
-                            <SortableHeader Column="vendor" Label="Vendor" Sort="_expensesSort" />
+                            <SortableHeader Column="supplier" Label="Supplier" Sort="_expensesSort" />
                             <SortableHeader Column="amount" Label="Amount" Sort="_expensesSort" />
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var row in ExpensesPreview)
+                        @foreach (var supplier in ExpensesPreview)
                         {
-                            <tr>
-                                <td>@row.Date.ToString("d")</td>
-                                <td>@row.Category</td>
+                            var expanded = IsExpenseExpanded(supplier.Key);
+                            <tr class="dashboard-table__group-row"
+                                @onclick="() => ToggleExpense(supplier.Key)"
+                                tabindex="0"
+                                aria-expanded="@expanded"
+                                @onkeydown="(args) => HandleExpenseKeyDown(args, supplier.Key)">
+                                <td>@supplier.Date.ToString("d")</td>
                                 <td>
-                                    @if (string.IsNullOrWhiteSpace(row.SupplierId))
+                                    <span class="dashboard-table__toggle" aria-hidden="true">@(expanded ? "▼" : "▶")</span>
+                                    @if (string.IsNullOrWhiteSpace(supplier.SupplierId))
                                     {
-                                        @row.VendorName
+                                        @supplier.SupplierLabel
                                     }
                                     else
                                     {
                                         <a class="dashboard-table__customer-link"
-                                           href="@($"/suppliers/{Uri.EscapeDataString(row.SupplierId)}")">
-                                            @row.VendorName
+                                           href="@($"/suppliers/{Uri.EscapeDataString(supplier.SupplierId)}")"
+                                           @onclick:stopPropagation="true">
+                                            <code>@supplier.SupplierId</code>
+                                            @if (!string.IsNullOrWhiteSpace(supplier.SupplierLabel))
+                                            {
+                                                @supplier.SupplierLabel
+                                            }
                                         </a>
                                     }
                                 </td>
-                                <td>@EuroFormatting.FormatWhole(row.Amount)</td>
+                                <td>@EuroFormatting.Format(supplier.TotalAmount)</td>
                             </tr>
+                            @if (expanded)
+                            {
+                                @foreach (var line in supplier.Lines)
+                                {
+                                    <tr class="dashboard-table__line-row">
+                                        <td>@line.Date.ToString("d")</td>
+                                        <td>
+                                            <code>@line.Id</code>
+                                            @if (!string.IsNullOrWhiteSpace(line.Category))
+                                            {
+                                                <text> · @line.Category</text>
+                                            }
+                                        </td>
+                                        <td>@EuroFormatting.Format(line.Amount)</td>
+                                    </tr>
+                                }
+                            }
                         }
                     </tbody>
                 </table>
-                @if (_overview.Expenses.Count > DashboardHomePreview.MaxRows)
+                @if (ExpenseGroups.Count > DashboardHomePreview.MaxRows)
                 {
-                    <p class="dashboard-preview-note">@DashboardHomePreview.TruncationNote(_overview.Expenses.Count, mostRecent: !_expensesSort.IsActive)</p>
+                    <p class="dashboard-preview-note">@DashboardHomePreview.TruncationNote(ExpenseGroups.Count, mostRecent: !_expensesSort.IsActive)</p>
                 }
             }
         </section>
@@ -301,25 +395,39 @@
     private bool _isLoading = true;
     private bool _isInitialLoad = true;
     private string? _error;
+    private readonly HashSet<string> _expandedInvoices = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _expandedOrders = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _expandedExpenses = new(StringComparer.OrdinalIgnoreCase);
     private readonly ListSortState _salesSort = new();
     private readonly ListSortState _customersSort = new();
     private readonly ListSortState _transactionsSort = new();
     private readonly ListSortState _expensesSort = new();
     private readonly ListSortState _inventorySort = new();
 
-    /// <summary>Newest 20 sales rows unless a column sort is active; KPIs still use the full period list.</summary>
-    private IReadOnlyList<RevenueDto> SalesPreview =>
-        _overview is null
-            ? []
-            : ListSort.ApplyThenPreview(_overview.Revenue, _salesSort, row => _salesSort.Column switch
+    /// <summary>Invoices in the period, newest first unless a column sort is active.</summary>
+    private IReadOnlyList<InvoiceRevenueGroup> SalesGroups
+    {
+        get
+        {
+            if (_overview is null)
             {
-                "date" => row.Date,
-                "invoice" => InvoiceLabel.For(row),
-                "customer" => row.CustomerName,
-                "group" => ProductGroupLabel.For(row),
-                "amount" => row.Amount,
-                _ => row.Date
+                return [];
+            }
+
+            var groups = InvoiceRevenueGroups.From(_overview.Revenue);
+            return ListSort.Apply(groups, _salesSort, invoice => _salesSort.Column switch
+            {
+                "date" => invoice.Date,
+                "invoice" => invoice.InvoiceLabel,
+                "customer" => CustomerLabel(invoice.Lines[0]),
+                "amount" => invoice.TotalAmount,
+                _ => invoice.Date
             });
+        }
+    }
+
+    /// <summary>Newest 20 invoices unless a column sort is active. KPIs still use every revenue line.</summary>
+    private IReadOnlyList<InvoiceRevenueGroup> SalesPreview => DashboardHomePreview.MostRecent(SalesGroups);
 
     /// <summary>First 20 customers unless a column sort is active.</summary>
     private IReadOnlyList<CustomerDto> CustomersPreview =>
@@ -335,33 +443,57 @@
                 _ => customer.Name
             });
 
-    /// <summary>Newest 20 open sales orders / period transactions unless a column sort is active.</summary>
-    private IReadOnlyList<OpenTransactionDto> TransactionsPreview =>
-        _overview is null
-            ? []
-            : ListSort.ApplyThenPreview(_overview.Transactions, _transactionsSort, row => _transactionsSort.Column switch
+    /// <summary>Orders in the period, grouped like the customer page.</summary>
+    private IReadOnlyList<SalesOrderGroup> TransactionGroups
+    {
+        get
+        {
+            if (_overview is null)
             {
-                "date" => row.TransactionDate,
-                "type" => row.Type,
-                "party" => string.IsNullOrWhiteSpace(row.CustomerName) ? row.SupplierName : row.CustomerName,
-                "item" => row.ItemName,
-                "qty" => row.QuantityOpen,
-                "status" => row.Status,
-                _ => row.TransactionDate
-            });
+                return [];
+            }
 
-    /// <summary>Newest 20 expenses unless a column sort is active; totals stay in the period KPIs.</summary>
-    private IReadOnlyList<ExpenseDto> ExpensesPreview =>
-        _overview is null
-            ? []
-            : ListSort.ApplyThenPreview(_overview.Expenses, _expensesSort, row => _expensesSort.Column switch
+            var groups = SalesOrderGroups.From(_overview.Transactions);
+            return ListSort.Apply(groups, _transactionsSort, order => _transactionsSort.Column switch
             {
-                "date" => row.Date,
-                "category" => row.Category,
-                "vendor" => row.VendorName,
-                "amount" => row.Amount,
-                _ => row.Date
+                "date" => order.Date,
+                "order" => order.OrderLabel,
+                "type" => order.Lines[0].Type,
+                "party" => PartyLabel(order.Lines[0]),
+                "qty" => order.TotalQuantityOpen,
+                "amount" => order.TotalAmount,
+                "status" => order.Status,
+                _ => order.Date
             });
+        }
+    }
+
+    /// <summary>Newest 20 orders unless a column sort is active.</summary>
+    private IReadOnlyList<SalesOrderGroup> TransactionsPreview => DashboardHomePreview.MostRecent(TransactionGroups);
+
+    /// <summary>Expenses grouped by supplier, newest first unless a column sort is active.</summary>
+    private IReadOnlyList<ExpenseSupplierGroup> ExpenseGroups
+    {
+        get
+        {
+            if (_overview is null)
+            {
+                return [];
+            }
+
+            var groups = ExpenseSupplierGroups.From(_overview.Expenses);
+            return ListSort.Apply(groups, _expensesSort, group => _expensesSort.Column switch
+            {
+                "date" => group.Date,
+                "supplier" => group.SupplierLabel,
+                "amount" => group.TotalAmount,
+                _ => group.Date
+            });
+        }
+    }
+
+    /// <summary>Newest 20 suppliers unless a column sort is active. Period KPIs still use every bill.</summary>
+    private IReadOnlyList<ExpenseSupplierGroup> ExpensesPreview => DashboardHomePreview.MostRecent(ExpenseGroups);
 
     /// <summary>First 20 inventory rows with activity unless a column sort is active.</summary>
     private IReadOnlyList<InventoryItemDto> InventoryPreview =>
@@ -474,6 +606,93 @@
     }
 
     private void OpenItem(string itemId) => Navigation.NavigateTo($"/inventory/{Uri.EscapeDataString(itemId)}");
+
+    // Name only. The id is rendered beside it so a blank name does not repeat the id.
+    private static string CustomerLabel(RevenueDto row) =>
+        PartyName(row.CustomerName, row.CustomerId);
+
+    private static string PartyLabel(OpenTransactionDto line) =>
+        !string.IsNullOrWhiteSpace(line.CustomerId)
+            ? PartyName(line.CustomerName, line.CustomerId)
+            : PartyName(line.SupplierName, line.SupplierId);
+
+    private static string PartyName(string? name, string? id) =>
+        !string.IsNullOrWhiteSpace(name)
+        && !string.Equals(name, id, StringComparison.OrdinalIgnoreCase)
+            ? name
+            : string.Empty;
+
+    // Expanded invoice lines show the article and artikelgroep, same as the customer page.
+    private static string RevenueLineLabel(RevenueDto row)
+    {
+        var item = !string.IsNullOrWhiteSpace(row.ItemName) ? row.ItemName : row.ItemId;
+        var group = ProductGroupLabel.For(row);
+        if (string.IsNullOrWhiteSpace(group))
+        {
+            return item;
+        }
+
+        if (string.IsNullOrWhiteSpace(item))
+        {
+            return group;
+        }
+
+        return $"{item} · {group}";
+    }
+
+    private bool IsInvoiceExpanded(string key) => _expandedInvoices.Contains(key);
+
+    private void ToggleInvoice(string key)
+    {
+        if (!_expandedInvoices.Add(key))
+        {
+            _expandedInvoices.Remove(key);
+        }
+    }
+
+    private void HandleInvoiceKeyDown(KeyboardEventArgs args, string key)
+    {
+        if (args.Key is "Enter" or " ")
+        {
+            ToggleInvoice(key);
+        }
+    }
+
+    private bool IsOrderExpanded(string key) => _expandedOrders.Contains(key);
+
+    private void ToggleOrder(string key)
+    {
+        if (!_expandedOrders.Add(key))
+        {
+            _expandedOrders.Remove(key);
+        }
+    }
+
+    private void HandleOrderKeyDown(KeyboardEventArgs args, string key)
+    {
+        if (args.Key is "Enter" or " ")
+        {
+            ToggleOrder(key);
+        }
+    }
+
+    private bool IsExpenseExpanded(string key) => _expandedExpenses.Contains(key);
+
+    private void ToggleExpense(string key)
+    {
+        if (!_expandedExpenses.Add(key))
+        {
+            _expandedExpenses.Remove(key);
+        }
+    }
+
+    private void HandleExpenseKeyDown(KeyboardEventArgs args, string key)
+    {
+        if (args.Key is "Enter" or " ")
+        {
+            ToggleExpense(key);
+        }
+    }
 
     public void Dispose()
     {

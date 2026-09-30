@@ -10,8 +10,9 @@ public sealed class NetSuiteSuiteQlQueriesTests
         var sql = NetSuiteSuiteQlQueries.Customers();
 
         Assert.Contains("entityId", sql);
+        Assert.Contains("isPerson", sql);
         Assert.Contains("glommedName", sql);
-        Assert.DoesNotContain("companyName", sql);
+        Assert.Contains("c.companyName", sql);
         Assert.Contains("LEFT JOIN customerAddressBook", sql);
         Assert.Contains("cab.defaultBilling = 'T'", sql);
         Assert.Contains("LEFT JOIN customerAddressBookEntityAddress", sql);

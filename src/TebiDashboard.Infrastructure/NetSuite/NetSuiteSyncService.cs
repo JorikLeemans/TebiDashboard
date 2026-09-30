@@ -186,16 +186,12 @@ public sealed class NetSuiteSyncService(
         foreach (var row in rows)
         {
             var customerId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id");
-            // entityId is the shared label for companies and persons; glommedName/companyName are fallbacks.
-            var name = NetSuiteSuiteQlRowReader.GetString(
-                    row,
-                    "entityid",
-                    "entityId",
-                    "glommedname",
-                    "glommedName",
-                    "companyname",
-                    "companyName")
-                ?? "Unknown customer";
+            // entityId is the K###### code; append glommedName (person) or companyName (company).
+            var name = CustomerDisplayName.From(
+                NetSuiteSuiteQlRowReader.GetString(row, "entityid", "entityId"),
+                NetSuiteSuiteQlRowReader.GetString(row, "isperson", "isPerson"),
+                NetSuiteSuiteQlRowReader.GetString(row, "glommedname", "glommedName"),
+                NetSuiteSuiteQlRowReader.GetString(row, "companyname", "companyName"));
             // City comes from the default billing address-book row, not the full address blob.
             var city = NetSuiteSuiteQlRowReader.GetString(row, "city") ?? string.Empty;
             var contactEmail = NetSuiteSuiteQlRowReader.GetString(row, "email") ?? string.Empty;
@@ -217,7 +213,7 @@ public sealed class NetSuiteSyncService(
             {
                 var created = new CustomerRecord
                 {
-                    // Internal id matches invoice.entity; entityId is the human-readable customer code in NetSuite.
+                    // Internal id matches invoice.entity; Name is entityId plus the type-specific name.
                     CustomerId = customerId,
                     Name = name,
                     City = city,
