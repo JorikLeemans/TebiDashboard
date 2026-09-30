@@ -109,6 +109,39 @@
   text-decoration: underline;
 }
 
+.dashboard-table__customer-link code {
+  margin-right: 0.35rem;
+  color: inherit;
+}
+
+.dashboard-table__group-row {
+  cursor: pointer;
+}
+
+.dashboard-table__group-row td {
+  font-weight: 600;
+}
+
+.dashboard-table__group-row:hover,
+.dashboard-table__group-row:focus {
+  background: #f0f7f2;
+}
+
+.dashboard-table__toggle {
+  display: inline-block;
+  width: 1rem;
+  color: #2a8a4a;
+}
+
+.dashboard-table__line-row td {
+  color: #445;
+  font-weight: 400;
+}
+
+.dashboard-table__line-row td:first-child {
+  padding-left: 1.5rem;
+}
+
 .dashboard-empty {
   color: #666;
   margin: 0;

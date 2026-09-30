@@ -183,8 +183,9 @@
                     <thead>
                         <tr>
                             <SortableHeader Column="date" Label="Date" Sort="_expensesSort" />
+                            <SortableHeader Column="bill" Label="Bill" Sort="_expensesSort" />
                             <SortableHeader Column="category" Label="Category" Sort="_expensesSort" />
-                            <SortableHeader Column="vendor" Label="Vendor" Sort="_expensesSort" />
+                            <SortableHeader Column="supplier" Label="Supplier" Sort="_expensesSort" />
                             <SortableHeader Column="amount" Label="Amount" Sort="_expensesSort" />
                         </tr>
                     </thead>
@@ -193,8 +194,22 @@
                         {
                             <tr>
                                 <td>@expense.Date.ToString("d")</td>
+                                <td><code>@expense.Id</code></td>
                                 <td>@expense.Category</td>
-                                <td>@ExpensePartyName(expense)</td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(expense.SupplierId))
+                                    {
+                                        <code>@expense.SupplierId</code>
+                                    }
+                                    @{
+                                        var supplierName = ExpensePartyName(expense);
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(supplierName)
+                                        && !string.Equals(supplierName, expense.SupplierId, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        @supplierName
+                                    }
+                                </td>
                                 <td>@EuroFormatting.Format(expense.Amount)</td>
                             </tr>
                         }
@@ -203,7 +218,7 @@
                     {
                         <tfoot>
                             <tr>
-                                <th scope="row" colspan="3">Total</th>
+                                <th scope="row" colspan="4">Total</th>
                                 <td>@EuroFormatting.Format(ExpensesTotal)</td>
                             </tr>
                         </tfoot>
@@ -318,8 +333,9 @@
             : ListSort.ApplyThenPreview(_detail.Expenses, _expensesSort, expense => _expensesSort.Column switch
             {
                 "date" => expense.Date,
+                "bill" => expense.Id,
                 "category" => expense.Category,
-                "vendor" => ExpensePartyName(expense),
+                "supplier" => ExpensePartyName(expense),
                 "amount" => expense.Amount,
                 _ => expense.Date
             });
@@ -335,8 +351,7 @@
             ? itemName
             : itemId.Length > 0 && itemId.All(char.IsDigit) ? string.Empty : itemId;
 
-    // Vendor text is the name on the bill. The supplier master name covers rows that only
-    // have a supplier id, and the id itself is the last resort so the cell is never blank.
+    // Supplier text is the master name, then the name on the bill, then the id.
     private static string ExpensePartyName(ExpenseDto expense)
     {
         if (!string.IsNullOrWhiteSpace(expense.VendorName))
