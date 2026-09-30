@@ -104,11 +104,50 @@ public sealed class DashboardApiClient(HttpClient httpClient, IAuthStateService 
             $"api/inventory/items?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
             cancellationToken) ?? [];
 
-    public Task<ItemDetailDto?> GetItemByIdAsync(string itemId, CancellationToken cancellationToken = default)
-        => GetOptionalJsonAsync<ItemDetailDto>($"api/items/{Uri.EscapeDataString(itemId)}", cancellationToken);
+    public Task<ItemDetailDto?> GetItemByIdAsync(
+        string itemId,
+        DateOnly from,
+        DateOnly to,
+        CancellationToken cancellationToken = default)
+        => GetOptionalJsonAsync<ItemDetailDto>(
+            $"api/items/{Uri.EscapeDataString(itemId)}?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
+            cancellationToken);
 
-    public Task<ItemDetailDto?> GetItemByBarcodeAsync(string barcode, CancellationToken cancellationToken = default)
-        => GetJsonAsync<ItemDetailDto>($"api/items/by-barcode/{Uri.EscapeDataString(barcode)}", cancellationToken);
+    public Task<ItemDetailDto?> GetItemByBarcodeAsync(
+        string barcode,
+        DateOnly from,
+        DateOnly to,
+        CancellationToken cancellationToken = default)
+        => GetJsonAsync<ItemDetailDto>(
+            $"api/items/by-barcode/{Uri.EscapeDataString(barcode)}?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
+            cancellationToken);
+
+    public Task<TopSellingItemsResultDto?> GetTopSellingItemsAsync(
+        DateOnly from,
+        DateOnly to,
+        int limit = 20,
+        string? productGroupId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var url = $"api/sales-volume/top?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}&limit={limit}";
+        if (!string.IsNullOrWhiteSpace(productGroupId))
+        {
+            url += $"&productGroupId={Uri.EscapeDataString(productGroupId)}";
+        }
+
+        return GetJsonAsync<TopSellingItemsResultDto>(url, cancellationToken);
+    }
+
+    /// <summary>
+    /// Short list of articles selling in the period, for advice on the home page.
+    /// </summary>
+    public async Task<IReadOnlyList<TopSellingItemDto>> GetPopularItemsAsync(
+        DateOnly from,
+        DateOnly to,
+        CancellationToken cancellationToken = default)
+        => await GetJsonAsync<IReadOnlyList<TopSellingItemDto>>(
+            $"api/sales-volume/popular?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
+            cancellationToken) ?? [];
 
     private async Task<T?> GetJsonAsync<T>(string url, CancellationToken cancellationToken)
     {

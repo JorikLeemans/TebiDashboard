@@ -45,6 +45,32 @@
             </a>
         </div>
 
+        @* Seller advice for this period. Purchasing keeps the full ranking on Bestsellers. *@
+        <section class="dashboard-section">
+            <h2>Popular articles</h2>
+            <p class="dashboard-section__hint">What customers are buying in this period, so you can recommend it.</p>
+            @if (_popularError is not null)
+            {
+                <p class="error" role="alert">@_popularError</p>
+            }
+            else if (_popularItems.Count == 0)
+            {
+                <p class="dashboard-empty">No popular articles in this period.</p>
+            }
+            else
+            {
+                <ol class="popular-list">
+                    @foreach (var item in _popularItems)
+                    {
+                        <li class="popular-list__item">
+                            <a class="dashboard-table__customer-link" href="/inventory/@Uri.EscapeDataString(item.ItemId)">@item.ItemName</a>
+                            <span>@EuroFormatting.FormatWhole(item.SalesAmount)</span>
+                        </li>
+                    }
+                </ol>
+            }
+        </section>
+
         <section class="dashboard-section">
             <h2>Revenue chart (@_revenueChartItems.Count days)</h2>
             <BarChart Items="_revenueChartItems"
@@ -392,6 +418,8 @@
     private IReadOnlyList<ChartBarItem> _revenueChartItems = [];
     private decimal _quarterGoalPercentage;
     private string _goalPeriodLabel = string.Empty;
+    private IReadOnlyList<TopSellingItemDto> _popularItems = [];
+    private string? _popularError;
     private bool _isLoading = true;
     private bool _isInitialLoad = true;
     private string? _error;
@@ -573,6 +601,7 @@
             _revenueChartItems = RevenueChartItems.FromDailyTotals(_overview.Revenue);
 
             await LoadQuarterGoalAsync();
+            await LoadPopularItemsAsync();
         }
         catch (Exception ex)
         {
@@ -603,6 +632,20 @@
         var companyGoal = goals.FirstOrDefault(goal => string.IsNullOrWhiteSpace(goal.ItemId));
 
         _quarterGoalPercentage = companyGoal?.Percentage ?? _overview?.Summary.GoalPercentage ?? 0m;
+    }
+
+    private async Task LoadPopularItemsAsync()
+    {
+        try
+        {
+            _popularItems = await ApiClient.GetPopularItemsAsync(PeriodFilter.From, PeriodFilter.To);
+            _popularError = null;
+        }
+        catch (Exception ex)
+        {
+            _popularItems = [];
+            _popularError = $"Popular articles could not be loaded: {ex.Message}";
+        }
     }
 
     private void OpenItem(string itemId) => Navigation.NavigateTo($"/inventory/{Uri.EscapeDataString(itemId)}");

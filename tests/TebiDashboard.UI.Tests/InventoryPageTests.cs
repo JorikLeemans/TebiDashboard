@@ -35,7 +35,64 @@ public class InventoryPageTests
         cut.WaitForElement(".inventory-table", TimeSpan.FromSeconds(5));
 
         Assert.Contains("Betonstraatstenen Antraciet", cut.Markup);
+        Assert.Contains("Sold in period", cut.Markup);
         Assert.Contains("8712345000011", cut.Markup);
+    }
+
+    [Fact]
+    public void TopSellingPage_ShowsPeriodAmount_AndFiltersByProductGroup()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        string? requestedQuery = null;
+        mockHttp.When(HttpMethod.Get, "*/api/sales-volume/top*")
+            .Respond(request =>
+            {
+                requestedQuery = request.RequestUri?.Query;
+                var groupId = request.RequestUri?.Query.Contains("productGroupId=pg-tiles", StringComparison.Ordinal) == true
+                    ? "pg-tiles"
+                    : null;
+                IReadOnlyList<TopSellingItemDto> items = groupId is null
+                    ?
+                    [
+                        new TopSellingItemDto
+                        {
+                            ItemId = "i1",
+                            ItemName = "Betonstraatstenen Antraciet",
+                            ProductGroupId = "pg-paving",
+                            ProductGroupName = "Bestrating",
+                            SalesAmount = 12_500m
+                        }
+                    ]
+                    : [];
+
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new TopSellingItemsResultDto
+                    {
+                        Items = items,
+                        ProductGroups =
+                        [
+                            new ProductGroupOptionDto { Id = "pg-paving", Name = "Bestrating" },
+                            new ProductGroupOptionDto { Id = "pg-tiles", Name = "Tegels" }
+                        ]
+                    })
+                };
+            });
+
+        var cut = ctx.Render<TopSellingPage>();
+        cut.WaitForElement("table[aria-label='Bestsellers']", TimeSpan.FromSeconds(5));
+
+        Assert.Contains("Betonstraatstenen Antraciet", cut.Markup);
+        Assert.Contains("Bestrating", cut.Markup);
+        Assert.Contains("12.500", cut.Markup);
+        Assert.Contains("from=", requestedQuery);
+
+        cut.Find("select").Change("pg-tiles");
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("productGroupId=pg-tiles", requestedQuery);
+            Assert.Contains("No sales in this period", cut.Markup);
+        });
     }
 
     [Fact]
@@ -51,6 +108,7 @@ public class InventoryPageTests
                 TotalQuantityOnHand = 450,
                 ReorderPoint = 100,
                 RecentSalesVolume = 980,
+                PeriodSalesAmount = 12_500m,
                 IsLowStock = false,
                 Locations =
                 [
@@ -76,6 +134,8 @@ public class InventoryPageTests
         cut.WaitForElement(".item-detail__header", TimeSpan.FromSeconds(5));
 
         Assert.Contains("Betonstraatstenen Antraciet", cut.Markup);
+        Assert.Contains("Sold in period", cut.Markup);
+        Assert.Contains("12.500", cut.Markup);
         Assert.Contains("Stock by location", cut.Markup);
         Assert.Contains("Open transactions", cut.Markup);
         Assert.Contains("Hoofdmagazijn", cut.Markup);

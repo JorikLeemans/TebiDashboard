@@ -19,10 +19,10 @@ User stories voor de .NET MAUI-portfolio-app.
 | US-01 | Directeur | Omzet inzicht | Must | **Done** |
 | US-02 | Directeur | Doelen per periode | Must | **Done** |
 | US-03 | Inkoop | Veel verkocht + lage voorraad | Must | **Done** |
-| US-04 | Inkoop | Meest verkochte artikelen | Must | **Open** |
+| US-04 | Inkoop | Meest verkochte artikelen | Must | **Done** |
 | US-05 | Voorraad | Artikel op meerdere locaties | Must | **Done** |
 | US-06 | Voorraad | Openstaande transacties | Must | **Done** |
-| US-07 | Verkoop | Populaire artikelen | Must | **Open** |
+| US-07 | Verkoop | Populaire artikelen | Must | **Done** |
 | US-08 | Verkoop | Doelen per artikel | Must | **Done** |
 | US-09 | Verkoop | Op schema lopen bij doel | Must | **Done** |
 | US-10 | Financieel | Uitgavenoverzicht | Must | **Partial** |
@@ -82,17 +82,17 @@ User stories voor de .NET MAUI-portfolio-app.
 
 ---
 
-## US-04 — Meest verkochte artikelen (Inkoop) — **Open**
+## US-04 — Meest verkochte artikelen (Inkoop) — **Done**
 
 **Als** inkoopmedewerker  
 **wil ik** snel kunnen zien wat de meest verkochte artikelen zijn  
 **zodat** ik inkoop kan afstemmen op vraag.
 
 **Acceptatiecriteria:**
-- [ ] Given periode, When bestsellers-pagina opent, Then top-N artikelen gesorteerd op afzet
-- [ ] Given filter artikelgroep, When toegepast, Then lijst gefilterd
+- [x] Given periode, When bestsellers-pagina opent, Then top-N artikelen gesorteerd op omzet in die periode — `TopSellingPage.razor`
+- [x] Given filter artikelgroep, When toegepast, Then lijst gefilterd — productgroep-filter op dezelfde pagina
 
-**API:** `GET /api/sales-volume/top?from=&to=&limit=20` — service-methode `GetTopSellingItemsAsync` bestaat; endpoint en UI nog te bouwen
+**API:** `GET /api/sales-volume/top?from=&to=&limit=20&productGroupId=` — omzet uit gesynchroniseerde factuurregels (`RevenueRecord.Amount`)
 
 ---
 
@@ -124,17 +124,17 @@ User stories voor de .NET MAUI-portfolio-app.
 
 ---
 
-## US-07 — Populaire artikelen (Verkoop) — **Open**
+## US-07 — Populaire artikelen (Verkoop) — **Done**
 
 **Als** verkoopmedewerker  
 **wil ik** snel kunnen zien wat populaire artikelen zijn  
 **zodat** ik klanten gericht kan adviseren.
 
 **Acceptatiecriteria:**
-- [ ] When verkoop-overzicht opent, Then populaire artikelen (periode) zichtbaar
-- [ ] Overlap met US-04 acceptabel; UI gericht op verkoper-context
+- [x] When verkoop-overzicht opent, Then populaire artikelen (periode) zichtbaar — korte lijst op `DashboardHome.razor`, zelfde omzet als US-04
+- [x] Overlap met US-04 acceptabel; UI gericht op verkoper-context — geen artikelgroep-filter en geen top-20 inkooplijst
 
-**API:** `GET /api/sales-volume/popular?from=&to=` — nog te bouwen
+**API:** `GET /api/sales-volume/popular?from=&to=` — vijf artikelen op factuuromzet, zonder productgroepen
 
 ---
 
@@ -246,10 +246,10 @@ User stories voor de .NET MAUI-portfolio-app.
 | US-01 | Done | `DashboardHome.razor` | `/api/dashboard/overview`, `/api/revenue` |
 | US-02 | Done | `GoalsPage.razor` | `/api/goals` |
 | US-03 | Done | `DashboardHome.razor`, `InventoryPage.razor` | `/api/inventory/low-stock` |
-| US-04 | Open | — | `/api/sales-volume/top` (nog te bouwen) |
+| US-04 | Done | `TopSellingPage.razor` | `/api/sales-volume/top` |
 | US-05 | Done | `ItemDetailPage.razor` | `/api/items/{id}` |
 | US-06 | Done | `ItemDetailPage.razor` | `/api/inventory/{id}/open-transactions` |
-| US-07 | Open | — | `/api/sales-volume/popular` (nog te bouwen) |
+| US-07 | Done | `DashboardHome.razor` | `/api/sales-volume/popular` |
 | US-08 | Done | `GoalsPage.razor` (item goals) | `/api/goals` |
 | US-09 | Done | `GoalsPage.razor` (`GoalProgressCard`) | `/api/goals` |
 | US-10 | Partial | `DashboardHome.razor`, `SupplierDetailPage.razor` | `/api/expenses` |
