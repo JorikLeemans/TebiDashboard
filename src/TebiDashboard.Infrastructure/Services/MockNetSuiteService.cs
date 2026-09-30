@@ -343,9 +343,9 @@ public sealed class MockNetSuiteService : INetSuiteService
 
     private static List<InventoryItemDto> GetMockInventory() =>
     [
-        new() { ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", Barcode = "8712345000011", QuantityOnHand = 450, ReorderPoint = 100, RecentSalesVolume = 980, IsLowStock = false },
-        new() { ItemId = "i2", ItemName = "Klinkers Rood-Bruin", Barcode = "8712345000028", QuantityOnHand = 22, ReorderPoint = 80, RecentSalesVolume = 210, IsLowStock = true },
-        new() { ItemId = "i3", ItemName = "Tegels 60x60 Grijs", Barcode = "8712345000035", QuantityOnHand = 210, ReorderPoint = 50, RecentSalesVolume = 760, IsLowStock = false }
+        new() { ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", Barcode = "8712345000011", QuantityOnHand = 450, ReorderPoint = 100, RecentSalesVolume = 980, UnitsSold = 420, IsLowStock = false },
+        new() { ItemId = "i2", ItemName = "Klinkers Rood-Bruin", Barcode = "8712345000028", QuantityOnHand = 22, ReorderPoint = 80, RecentSalesVolume = 210, UnitsSold = 180, IsLowStock = true },
+        new() { ItemId = "i3", ItemName = "Tegels 60x60 Grijs", Barcode = "8712345000035", QuantityOnHand = 210, ReorderPoint = 50, RecentSalesVolume = 760, UnitsSold = 310, IsLowStock = false }
     ];
 
     public Task<IReadOnlyList<InventoryItemDto>> GetInventoryItemsAsync(

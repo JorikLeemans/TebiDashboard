@@ -27,6 +27,7 @@ public class InventoryPageTests
                     QuantityOnHand = 450,
                     ReorderPoint = 100,
                     RecentSalesVolume = 980,
+                    UnitsSold = 420,
                     IsLowStock = false
                 }
             ]));
@@ -36,6 +37,8 @@ public class InventoryPageTests
 
         Assert.Contains("Betonstraatstenen Antraciet", cut.Markup);
         Assert.Contains("Sold in period", cut.Markup);
+        Assert.Contains("Units sold", cut.Markup);
+        Assert.Contains("420", cut.Markup);
         Assert.Contains("8712345000011", cut.Markup);
     }
 
