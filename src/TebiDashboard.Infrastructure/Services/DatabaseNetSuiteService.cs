@@ -467,18 +467,27 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .OrderBy(i => i.ItemName)
             .ToListAsync(cancellationToken);
 
-        // Sold amount in the selected period comes from synced invoice lines, not the stored sync lookback.
+        // Period euros and units come from synced invoice lines, not the stored sync lookback.
         var salesByItem = await dbContext.RevenueRecords
             .AsNoTracking()
             .Where(record => record.ItemId != string.Empty
                 && record.Date >= filter.From
                 && record.Date <= filter.To)
             .GroupBy(record => record.ItemId)
-            .Select(group => new { ItemId = group.Key, Amount = group.Sum(record => record.Amount) })
-            .ToDictionaryAsync(row => row.ItemId, row => row.Amount, cancellationToken);
+            .Select(group => new
+            {
+                ItemId = group.Key,
+                Amount = group.Sum(record => record.Amount),
+                Quantity = group.Sum(record => record.Quantity)
+            })
+            .ToDictionaryAsync(row => row.ItemId, row => row, cancellationToken);
 
         return rows
-            .Select(item => MapInventoryItem(item, salesByItem.GetValueOrDefault(item.ItemId)))
+            .Select(item =>
+            {
+                salesByItem.TryGetValue(item.ItemId, out var sales);
+                return MapInventoryItem(item, sales?.Amount, sales?.Quantity);
+            })
             .ToList();
     }
 
@@ -859,7 +868,8 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
 
     private static InventoryItemDto MapInventoryItem(
         Data.Entities.InventoryItemRecord item,
-        decimal? recentSalesVolume) => new()
+        decimal? recentSalesVolume,
+        decimal? periodUnitsSold = null) => new()
     {
         ItemId = item.ItemId,
         ItemName = item.ItemName,
@@ -868,6 +878,7 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
         ReorderPoint = item.ReorderPoint,
         // The inventory list passes the period sales amount. Null keeps the stored sync quantity.
         RecentSalesVolume = recentSalesVolume ?? item.RecentSalesVolume,
+        UnitsSold = periodUnitsSold ?? 0m,
         IsLowStock = item.IsLowStock
     };
 }
