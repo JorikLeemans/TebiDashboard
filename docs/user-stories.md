@@ -22,7 +22,7 @@ User stories voor de .NET MAUI-portfolio-app.
 | US-04 | Inkoop | Meest verkochte artikelen | Must | **Done** |
 | US-05 | Voorraad | Artikel op meerdere locaties | Must | **Done** |
 | US-06 | Voorraad | Openstaande transacties | Must | **Done** |
-| US-07 | Verkoop | Populaire artikelen | Must | **Open** |
+| US-07 | Verkoop | Populaire artikelen | Must | **Done** |
 | US-08 | Verkoop | Doelen per artikel | Must | **Done** |
 | US-09 | Verkoop | Op schema lopen bij doel | Must | **Done** |
 | US-10 | Financieel | Uitgavenoverzicht | Must | **Partial** |
@@ -124,17 +124,17 @@ User stories voor de .NET MAUI-portfolio-app.
 
 ---
 
-## US-07 — Populaire artikelen (Verkoop) — **Open**
+## US-07 — Populaire artikelen (Verkoop) — **Done**
 
 **Als** verkoopmedewerker  
 **wil ik** snel kunnen zien wat populaire artikelen zijn  
 **zodat** ik klanten gericht kan adviseren.
 
 **Acceptatiecriteria:**
-- [ ] When verkoop-overzicht opent, Then populaire artikelen (periode) zichtbaar
-- [ ] Overlap met US-04 acceptabel; UI gericht op verkoper-context
+- [x] When verkoop-overzicht opent, Then populaire artikelen (periode) zichtbaar — korte lijst op `DashboardHome.razor`, zelfde omzet als US-04
+- [x] Overlap met US-04 acceptabel; UI gericht op verkoper-context — geen artikelgroep-filter en geen top-20 inkooplijst
 
-**API:** `GET /api/sales-volume/popular?from=&to=` — nog te bouwen
+**API:** `GET /api/sales-volume/popular?from=&to=` — vijf artikelen op factuuromzet, zonder productgroepen
 
 ---
 
@@ -249,7 +249,7 @@ User stories voor de .NET MAUI-portfolio-app.
 | US-04 | Done | `TopSellingPage.razor` | `/api/sales-volume/top` |
 | US-05 | Done | `ItemDetailPage.razor` | `/api/items/{id}` |
 | US-06 | Done | `ItemDetailPage.razor` | `/api/inventory/{id}/open-transactions` |
-| US-07 | Open | — | `/api/sales-volume/popular` (nog te bouwen) |
+| US-07 | Done | `DashboardHome.razor` | `/api/sales-volume/popular` |
 | US-08 | Done | `GoalsPage.razor` (item goals) | `/api/goals` |
 | US-09 | Done | `GoalsPage.razor` (`GoalProgressCard`) | `/api/goals` |
 | US-10 | Partial | `DashboardHome.razor`, `SupplierDetailPage.razor` | `/api/expenses` |

@@ -73,6 +73,35 @@
   font-size: 1.05rem;
 }
 
+.dashboard-section__hint {
+  margin: -0.35rem 0 0.75rem;
+  color: #555;
+  font-size: 0.9rem;
+}
+
+.popular-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  counter-reset: popular;
+}
+
+.popular-list__item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid #eef2f6;
+  counter-increment: popular;
+}
+
+.popular-list__item::before {
+  content: counter(popular) ".";
+  min-width: 1.5rem;
+  color: #445;
+  font-weight: 600;
+}
+
 .dashboard-table {
   width: 100%;
   border-collapse: collapse;

@@ -138,6 +138,17 @@ public sealed class DashboardApiClient(HttpClient httpClient, IAuthStateService 
         return GetJsonAsync<TopSellingItemsResultDto>(url, cancellationToken);
     }
 
+    /// <summary>
+    /// Short list of articles selling in the period, for advice on the home page.
+    /// </summary>
+    public async Task<IReadOnlyList<TopSellingItemDto>> GetPopularItemsAsync(
+        DateOnly from,
+        DateOnly to,
+        CancellationToken cancellationToken = default)
+        => await GetJsonAsync<IReadOnlyList<TopSellingItemDto>>(
+            $"api/sales-volume/popular?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
+            cancellationToken) ?? [];
+
     private async Task<T?> GetJsonAsync<T>(string url, CancellationToken cancellationToken)
     {
         using var response = await SendAsync(HttpMethod.Get, url, cancellationToken);
