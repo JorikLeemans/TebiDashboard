@@ -14,7 +14,7 @@
     <header class="inventory-page__header">
         <h1>Inventory</h1>
         <p class="inventory-page__subtitle">
-            Stock levels and amount sold for @PeriodFilter.From.ToString("d") – @PeriodFilter.To.ToString("d")
+            Stock levels, amount sold, and units sold for @PeriodFilter.From.ToString("d") – @PeriodFilter.To.ToString("d")
         </p>
     </header>
 
@@ -72,6 +72,7 @@
                             <SortableHeader Column="onhand" Label="On hand" Sort="_sort" OnSorted="ResetPage" />
                             <SortableHeader Column="reorder" Label="Reorder point" Sort="_sort" OnSorted="ResetPage" />
                             <SortableHeader Column="sales" Label="Sold in period" Sort="_sort" OnSorted="ResetPage" />
+                            <SortableHeader Column="units" Label="Units sold" Sort="_sort" OnSorted="ResetPage" />
                             <StatusColumnHeader Kind="StatusLegendKind.InventoryStock" Sort="_sort" OnSorted="ResetPage" />
                         </tr>
                     </thead>
@@ -85,6 +86,7 @@
                                 <td>@item.QuantityOnHand.ToString("N0")</td>
                                 <td>@(item.ReorderPoint?.ToString("N0") ?? "—")</td>
                                 <td>@EuroFormatting.FormatWhole(item.RecentSalesVolume)</td>
+                                <td>@item.UnitsSold.ToString("N0")</td>
                                 <td>
                                     @if (item.IsLowStock)
                                     {
@@ -130,6 +132,7 @@
             "onhand" => item.QuantityOnHand,
             "reorder" => item.ReorderPoint,
             "sales" => item.RecentSalesVolume,
+            "units" => item.UnitsSold,
             "status" => item.IsLowStock,
             _ => item.ItemName
         });

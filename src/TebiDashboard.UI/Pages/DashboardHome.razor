@@ -64,7 +64,7 @@
                     {
                         <li class="popular-list__item">
                             <a class="dashboard-table__customer-link" href="/inventory/@Uri.EscapeDataString(item.ItemId)">@item.ItemName</a>
-                            <span>@EuroFormatting.FormatWhole(item.SalesAmount)</span>
+                            <span>@item.UnitsSold.ToString("N0") · @EuroFormatting.FormatWhole(item.SalesAmount)</span>
                         </li>
                     }
                 </ol>

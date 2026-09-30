@@ -35,7 +35,8 @@ public class DashboardHomeTests
                 ItemId = "i1",
                 ItemName = "Betonstraatstenen Antraciet",
                 ProductGroupName = "Bestrating",
-                SalesAmount = 12_500m
+                    SalesAmount = 12_500m,
+                    UnitsSold = 40m
             }
         ]);
         SetupGoals(mockHttp);
@@ -47,6 +48,7 @@ public class DashboardHomeTests
         Assert.Contains("recommend it", cut.Markup);
         Assert.Contains("Betonstraatstenen Antraciet", cut.Markup);
         Assert.Contains("12.500", cut.Markup);
+        Assert.Contains("40", cut.Markup);
         Assert.Contains("/inventory/i1", cut.Markup);
         Assert.DoesNotContain("Product group", cut.Markup);
     }

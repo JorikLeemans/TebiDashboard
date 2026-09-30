@@ -55,7 +55,7 @@
         <section class="goal-settings__section">
             <h2>Company revenue targets (@_selectedYear)</h2>
             <p class="goal-settings__hint">Set quarterly targets and the full-year total in euros.</p>
-            <table class="goal-settings__table" aria-label="Company goal targets">
+            <table class="goal-settings__table goal-settings__table--company" aria-label="Company goal targets">
                 <thead>
                     <tr>
                         <SortableHeader Column="period" Label="Period" Sort="_companySort" />
@@ -85,7 +85,7 @@
             <div class="goal-settings__section-header">
                 <div>
                     <h2>Item volume targets (@_selectedYear)</h2>
-                    <p class="goal-settings__hint">Targets are tracked in sold units per quarter and for the full year.</p>
+                    <p class="goal-settings__hint">Targets are sold units. When a quarter has a value, the year total is the sum of those quarters. A year total on its own is kept when every quarter is empty.</p>
                 </div>
                 <div class="goal-settings__add-item">
                     <label>
@@ -133,8 +133,11 @@
                                             <input type="number"
                                                    min="0"
                                                    step="1"
-                                                   class="goal-settings__input goal-settings__input--compact"
+                                                   class="goal-settings__input goal-settings__input--compact @(IsCalculatedYearTotal(row, period) ? "goal-settings__input--calculated" : null)"
                                                    @bind="row.Targets[period]"
+                                                   @bind:after="() => OnItemTargetChanged(row, period)"
+                                                   readonly="@IsCalculatedYearTotal(row, period)"
+                                                   title="@(IsCalculatedYearTotal(row, period) ? "Sum of the quarters that have a value" : null)"
                                                    aria-label="@($"{row.ItemName} {GoalIdHelper.FormatPeriodLabel(period)} target")" />
                                         </td>
                                     }
@@ -260,6 +263,8 @@
                     }
                 }
 
+                // Quarters already stored replace a saved year total with their sum.
+                SyncItemYearTotal(row);
                 _itemRows.Add(row);
             }
         }
@@ -302,6 +307,23 @@
 
     private void RemoveItemRow(string itemId) => _itemRows.RemoveAll(row => row.ItemId == itemId);
 
+    // The year box is filled from quarters only while at least one quarter has a value.
+    private static bool IsCalculatedYearTotal(ItemGoalRow row, string period) =>
+        period == GoalPeriods.Year && ItemVolumeYearTotal.HasQuarterValue(row.Targets);
+
+    private static void OnItemTargetChanged(ItemGoalRow row, string period)
+    {
+        if (GoalPeriods.IsQuarter(period))
+        {
+            SyncItemYearTotal(row);
+        }
+    }
+
+    private static void SyncItemYearTotal(ItemGoalRow row)
+    {
+        row.Targets[GoalPeriods.Year] = ItemVolumeYearTotal.Resolve(row.Targets);
+    }
+
     private async Task SaveGoalsAsync()
     {
         _isSaving = true;
@@ -326,6 +348,7 @@
 
             foreach (var row in _itemRows)
             {
+                SyncItemYearTotal(row);
                 foreach (var period in GoalPeriods.ItemPeriods)
                 {
                     if (row.Targets[period] is > 0)

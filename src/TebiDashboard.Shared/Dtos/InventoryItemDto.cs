@@ -15,5 +15,12 @@ public sealed class InventoryItemDto
     /// Low-stock results still use the quantity stored from the last NetSuite sync.
     /// </summary>
     public decimal RecentSalesVolume { get; init; }
+
+    /// <summary>
+    /// Units sold in the selected period, summed from invoice line quantities.
+    /// Stays 0 on low-stock results, which are not filtered by the dashboard period.
+    /// </summary>
+    public decimal UnitsSold { get; init; }
+
     public bool IsLowStock { get; init; }
 }

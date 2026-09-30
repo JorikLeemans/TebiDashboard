@@ -343,9 +343,9 @@ public sealed class MockNetSuiteService : INetSuiteService
 
     private static List<InventoryItemDto> GetMockInventory() =>
     [
-        new() { ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", Barcode = "8712345000011", QuantityOnHand = 450, ReorderPoint = 100, RecentSalesVolume = 980, IsLowStock = false },
-        new() { ItemId = "i2", ItemName = "Klinkers Rood-Bruin", Barcode = "8712345000028", QuantityOnHand = 22, ReorderPoint = 80, RecentSalesVolume = 210, IsLowStock = true },
-        new() { ItemId = "i3", ItemName = "Tegels 60x60 Grijs", Barcode = "8712345000035", QuantityOnHand = 210, ReorderPoint = 50, RecentSalesVolume = 760, IsLowStock = false }
+        new() { ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", Barcode = "8712345000011", QuantityOnHand = 450, ReorderPoint = 100, RecentSalesVolume = 980, UnitsSold = 420, IsLowStock = false },
+        new() { ItemId = "i2", ItemName = "Klinkers Rood-Bruin", Barcode = "8712345000028", QuantityOnHand = 22, ReorderPoint = 80, RecentSalesVolume = 210, UnitsSold = 180, IsLowStock = true },
+        new() { ItemId = "i3", ItemName = "Tegels 60x60 Grijs", Barcode = "8712345000035", QuantityOnHand = 210, ReorderPoint = 50, RecentSalesVolume = 760, UnitsSold = 310, IsLowStock = false }
     ];
 
     public Task<IReadOnlyList<InventoryItemDto>> GetInventoryItemsAsync(
@@ -373,7 +373,8 @@ public sealed class MockNetSuiteService : INetSuiteService
                     ItemName = "Betonstraatstenen Antraciet",
                     ProductGroupId = "pg-paving",
                     ProductGroupName = "Bestrating",
-                    SalesAmount = 98_000m
+                    SalesAmount = 98_000m,
+                    UnitsSold = 420m
                 },
                 new TopSellingItemDto
                 {
@@ -381,7 +382,8 @@ public sealed class MockNetSuiteService : INetSuiteService
                     ItemName = "Tegels 60x60 Grijs",
                     ProductGroupId = "pg-paving",
                     ProductGroupName = "Bestrating",
-                    SalesAmount = 76_000m
+                    SalesAmount = 76_000m,
+                    UnitsSold = 310m
                 },
                 new TopSellingItemDto
                 {
@@ -389,7 +391,8 @@ public sealed class MockNetSuiteService : INetSuiteService
                     ItemName = "Klinkers Rood-Bruin",
                     ProductGroupId = "pg-paving",
                     ProductGroupName = "Bestrating",
-                    SalesAmount = 64_000m
+                    SalesAmount = 64_000m,
+                    UnitsSold = 180m
                 }
             ]
         };

@@ -51,6 +51,7 @@
                             <SortableHeader Column="name" Label="Item" Sort="_sort" />
                             <SortableHeader Column="group" Label="Product group" Sort="_sort" />
                             <SortableHeader Column="amount" Label="Sold in period" Sort="_sort" />
+                            <SortableHeader Column="units" Label="Units sold" Sort="_sort" />
                         </tr>
                     </thead>
                     <tbody>
@@ -61,6 +62,7 @@
                                 <td class="bestsellers-page__name">@item.ItemName</td>
                                 <td>@item.ProductGroupName</td>
                                 <td>@EuroFormatting.FormatWhole(item.SalesAmount)</td>
+                                <td>@item.UnitsSold.ToString("N0")</td>
                             </tr>
                         }
                     </tbody>
@@ -94,6 +96,7 @@
             "name" => item.ItemName,
             "group" => item.ProductGroupName,
             "amount" => item.SalesAmount,
+            "units" => item.UnitsSold,
             _ => item.SalesAmount
         });
 

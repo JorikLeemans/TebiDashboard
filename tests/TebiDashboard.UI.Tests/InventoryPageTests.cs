@@ -27,6 +27,7 @@ public class InventoryPageTests
                     QuantityOnHand = 450,
                     ReorderPoint = 100,
                     RecentSalesVolume = 980,
+                    UnitsSold = 420,
                     IsLowStock = false
                 }
             ]));
@@ -36,6 +37,8 @@ public class InventoryPageTests
 
         Assert.Contains("Betonstraatstenen Antraciet", cut.Markup);
         Assert.Contains("Sold in period", cut.Markup);
+        Assert.Contains("Units sold", cut.Markup);
+        Assert.Contains("420", cut.Markup);
         Assert.Contains("8712345000011", cut.Markup);
     }
 
@@ -60,7 +63,8 @@ public class InventoryPageTests
                             ItemName = "Betonstraatstenen Antraciet",
                             ProductGroupId = "pg-paving",
                             ProductGroupName = "Bestrating",
-                            SalesAmount = 12_500m
+                            SalesAmount = 12_500m,
+                            UnitsSold = 40m
                         }
                     ]
                     : [];
@@ -85,6 +89,8 @@ public class InventoryPageTests
         Assert.Contains("Betonstraatstenen Antraciet", cut.Markup);
         Assert.Contains("Bestrating", cut.Markup);
         Assert.Contains("12.500", cut.Markup);
+        Assert.Contains("Units sold", cut.Markup);
+        Assert.Contains("40", cut.Markup);
         Assert.Contains("from=", requestedQuery);
 
         cut.Find("select").Change("pg-tiles");
