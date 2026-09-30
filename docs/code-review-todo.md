@@ -69,3 +69,40 @@ severity. Check off items as they are addressed.
   request body throws a 500 instead of returning a clean 400. Add an
   `IsNullOrEmpty` guard.
   - `src/TebiDashboard.Infrastructure/Services/EfUserStore.cs`
+
+## Product / UX
+
+- [ ] **Do not make whole rows clickable.** Only the part that actually goes
+  somewhere should be a link. If a row leads to a customer, that customer name
+  (or similar) is clickable — not the entire row.
+  - Open-transaction rows on item detail currently navigate on the whole row.
+
+- [ ] **Get clear what recent sales actually means** in this dashboard (period,
+  quantity vs amount, and which NetSuite source). Users should not have to guess
+  the KPI.
+
+- [ ] **Take another look at customer names.** Some rows still show
+  "Unknown customer". Others show only the `K######` entity id and drop the
+  rest of the name that should come after it.
+  - Customer list, customer detail, and party columns on related lists.
+
+- [ ] **Think about extra "quick" filters** so users can find what they want
+  faster, or exclude certain results (status, type, location, low stock, party).
+
+- [ ] **Think about what each role can and cannot do.** Spell out permissions
+  per role (view vs manage, admin vs management vs other) and align the UI and
+  API with that.
+
+- [ ] **Extra ways of showing data** (charts, grouping, exports, alternate
+  layouts). Not a high priority.
+
+- [ ] **Check what "down" means on the Revenue board** on the dashboard home
+  page. It looks like plain text with no function — confirm whether it should
+  sort, filter, navigate, or be removed.
+
+- [ ] **Check vendor names on the dashboard.** Some name/vendor fields are
+  empty even though the row has data and an amount.
+
+- [ ] **When going live, filter test cases out of the results** so the
+  dashboard only shows real, useful data (no demo/test customers, vendors, or
+  transactions).
