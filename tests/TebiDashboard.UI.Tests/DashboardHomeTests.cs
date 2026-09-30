@@ -159,6 +159,158 @@ public class DashboardHomeTests
     }
 
     [Fact]
+    public void DashboardHome_GroupsSalesLines_UnderInvoiceId()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        SetupPeriodOverview(mockHttp, new PeriodOverviewDto
+        {
+            Summary = new DashboardSummaryDto { RevenueTrend = "flat" },
+            Revenue =
+            [
+                new RevenueDto
+                {
+                    Id = "1842-1",
+                    InvoiceId = "1842",
+                    InvoiceNumber = "F-100",
+                    Date = new DateOnly(2026, 9, 23),
+                    Amount = 10.25m,
+                    CustomerId = "c1",
+                    CustomerName = "Bouwbedrijf Jansen",
+                    ItemName = "Klinkers"
+                },
+                new RevenueDto
+                {
+                    Id = "1842-2",
+                    InvoiceId = "1842",
+                    InvoiceNumber = "F-100",
+                    Date = new DateOnly(2026, 9, 23),
+                    Amount = 5.50m,
+                    CustomerId = "c1",
+                    CustomerName = "Bouwbedrijf Jansen",
+                    ItemName = "Zand"
+                }
+            ]
+        });
+        SetupGoals(mockHttp);
+
+        var cut = ctx.Render<DashboardHome>();
+        cut.WaitForElement("table[aria-label='Revenue in period']", TimeSpan.FromSeconds(5));
+
+        var collapsed = cut.Find("table[aria-label='Revenue in period']").TextContent;
+        Assert.Contains("F-100", collapsed);
+        Assert.Contains("15,75", collapsed);
+        Assert.DoesNotContain("Klinkers", collapsed);
+
+        cut.Find("table[aria-label='Revenue in period'] tbody .dashboard-table__group-row").Click();
+        Assert.Contains("Klinkers", cut.Find("table[aria-label='Revenue in period']").TextContent);
+        Assert.Contains("Zand", cut.Find("table[aria-label='Revenue in period']").TextContent);
+    }
+
+    [Fact]
+    public void DashboardHome_GroupsTransactions_UnderOrderId()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        SetupPeriodOverview(mockHttp, new PeriodOverviewDto
+        {
+            Summary = new DashboardSummaryDto { RevenueTrend = "flat" },
+            Transactions =
+            [
+                new OpenTransactionDto
+                {
+                    TransactionId = "2136801-1",
+                    Type = "Sales Order",
+                    ItemId = "i1",
+                    ItemName = "Betonblokken",
+                    CustomerId = "c1",
+                    CustomerName = "Bouwbedrijf Jansen",
+                    TransactionDate = new DateOnly(2026, 9, 22),
+                    QuantityOpen = 12,
+                    Amount = 100m,
+                    Status = "Pending Fulfillment"
+                },
+                new OpenTransactionDto
+                {
+                    TransactionId = "2136801-2",
+                    Type = "Sales Order",
+                    ItemId = "i2",
+                    ItemName = "Zand 0/8",
+                    CustomerId = "c1",
+                    CustomerName = "Bouwbedrijf Jansen",
+                    TransactionDate = new DateOnly(2026, 9, 22),
+                    QuantityOpen = 6,
+                    Amount = 25m,
+                    Status = "Pending Fulfillment"
+                }
+            ]
+        });
+        SetupGoals(mockHttp);
+
+        var cut = ctx.Render<DashboardHome>();
+        cut.WaitForElement("table[aria-label='Open sales orders and period transactions']", TimeSpan.FromSeconds(5));
+
+        var table = cut.Find("table[aria-label='Open sales orders and period transactions']");
+        Assert.Contains("2136801", table.TextContent);
+        Assert.DoesNotContain("2136801-1", table.TextContent);
+        Assert.DoesNotContain("Betonblokken", table.TextContent);
+        Assert.Single(cut.FindAll("table[aria-label='Open sales orders and period transactions'] tbody .dashboard-table__group-row"));
+
+        cut.Find("table[aria-label='Open sales orders and period transactions'] tbody .dashboard-table__group-row").Click();
+        Assert.Contains("Betonblokken", table.TextContent);
+        Assert.Contains("Zand 0/8", table.TextContent);
+    }
+
+    [Fact]
+    public void DashboardHome_GroupsExpenses_BySupplierId_AndDoesNotSayVendor()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        SetupPeriodOverview(mockHttp, new PeriodOverviewDto
+        {
+            Summary = new DashboardSummaryDto { RevenueTrend = "flat" },
+            Expenses =
+            [
+                new ExpenseDto
+                {
+                    Id = "bill-1",
+                    Date = new DateOnly(2026, 9, 2),
+                    Category = "Transport",
+                    Amount = 10m,
+                    SupplierId = "s1",
+                    SupplierName = "BetonCentrale Midden-NL",
+                    VendorName = "BetonCentrale Midden-NL"
+                },
+                new ExpenseDto
+                {
+                    Id = "bill-2",
+                    Date = new DateOnly(2026, 9, 3),
+                    Category = "Overig",
+                    Amount = 20m,
+                    SupplierId = "s1",
+                    SupplierName = "BetonCentrale Midden-NL",
+                    VendorName = "BetonCentrale Midden-NL"
+                }
+            ]
+        });
+        SetupGoals(mockHttp);
+
+        var cut = ctx.Render<DashboardHome>();
+        cut.WaitForElement("table[aria-label='Expenses in period']", TimeSpan.FromSeconds(5));
+
+        var collapsed = cut.Find("table[aria-label='Expenses in period']").TextContent;
+        Assert.Contains("Supplier", collapsed);
+        Assert.DoesNotContain("Vendor", collapsed);
+        Assert.Contains("s1", collapsed);
+        Assert.Contains("BetonCentrale Midden-NL", collapsed);
+        Assert.DoesNotContain("bill-1", collapsed);
+        Assert.Single(cut.FindAll("table[aria-label='Expenses in period'] tbody .dashboard-table__group-row"));
+
+        cut.Find("table[aria-label='Expenses in period'] tbody .dashboard-table__group-row").Click();
+        var expanded = cut.Find("table[aria-label='Expenses in period']").TextContent;
+        Assert.Contains("bill-1", expanded);
+        Assert.Contains("bill-2", expanded);
+        Assert.Contains("30,00", expanded);
+    }
+
+    [Fact]
     public void DashboardHome_ShowsOnlyTwentyMostRecentSalesRows()
     {
         using var ctx = CreateAuthenticatedContext(out var mockHttp);
