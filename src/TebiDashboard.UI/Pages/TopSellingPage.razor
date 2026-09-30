@@ -1,0 +1,200 @@
+@page "/bestsellers"
+@layout DashboardLayout
+@using TebiDashboard.Shared.Dtos
+@inject IPeriodFilterService InjectedPeriodFilter
+@inject DashboardApiClient ApiClient
+@inject IAuthStateService AuthState
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>Bestsellers — TEBI Dashboard</PageTitle>
+
+<div class="bestsellers-page">
+    <header class="bestsellers-page__header">
+        <h1>Bestsellers</h1>
+        <p class="bestsellers-page__subtitle">
+            Top articles by invoice amount from @PeriodFilter.From.ToString("d") – @PeriodFilter.To.ToString("d")
+        </p>
+    </header>
+
+    @if (_isInitialLoad && _isLoading)
+    {
+        <p class="bestsellers-page__status">Loading bestsellers...</p>
+    }
+    else if (_error is not null)
+    {
+        <p class="error" role="alert">@_error</p>
+    }
+    else
+    {
+        <label class="bestsellers-page__filter">
+            <span>Product group</span>
+            <select value="@_productGroupId" @onchange="OnProductGroupChanged">
+                <option value="">All product groups</option>
+                @foreach (var group in _groups)
+                {
+                    <option value="@group.Id">@group.Name</option>
+                }
+            </select>
+        </label>
+
+        @if (_items.Count == 0)
+        {
+            <p class="bestsellers-page__status">No sales in this period for the selected product group.</p>
+        }
+        else
+        {
+            <div class="bestsellers-page__table-wrap">
+                <table class="bestsellers-page__table" aria-label="Bestsellers">
+                    <thead>
+                        <tr>
+                            <SortableHeader Column="name" Label="Item" Sort="_sort" />
+                            <SortableHeader Column="group" Label="Product group" Sort="_sort" />
+                            <SortableHeader Column="amount" Label="Sold in period" Sort="_sort" />
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in SortedItems)
+                        {
+                            <tr class="bestsellers-page__row" @onclick="() => OpenItem(item.ItemId)" tabindex="0"
+                                @onkeydown="(e) => HandleRowKeyDown(e, item.ItemId)">
+                                <td class="bestsellers-page__name">@item.ItemName</td>
+                                <td>@item.ProductGroupName</td>
+                                <td>@EuroFormatting.FormatWhole(item.SalesAmount)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private const int TopLimit = 20;
+
+    [CascadingParameter(Name = "PeriodFilter")]
+    private IPeriodFilterService? CascadedPeriodFilter { get; set; }
+
+    private IPeriodFilterService PeriodFilter => CascadedPeriodFilter ?? InjectedPeriodFilter;
+
+    private readonly PeriodFilterSubscription _periodSubscription = new();
+    private readonly PeriodFilterReload _periodReload = new();
+    private readonly ListSortState _sort = new();
+    private IReadOnlyList<TopSellingItemDto> _items = [];
+    private IReadOnlyList<ProductGroupOptionDto> _groups = [];
+    private string _productGroupId = string.Empty;
+    private bool _isLoading = true;
+    private bool _isInitialLoad = true;
+    private string? _error;
+
+    private List<TopSellingItemDto> SortedItems =>
+        ListSort.Apply(_items, _sort, item => _sort.Column switch
+        {
+            "name" => item.ItemName,
+            "group" => item.ProductGroupName,
+            "amount" => item.SalesAmount,
+            _ => item.SalesAmount
+        });
+
+    protected override void OnParametersSet()
+    {
+        _periodSubscription.Bind(CascadedPeriodFilter, InjectedPeriodFilter, OnPeriodChanged);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthState.InitializeAsync();
+
+        if (!AuthState.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        await LoadAsync(_periodReload.BeginReload(), showLoadingSpinner: true);
+    }
+
+    private void OnPeriodChanged()
+    {
+        _ = InvokeAsync(ReloadAsync);
+    }
+
+    private async Task OnProductGroupChanged(ChangeEventArgs args)
+    {
+        _productGroupId = args.Value?.ToString() ?? string.Empty;
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        var generation = _periodReload.BeginReload();
+        await LoadAsync(generation, showLoadingSpinner: false);
+
+        if (!_periodReload.IsCurrent(generation))
+        {
+            return;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync(int generation, bool showLoadingSpinner)
+    {
+        var from = PeriodFilter.From;
+        var to = PeriodFilter.To;
+        var productGroupId = string.IsNullOrWhiteSpace(_productGroupId) ? null : _productGroupId;
+
+        if (showLoadingSpinner)
+        {
+            _isLoading = true;
+            _error = null;
+        }
+
+        try
+        {
+            var result = await ApiClient.GetTopSellingItemsAsync(from, to, TopLimit, productGroupId);
+
+            if (!_periodReload.IsCurrent(generation))
+            {
+                return;
+            }
+
+            _items = result?.Items ?? [];
+            _groups = result?.ProductGroups ?? [];
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            if (!_periodReload.IsCurrent(generation))
+            {
+                return;
+            }
+
+            _error = $"Failed to load bestsellers: {ex.Message}";
+        }
+        finally
+        {
+            if (showLoadingSpinner && _periodReload.IsCurrent(generation))
+            {
+                _isLoading = false;
+                _isInitialLoad = false;
+            }
+        }
+    }
+
+    private void OpenItem(string itemId) => Navigation.NavigateTo($"/inventory/{Uri.EscapeDataString(itemId)}");
+
+    private void HandleRowKeyDown(KeyboardEventArgs args, string itemId)
+    {
+        if (args.Key is "Enter" or " ")
+        {
+            OpenItem(itemId);
+        }
+    }
+
+    public void Dispose()
+    {
+        _periodSubscription.Dispose();
+    }
+}

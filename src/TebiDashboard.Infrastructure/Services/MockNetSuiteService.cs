@@ -353,16 +353,56 @@ public sealed class MockNetSuiteService : INetSuiteService
         CancellationToken cancellationToken = default)
         => Task.FromResult<IReadOnlyList<InventoryItemDto>>(GetMockInventory());
 
-    public Task<IReadOnlyList<InventoryItemDto>> GetTopSellingItemsAsync(DateRangeFilter filter, int limit, CancellationToken cancellationToken = default)
+    public Task<TopSellingItemsResultDto> GetTopSellingItemsAsync(
+        DateRangeFilter filter,
+        int limit,
+        string? productGroupId,
+        CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<InventoryItemDto> items =
-        [
-            new() { ItemId = "i1", ItemName = "Betonstraatstenen Antraciet", Barcode = "8712345000011", QuantityOnHand = 450, RecentSalesVolume = 980, IsLowStock = false },
-            new() { ItemId = "i3", ItemName = "Tegels 60x60 Grijs", Barcode = "8712345000035", QuantityOnHand = 210, RecentSalesVolume = 760, IsLowStock = false },
-            new() { ItemId = "i2", ItemName = "Klinkers Rood-Bruin", Barcode = "8712345000028", QuantityOnHand = 180, RecentSalesVolume = 640, IsLowStock = false }
-        ];
+        var result = new TopSellingItemsResultDto
+        {
+            ProductGroups =
+            [
+                new ProductGroupOptionDto { Id = "pg-paving", Name = "Bestrating" }
+            ],
+            Items =
+            [
+                new TopSellingItemDto
+                {
+                    ItemId = "i1",
+                    ItemName = "Betonstraatstenen Antraciet",
+                    ProductGroupId = "pg-paving",
+                    ProductGroupName = "Bestrating",
+                    SalesAmount = 98_000m
+                },
+                new TopSellingItemDto
+                {
+                    ItemId = "i3",
+                    ItemName = "Tegels 60x60 Grijs",
+                    ProductGroupId = "pg-paving",
+                    ProductGroupName = "Bestrating",
+                    SalesAmount = 76_000m
+                },
+                new TopSellingItemDto
+                {
+                    ItemId = "i2",
+                    ItemName = "Klinkers Rood-Bruin",
+                    ProductGroupId = "pg-paving",
+                    ProductGroupName = "Bestrating",
+                    SalesAmount = 64_000m
+                }
+            ]
+        };
 
-        return Task.FromResult<IReadOnlyList<InventoryItemDto>>(items.Take(limit).ToList());
+        var items = string.IsNullOrWhiteSpace(productGroupId)
+            ? result.Items
+            : result.Items.Where(item => string.Equals(item.ProductGroupId, productGroupId, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        return Task.FromResult(new TopSellingItemsResultDto
+        {
+            ProductGroups = result.ProductGroups,
+            Items = items.Take(Math.Max(0, limit)).ToList()
+        });
     }
 
     public Task<IReadOnlyList<StockLocationDto>> GetItemLocationsAsync(string itemId, CancellationToken cancellationToken = default)
@@ -468,7 +508,7 @@ public sealed class MockNetSuiteService : INetSuiteService
         };
     }
 
-    public Task<ItemDetailDto?> GetItemByBarcodeAsync(string barcode, CancellationToken cancellationToken = default)
+    public Task<ItemDetailDto?> GetItemByBarcodeAsync(string barcode, DateRangeFilter filter, CancellationToken cancellationToken = default)
     {
         if (barcode != "8712345000011")
         {
@@ -483,6 +523,7 @@ public sealed class MockNetSuiteService : INetSuiteService
             TotalQuantityOnHand = 450,
             ReorderPoint = 100,
             RecentSalesVolume = 980,
+            PeriodSalesAmount = 12_500m,
             IsLowStock = false,
             Locations =
             [
@@ -511,13 +552,13 @@ public sealed class MockNetSuiteService : INetSuiteService
         return Task.FromResult<ItemDetailDto?>(detail);
     }
 
-    public Task<ItemDetailDto?> GetItemByIdAsync(string itemId, CancellationToken cancellationToken = default)
+    public Task<ItemDetailDto?> GetItemByIdAsync(string itemId, DateRangeFilter filter, CancellationToken cancellationToken = default)
     {
         if (itemId != "i1")
         {
             return Task.FromResult<ItemDetailDto?>(null);
         }
 
-        return GetItemByBarcodeAsync("8712345000011", cancellationToken);
+        return GetItemByBarcodeAsync("8712345000011", filter, cancellationToken);
     }
 }

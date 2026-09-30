@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TebiDashboard.Application.Interfaces;
 using TebiDashboard.Infrastructure.Data;
+using TebiDashboard.Infrastructure.Reporting;
 using TebiDashboard.Shared.Dtos;
 using TebiDashboard.Shared.Filters;
 
@@ -466,30 +467,84 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .OrderBy(i => i.ItemName)
             .ToListAsync(cancellationToken);
 
-        // Derive recent sales volume for the selected period from synced open sales orders in Postgres.
-        var salesByItem = await dbContext.OpenTransactions
+        // Sold amount in the selected period comes from synced invoice lines, not the stored sync lookback.
+        var salesByItem = await dbContext.RevenueRecords
             .AsNoTracking()
-            .Where(t => t.Type == "Sales Order"
-                && t.TransactionDate >= filter.From
-                && t.TransactionDate <= filter.To)
-            .GroupBy(t => t.ItemId)
-            .Select(g => new { ItemId = g.Key, Volume = g.Sum(t => t.QuantityOpen) })
-            .ToDictionaryAsync(x => x.ItemId, x => x.Volume, cancellationToken);
+            .Where(record => record.ItemId != string.Empty
+                && record.Date >= filter.From
+                && record.Date <= filter.To)
+            .GroupBy(record => record.ItemId)
+            .Select(group => new { ItemId = group.Key, Amount = group.Sum(record => record.Amount) })
+            .ToDictionaryAsync(row => row.ItemId, row => row.Amount, cancellationToken);
 
         return rows
             .Select(item => MapInventoryItem(item, salesByItem.GetValueOrDefault(item.ItemId)))
             .ToList();
     }
 
-    public async Task<IReadOnlyList<InventoryItemDto>> GetTopSellingItemsAsync(DateRangeFilter filter, int limit, CancellationToken cancellationToken = default)
+    public async Task<TopSellingItemsResultDto> GetTopSellingItemsAsync(
+        DateRangeFilter filter,
+        int limit,
+        string? productGroupId,
+        CancellationToken cancellationToken = default)
     {
-        var rows = await dbContext.InventoryItems
+        var rows = await dbContext.RevenueRecords
             .AsNoTracking()
-            .OrderByDescending(i => i.RecentSalesVolume)
-            .Take(limit)
+            .Where(record => record.Date >= filter.From && record.Date <= filter.To)
+            .Select(record => new
+            {
+                record.ItemId,
+                record.ItemName,
+                record.ProductGroupId,
+                record.ProductGroupName,
+                record.Amount
+            })
             .ToListAsync(cancellationToken);
 
-        return rows.Select(item => MapInventoryItem(item)).ToList();
+        var lines = rows
+            .Select(record => new PeriodSaleLine(
+                record.ItemId,
+                record.ItemName,
+                record.ProductGroupId,
+                record.ProductGroupName,
+                record.Amount))
+            .ToList();
+
+        var ranked = PeriodSales.Rank(lines, limit, productGroupId);
+        if (ranked.Items.Count == 0)
+        {
+            return ranked;
+        }
+
+        // Prefer the current inventory name when the invoice line stored an older label.
+        var itemIds = ranked.Items.Select(item => item.ItemId).ToList();
+        var inventoryNames = await dbContext.InventoryItems
+            .AsNoTracking()
+            .Where(item => itemIds.Contains(item.ItemId))
+            .Select(item => new { item.ItemId, item.ItemName })
+            .ToListAsync(cancellationToken);
+
+        var nameById = inventoryNames.ToDictionary(
+            item => item.ItemId,
+            item => item.ItemName,
+            StringComparer.OrdinalIgnoreCase);
+
+        return new TopSellingItemsResultDto
+        {
+            ProductGroups = ranked.ProductGroups,
+            Items = ranked.Items
+                .Select(item => nameById.TryGetValue(item.ItemId, out var name) && !string.IsNullOrWhiteSpace(name)
+                    ? new TopSellingItemDto
+                    {
+                        ItemId = item.ItemId,
+                        ItemName = name,
+                        ProductGroupId = item.ProductGroupId,
+                        ProductGroupName = item.ProductGroupName,
+                        SalesAmount = item.SalesAmount
+                    }
+                    : item)
+                .ToList()
+        };
     }
 
     public async Task<IReadOnlyList<StockLocationDto>> GetItemLocationsAsync(string itemId, CancellationToken cancellationToken = default)
@@ -551,22 +606,31 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
         return rows.Select(e => MapExpense(e, supplierNames)).ToList();
     }
 
-    public async Task<ItemDetailDto?> GetItemByBarcodeAsync(string barcode, CancellationToken cancellationToken = default)
+    public async Task<ItemDetailDto?> GetItemByBarcodeAsync(string barcode, DateRangeFilter filter, CancellationToken cancellationToken = default)
     {
         var item = await dbContext.InventoryItems.AsNoTracking().FirstOrDefaultAsync(i => i.Barcode == barcode, cancellationToken);
-        return item is null ? null : await BuildItemDetailAsync(item, cancellationToken);
+        return item is null ? null : await BuildItemDetailAsync(item, filter, cancellationToken);
     }
 
-    public async Task<ItemDetailDto?> GetItemByIdAsync(string itemId, CancellationToken cancellationToken = default)
+    public async Task<ItemDetailDto?> GetItemByIdAsync(string itemId, DateRangeFilter filter, CancellationToken cancellationToken = default)
     {
         var item = await dbContext.InventoryItems.AsNoTracking().FirstOrDefaultAsync(i => i.ItemId == itemId, cancellationToken);
-        return item is null ? null : await BuildItemDetailAsync(item, cancellationToken);
+        return item is null ? null : await BuildItemDetailAsync(item, filter, cancellationToken);
     }
 
-    private async Task<ItemDetailDto> BuildItemDetailAsync(Data.Entities.InventoryItemRecord item, CancellationToken cancellationToken)
+    private async Task<ItemDetailDto> BuildItemDetailAsync(
+        Data.Entities.InventoryItemRecord item,
+        DateRangeFilter filter,
+        CancellationToken cancellationToken)
     {
         var locations = await GetItemLocationsAsync(item.ItemId, cancellationToken);
         var transactions = await GetOpenTransactionsAsync(item.ItemId, cancellationToken);
+        var periodSalesAmount = await dbContext.RevenueRecords
+            .AsNoTracking()
+            .Where(record => record.ItemId == item.ItemId
+                && record.Date >= filter.From
+                && record.Date <= filter.To)
+            .SumAsync(record => (decimal?)record.Amount, cancellationToken) ?? 0m;
 
         return new ItemDetailDto
         {
@@ -576,6 +640,7 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             TotalQuantityOnHand = item.QuantityOnHand,
             ReorderPoint = item.ReorderPoint,
             RecentSalesVolume = item.RecentSalesVolume,
+            PeriodSalesAmount = periodSalesAmount,
             IsLowStock = item.IsLowStock,
             Locations = locations.ToList(),
             OpenTransactionCount = transactions.Count,
@@ -798,6 +863,7 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
         Barcode = item.Barcode,
         QuantityOnHand = item.QuantityOnHand,
         ReorderPoint = item.ReorderPoint,
+        // The inventory list passes the period sales amount. Null keeps the stored sync quantity.
         RecentSalesVolume = recentSalesVolume ?? item.RecentSalesVolume,
         IsLowStock = item.IsLowStock
     };
