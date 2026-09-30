@@ -45,4 +45,19 @@ public class TopSellingEndpointTests : IClassFixture<TebiWebApplicationFactory>,
         Assert.Empty(body.Items);
         Assert.NotEmpty(body.ProductGroups);
     }
+
+    [Fact]
+    public async Task Popular_ReturnsAShortList_WithoutProductGroups()
+    {
+        var response = await _client.GetAsync("/api/sales-volume/popular?from=2026-01-01&to=2026-09-30");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var json = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("productGroups", json, StringComparison.OrdinalIgnoreCase);
+        var items = System.Text.Json.JsonSerializer.Deserialize<List<TopSellingItemDto>>(json, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
+        Assert.NotNull(items);
+        Assert.InRange(items.Count, 1, 5);
+        Assert.Equal("i1", items[0].ItemId);
+        Assert.Equal(98_000m, items[0].SalesAmount);
+    }
 }

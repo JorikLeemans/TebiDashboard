@@ -25,6 +25,33 @@ public class DashboardHomeTests
     }
 
     [Fact]
+    public void DashboardHome_ShowsPopularArticles_ForTheSelectedPeriod()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        SetupPeriodOverview(mockHttp, CreateSampleOverview(),
+        [
+            new TopSellingItemDto
+            {
+                ItemId = "i1",
+                ItemName = "Betonstraatstenen Antraciet",
+                ProductGroupName = "Bestrating",
+                SalesAmount = 12_500m
+            }
+        ]);
+        SetupGoals(mockHttp);
+
+        var cut = ctx.Render<DashboardHome>();
+        cut.WaitForElement(".popular-list", TimeSpan.FromSeconds(5));
+
+        Assert.Contains("Popular articles", cut.Markup);
+        Assert.Contains("recommend it", cut.Markup);
+        Assert.Contains("Betonstraatstenen Antraciet", cut.Markup);
+        Assert.Contains("12.500", cut.Markup);
+        Assert.Contains("/inventory/i1", cut.Markup);
+        Assert.DoesNotContain("Product group", cut.Markup);
+    }
+
+    [Fact]
     public void DashboardHome_ShowsKpiCards_WhenApiReturnsData()
     {
         using var ctx = CreateAuthenticatedContext(out var mockHttp);
@@ -366,10 +393,16 @@ public class DashboardHomeTests
         Assert.Contains("Failed to load dashboard", cut.Markup);
     }
 
-    private static void SetupPeriodOverview(MockHttpMessageHandler mockHttp, PeriodOverviewDto overview)
+    private static void SetupPeriodOverview(
+        MockHttpMessageHandler mockHttp,
+        PeriodOverviewDto overview,
+        IReadOnlyList<TopSellingItemDto>? popular = null)
     {
         mockHttp.When(HttpMethod.Get, "*/api/dashboard/period-overview*")
             .Respond(HttpStatusCode.OK, _ => JsonContent.Create(overview));
+        var popularItems = popular ?? [];
+        mockHttp.When(HttpMethod.Get, "*/api/sales-volume/popular*")
+            .Respond(HttpStatusCode.OK, _ => JsonContent.Create(popularItems));
     }
 
     private static void SetupGoals(MockHttpMessageHandler mockHttp)
