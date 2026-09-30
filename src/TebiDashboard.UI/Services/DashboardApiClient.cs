@@ -11,14 +11,6 @@ namespace TebiDashboard.UI.Services;
 /// </summary>
 public sealed class DashboardApiClient(HttpClient httpClient, IAuthStateService authState)
 {
-    /// <summary>
-    /// Used by UI tests that construct the client directly. Those tests mock HTTP and do not call a real API.
-    /// </summary>
-    public DashboardApiClient(HttpClient httpClient)
-        : this(httpClient, AnonymousAuth.Instance)
-    {
-    }
-
     public Task<DashboardSummaryDto?> GetSummaryAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
         => GetJsonAsync<DashboardSummaryDto>(
             $"api/dashboard/summary?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
@@ -151,35 +143,5 @@ public sealed class DashboardApiClient(HttpClient httpClient, IAuthStateService 
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", authState.Token);
         }
-    }
-
-    /// <summary>Stand-in used when a test does not supply a signed-in session.</summary>
-    private sealed class AnonymousAuth : IAuthStateService
-    {
-        public static readonly AnonymousAuth Instance = new();
-
-        public bool IsAuthenticated => false;
-
-        public string? Token => null;
-
-        public string? Username => null;
-
-        public string? Role => null;
-
-        public event Action? OnChange
-        {
-            add { }
-            remove { }
-        }
-
-        public bool CanAccessAdminDashboard() => false;
-
-        public bool CanManageGoals() => false;
-
-        public Task InitializeAsync() => Task.CompletedTask;
-
-        public Task SignInAsync(LoginResponseDto response) => Task.CompletedTask;
-
-        public Task SignOutAsync() => Task.CompletedTask;
     }
 }

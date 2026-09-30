@@ -258,8 +258,9 @@ public class InventoryPageTests
 
         var client = mockHttp.ToHttpClient();
         client.BaseAddress = new Uri("https://localhost/");
-        ctx.Services.AddSingleton(new DashboardApiClient(client));
-        ctx.Services.AddSingleton<IAuthStateService>(new FakeAuthStateService(isAuthenticated: true));
+        var auth = new FakeAuthStateService(isAuthenticated: true);
+        ctx.Services.AddSingleton(new DashboardApiClient(client, auth));
+        ctx.Services.AddSingleton<IAuthStateService>(auth);
         ctx.Services.AddSingleton<IPeriodFilterService>(new PeriodFilterService());
 
         return ctx;
