@@ -27,7 +27,7 @@ public class NetSuiteController(
     [HttpGet("setup")]
     public async Task<IActionResult> GetSetupStatus(CancellationToken cancellationToken)
     {
-        if (!AdminRequestContext.IsAdmin(Request))
+        if (!AdminRequestContext.IsAdmin(User))
         {
             return StatusCode(StatusCodes.Status403Forbidden);
         }
@@ -65,6 +65,11 @@ public class NetSuiteController(
     [HttpGet("connection-test")]
     public async Task<IActionResult> TestConnection(CancellationToken cancellationToken)
     {
+        if (!AdminRequestContext.IsAdmin(User))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden);
+        }
+
         var result = await connectionService.TestConnectionAsync(cancellationToken);
         return Ok(result);
     }
@@ -110,7 +115,7 @@ public class NetSuiteController(
     [HttpPost("sync")]
     public IActionResult StartSyncDashboardData([FromQuery] int lookbackDays = NetSuiteLookback.DefaultDays)
     {
-        if (!AdminRequestContext.IsAdmin(Request))
+        if (!AdminRequestContext.IsAdmin(User))
         {
             return StatusCode(StatusCodes.Status403Forbidden);
         }
@@ -129,7 +134,7 @@ public class NetSuiteController(
     [HttpGet("sync/status")]
     public IActionResult GetSyncDashboardDataStatus()
     {
-        if (!AdminRequestContext.IsAdmin(Request))
+        if (!AdminRequestContext.IsAdmin(User))
         {
             return StatusCode(StatusCodes.Status403Forbidden);
         }

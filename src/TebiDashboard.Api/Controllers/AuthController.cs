@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TebiDashboard.Api.Authorization;
 using TebiDashboard.Application.Interfaces;
 using TebiDashboard.Shared.Constants;
 using TebiDashboard.Shared.Dtos;
@@ -6,17 +8,28 @@ using TebiDashboard.Shared.Dtos;
 namespace TebiDashboard.Api.Controllers;
 
 /// <summary>
-/// Demo authentication and registration for development.
+/// Login and registration. Both actions are anonymous; every other API route requires a JWT.
 /// </summary>
 [ApiController]
+[AllowAnonymous]
 [Route("api/[controller]")]
-public class AuthController(IUserStore userStore) : ControllerBase
+public class AuthController(
+    IUserStore userStore,
+    IHostEnvironment environment,
+    IConfiguration configuration,
+    JwtAccessTokenFactory tokens) : ControllerBase
 {
     [HttpPost("login")]
     public IActionResult Login([FromBody] LoginRequestDto request)
     {
-        // Built-in demo account for portfolio demos.
-        if (request.Username == "demo" && request.Password == "demo")
+        // The demo/demo account is for local portfolio demos. It stays off unless Development
+        // or Auth:AllowDemoLogin is explicitly enabled.
+        var allowDemoLogin = environment.IsDevelopment()
+            || configuration.GetValue("Auth:AllowDemoLogin", false);
+
+        if (allowDemoLogin
+            && string.Equals(request.Username, "demo", StringComparison.Ordinal)
+            && string.Equals(request.Password, "demo", StringComparison.Ordinal))
         {
             return Ok(CreateLoginResponse("demo", Roles.Management));
         }
@@ -54,9 +67,9 @@ public class AuthController(IUserStore userStore) : ControllerBase
         return Ok(CreateLoginResponse(user.Email, user.Role));
     }
 
-    private static LoginResponseDto CreateLoginResponse(string username, string role) => new()
+    private LoginResponseDto CreateLoginResponse(string username, string role) => new()
     {
-        Token = $"demo-token-{Guid.NewGuid():N}",
+        Token = tokens.Create(username, role),
         Username = username,
         Role = role
     };

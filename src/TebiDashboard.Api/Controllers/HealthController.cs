@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace TebiDashboard.Api.Controllers;
@@ -6,6 +7,7 @@ namespace TebiDashboard.Api.Controllers;
 /// Health check for monitoring and tests.
 /// </summary>
 [ApiController]
+[AllowAnonymous]
 [Route("[controller]")]
 public class HealthController : ControllerBase
 {

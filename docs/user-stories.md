@@ -204,7 +204,7 @@ User stories voor de .NET MAUI-portfolio-app.
 
 - [x] Login en registratie — `Login.razor`, `Register.razor`, `POST /api/auth/login`
 - [x] Rollen in gebruik — Admin, Finance, Sales, Inventory, Management (`Roles.cs`)
-- [ ] JWT-auth — huidige implementatie gebruikt demo-token; echte JWT nog open
+- [x] JWT-auth — login returns a signed JWT; data endpoints require it
 - [x] Admin kan rollen beheren — `AdminDashboard.razor`
 
 **API:** `POST /api/auth/login`

@@ -14,8 +14,8 @@ public sealed class InMemoryUserStore : IUserStore
 
     public InMemoryUserStore()
     {
-        // Default administrator for the admin dashboard demo.
-        _users["admin@tebi.nl"] = new StoredUser("admin@tebi.nl", "admin1234", Roles.Admin);
+        // Default administrator for the admin dashboard demo. The password is stored as a hash.
+        _users["admin@tebi.nl"] = new StoredUser("admin@tebi.nl", PasswordHasher.Hash("admin1234"), Roles.Admin);
     }
 
     public bool TryRegister(string email, string password, out string? errorMessage)
@@ -29,13 +29,13 @@ public sealed class InMemoryUserStore : IUserStore
             return false;
         }
 
-        if (password.Length < 8)
+        if (string.IsNullOrEmpty(password) || password.Length < 8)
         {
             errorMessage = "Password must be at least 8 characters.";
             return false;
         }
 
-        if (!_users.TryAdd(normalizedEmail, new StoredUser(normalizedEmail, password, Roles.Sales)))
+        if (!_users.TryAdd(normalizedEmail, new StoredUser(normalizedEmail, PasswordHasher.Hash(password), Roles.Sales)))
         {
             errorMessage = "An account with this email already exists.";
             return false;
@@ -49,9 +49,14 @@ public sealed class InMemoryUserStore : IUserStore
         user = null;
         var key = NormalizeEmail(usernameOrEmail);
 
-        if (!_users.TryGetValue(key, out var stored) || stored.Password != password)
+        if (!_users.TryGetValue(key, out var stored) || !PasswordHasher.Verify(password, stored.Password, out var upgradedHash))
         {
             return false;
+        }
+
+        if (upgradedHash is not null)
+        {
+            _users[key] = stored with { Password = upgradedHash };
         }
 
         user = new AuthenticatedUser
@@ -103,7 +108,7 @@ public sealed class InMemoryUserStore : IUserStore
         errorMessage = null;
         var normalizedEmail = NormalizeEmail(email);
 
-        if (password.Length < 8)
+        if (string.IsNullOrEmpty(password) || password.Length < 8)
         {
             errorMessage = "Password must be at least 8 characters.";
             return false;
@@ -115,7 +120,7 @@ public sealed class InMemoryUserStore : IUserStore
             return false;
         }
 
-        _users[normalizedEmail] = existing with { Password = password };
+        _users[normalizedEmail] = existing with { Password = PasswordHasher.Hash(password) };
         return true;
     }
 
@@ -143,7 +148,7 @@ public sealed class InMemoryUserStore : IUserStore
     private int CountAdmins() =>
         _users.Values.Count(u => string.Equals(u.Role, Roles.Admin, StringComparison.OrdinalIgnoreCase));
 
-    private static string NormalizeEmail(string value) => value.Trim().ToLowerInvariant();
+    private static string NormalizeEmail(string? value) => (value ?? string.Empty).Trim().ToLowerInvariant();
 
     private sealed record StoredUser(string Email, string Password, string Role);
 }

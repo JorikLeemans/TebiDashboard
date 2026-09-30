@@ -46,7 +46,7 @@ public static class MauiProgram
             Timeout = TimeSpan.FromMinutes(30)
         });
         builder.Services.AddSingleton<AuthApiClient>();
-        builder.Services.AddSingleton<DashboardApiClient>();
+        builder.Services.AddScoped<DashboardApiClient>();
         builder.Services.AddScoped<AdminApiClient>();
 
         return builder.Build();

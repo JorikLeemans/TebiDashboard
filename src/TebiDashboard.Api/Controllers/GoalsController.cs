@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TebiDashboard.Application.Interfaces;
+using TebiDashboard.Shared.Constants;
 using TebiDashboard.Shared.Dtos;
 
 namespace TebiDashboard.Api.Controllers;
@@ -22,8 +24,10 @@ public class GoalsController(
 
     /// <summary>
     /// Creates or updates goal targets for a calendar year.
+    /// Only Admin and Management may change targets.
     /// </summary>
     [HttpPut]
+    [Authorize(Roles = Roles.Admin + "," + Roles.Management)]
     public async Task<IActionResult> Save([FromBody] SaveGoalsRequestDto request, CancellationToken cancellationToken)
     {
         try
