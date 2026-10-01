@@ -51,13 +51,13 @@
                 <table class="expenses-page__table expenses-page__table--compact" aria-label="Expenses by category">
                     <thead>
                         <tr>
-                            <th scope="col">Category</th>
-                            <th scope="col">Bills</th>
-                            <th scope="col">Amount</th>
+                            <SortableHeader Column="name" Label="Category" Sort="_categorySort" />
+                            <SortableHeader Column="bills" Label="Bills" Sort="_categorySort" />
+                            <SortableHeader Column="amount" Label="Amount" Sort="_categorySort" />
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var category in CategoryTotals)
+                        @foreach (var category in SortedCategoryTotals)
                         {
                             <tr>
                                 <td>@category.Name</td>
@@ -165,6 +165,7 @@
     private readonly PeriodFilterSubscription _periodSubscription = new();
     private readonly PeriodFilterReload _periodReload = new();
     private readonly ListSortState _sort = new();
+    private readonly ListSortState _categorySort = new();
     private readonly HashSet<string> _expanded = new(StringComparer.OrdinalIgnoreCase);
 
     private IReadOnlyList<ExpenseDto> _expenses = [];
@@ -199,6 +200,18 @@
             .ThenBy(category => category.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
+    /// <summary>Amount descending until a column header is clicked.</summary>
+    private IReadOnlyList<CategoryTotal> SortedCategoryTotals =>
+        _categorySort.IsActive
+            ? ListSort.Apply(CategoryTotals, _categorySort, category => _categorySort.Column switch
+            {
+                "name" => category.Name,
+                "bills" => category.BillCount,
+                "amount" => category.Amount,
+                _ => category.Name
+            })
+            : CategoryTotals;
+
     private IReadOnlyList<ExpenseSupplierGroup> SortedSuppliers
     {
         get
@@ -221,6 +234,10 @@
 
     protected override async Task OnInitializedAsync()
     {
+        Action refresh = StateHasChanged;
+        _sort.Bind(refresh);
+        _categorySort.Bind(refresh);
+
         await AuthState.InitializeAsync();
 
         if (!AuthState.IsAuthenticated)

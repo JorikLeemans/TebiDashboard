@@ -38,7 +38,10 @@
     private async Task OnClickAsync()
     {
         Sort.Toggle(Column);
-        await OnSorted.InvokeAsync();
+        if (OnSorted.HasDelegate)
+        {
+            await OnSorted.InvokeAsync();
+        }
     }
 
     private async Task OnKeyDownAsync(KeyboardEventArgs args)

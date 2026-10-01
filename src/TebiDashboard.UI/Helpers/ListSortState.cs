@@ -10,6 +10,9 @@ public sealed class ListSortState
 
     public bool Ascending { get; private set; } = true;
 
+    /// <summary>Raised after <see cref="Toggle"/> so the owning page can redraw the rows.</summary>
+    private event Action? Changed;
+
     /// <summary>True once the user has chosen a column.</summary>
     public bool IsActive => !string.IsNullOrEmpty(Column);
 
@@ -21,12 +24,23 @@ public sealed class ListSortState
         if (IsColumn(column))
         {
             Ascending = !Ascending;
-            return;
+        }
+        else
+        {
+            Column = column;
+            Ascending = true;
         }
 
-        Column = column;
-        Ascending = true;
+        Notify();
     }
+
+    /// <summary>
+    /// Redraws the page that owns the table. The header is its own component, so a click
+    /// there does not redraw the rows unless the page is told.
+    /// </summary>
+    public void Bind(Action refresh) => Changed += refresh;
+
+    private void Notify() => Changed?.Invoke();
 
     /// <summary>WAI-ARIA aria-sort value for a header cell.</summary>
     public string AriaSort(string column)

@@ -449,6 +449,59 @@ public class DashboardHomeTests
         Assert.Contains("+35% vs 26-09-2026 – 28-09-2026", cut.Markup);
     }
 
+    [Fact]
+    public void DashboardHome_SortsSales_WhenCustomerHeaderIsClicked()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        SetupPeriodOverview(mockHttp, new PeriodOverviewDto
+        {
+            PeriodFrom = new DateOnly(2026, 9, 29),
+            PeriodTo = new DateOnly(2026, 10, 1),
+            Summary = new DashboardSummaryDto
+            {
+                Revenue = 30m,
+                PeriodFrom = new DateOnly(2026, 9, 29),
+                PeriodTo = new DateOnly(2026, 10, 1)
+            },
+            Revenue =
+            [
+                new RevenueDto
+                {
+                    Id = "inv-z",
+                    InvoiceNumber = "F-Z",
+                    Date = new DateOnly(2026, 9, 30),
+                    Amount = 20m,
+                    CustomerId = "c-z",
+                    CustomerName = "Zebra BV"
+                },
+                new RevenueDto
+                {
+                    Id = "inv-a",
+                    InvoiceNumber = "F-A",
+                    Date = new DateOnly(2026, 9, 29),
+                    Amount = 10m,
+                    CustomerId = "c-a",
+                    CustomerName = "Alpha BV"
+                }
+            ]
+        });
+        SetupGoals(mockHttp);
+
+        var cut = ctx.Render<DashboardHome>();
+        cut.WaitForElement("table[aria-label='Revenue in period']", TimeSpan.FromSeconds(5));
+
+        Assert.Equal(["c-zZebra BV", "c-aAlpha BV"], CustomerNames(cut));
+
+        cut.FindAll("table[aria-label='Revenue in period'] th")[2].Click();
+
+        Assert.Equal(["c-aAlpha BV", "c-zZebra BV"], CustomerNames(cut));
+    }
+
+    private static List<string> CustomerNames(IRenderedComponent<DashboardHome> cut) =>
+        cut.FindAll("table[aria-label='Revenue in period'] tbody tr")
+            .Select(row => row.Children[2].TextContent.Trim())
+            .ToList();
+
     private static void SetupPeriodOverview(
         MockHttpMessageHandler mockHttp,
         PeriodOverviewDto overview,
