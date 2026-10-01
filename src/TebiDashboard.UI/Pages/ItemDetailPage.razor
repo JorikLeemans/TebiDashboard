@@ -383,6 +383,11 @@
 
     protected override async Task OnInitializedAsync()
     {
+        Action refresh = StateHasChanged;
+        _locationSort.Bind(refresh);
+        _invoiceSort.Bind(refresh);
+        _transactionSort.Bind(refresh);
+
         await AuthState.InitializeAsync();
 
         if (!AuthState.IsAuthenticated)
