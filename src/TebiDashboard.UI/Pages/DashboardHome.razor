@@ -1,5 +1,6 @@
 @page "/dashboard"
 @layout DashboardLayout
+@using System.Globalization
 @using TebiDashboard.Shared.Dtos
 @using TebiDashboard.UI.Helpers
 @inject DashboardApiClient ApiClient
@@ -27,7 +28,7 @@
             <div class="kpi-card">
                 <h3>Revenue</h3>
                 <p class="kpi-value">@EuroFormatting.FormatWhole(_overview.Summary.Revenue)</p>
-                <span class="trend">@_overview.Summary.RevenueTrend</span>
+                <span class="trend">@RevenueTrendText</span>
             </div>
             <div class="kpi-card">
                 <h3>Sales volume</h3>
@@ -44,6 +45,45 @@
                 <span class="kpi-card__hint">View inventory →</span>
             </a>
         </div>
+
+        @* Selected period against the two equal-length periods before it. *@
+        <section class="dashboard-section">
+            <h2>Trend</h2>
+            <p class="dashboard-section__hint">The selected period and the two periods before it, each the same length.</p>
+            @if (_overview.Trend.Count == 0)
+            {
+                <p class="dashboard-empty">No trend for this period.</p>
+            }
+            else
+            {
+                <BarChart Items="_trendChartItems"
+                          AriaLabel="Revenue across recent periods"
+                          EmptyMessage="No revenue in these periods." />
+                <table class="dashboard-table" aria-label="Period trend">
+                    <thead>
+                        <tr>
+                            <th>Period</th>
+                            <th>Revenue</th>
+                            <th>Expenses</th>
+                            <th>Change</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (var index = 0; index < _overview.Trend.Count; index++)
+                        {
+                            var point = _overview.Trend[index];
+                            decimal? previousRevenue = index == 0 ? null : _overview.Trend[index - 1].Revenue;
+                            <tr>
+                                <td>@TrendPeriodLabel(point)</td>
+                                <td>@EuroFormatting.FormatWhole(point.Revenue)</td>
+                                <td>@EuroFormatting.FormatWhole(point.Expenses)</td>
+                                <td>@PeriodTrendWindows.DescribeChange(point.Revenue, previousRevenue)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
 
         @* Seller advice for this period. Purchasing keeps the full ranking on Bestsellers. *@
         <section class="dashboard-section">
@@ -418,6 +458,7 @@
     private readonly PeriodFilterReload _periodReload = new();
     private PeriodOverviewDto? _overview;
     private IReadOnlyList<ChartBarItem> _revenueChartItems = [];
+    private IReadOnlyList<ChartBarItem> _trendChartItems = [];
     private decimal _quarterGoalPercentage;
     private string _goalPeriodLabel = string.Empty;
     private IReadOnlyList<TopSellingItemDto> _popularItems = [];
@@ -433,6 +474,35 @@
     private readonly ListSortState _transactionsSort = new();
     private readonly ListSortState _expensesSort = new();
     private readonly ListSortState _inventorySort = new();
+
+    /// <summary>
+    /// Change versus the previous window when the overview includes one. Otherwise the summary word.
+    /// </summary>
+    private string RevenueTrendText
+    {
+        get
+        {
+            var points = _overview?.Trend ?? [];
+            if (points.Count < 2)
+            {
+                return _overview?.Summary.RevenueTrend ?? string.Empty;
+            }
+
+            var current = points[^1];
+            var previous = points[^2];
+            return $"{PeriodTrendWindows.DescribeChange(current.Revenue, previous.Revenue)} vs {TrendPeriodLabel(previous)}";
+        }
+    }
+
+    /// <summary>One date when the window is a single day, otherwise the full range.</summary>
+    private static string TrendPeriodLabel(PeriodTrendPointDto point)
+    {
+        var culture = CultureInfo.GetCultureInfo("nl-NL");
+        const string pattern = "dd-MM-yyyy";
+        return point.From == point.To
+            ? point.From.ToString(pattern, culture)
+            : $"{point.From.ToString(pattern, culture)} – {point.To.ToString(pattern, culture)}";
+    }
 
     /// <summary>Invoices in the period, newest first unless a column sort is active.</summary>
     private IReadOnlyList<InvoiceRevenueGroup> SalesGroups
@@ -601,6 +671,13 @@
 
             _overview = overview;
             _revenueChartItems = RevenueChartItems.FromDailyTotals(_overview.Revenue);
+            _trendChartItems = overview.Trend
+                .Select(point => new ChartBarItem
+                {
+                    Label = TrendPeriodLabel(point),
+                    Value = point.Revenue
+                })
+                .ToList();
 
             await LoadQuarterGoalAsync();
             await LoadPopularItemsAsync();
