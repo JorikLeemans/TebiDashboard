@@ -41,6 +41,7 @@ internal static class NetSuiteSuiteQlQueries
 
     /// <summary>
     /// Vendor: id, entityId (code), companyName, email, and city from the default billing address book.
+    /// The stored name is entityId plus companyName, the same pairing as a company customer.
     /// Same address-book path as customers so the City column stores a town, not the full address.
     /// </summary>
     public static string Vendors() =>

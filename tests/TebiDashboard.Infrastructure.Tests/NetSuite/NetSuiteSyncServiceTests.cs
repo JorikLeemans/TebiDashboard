@@ -184,6 +184,32 @@ public sealed class NetSuiteSyncServiceTests
     }
 
     [Fact]
+    public async Task Sync_CombinesVendorEntityId_WithCompanyName()
+    {
+        await using var db = CreateDbContext();
+        var restClient = new FakeNetSuiteRestClient
+        {
+            Vendors =
+            [
+                Row(
+                    ("id", "\"s-1\""),
+                    ("entityId", "\"L12345\""),
+                    ("companyName", "\"BetonCentrale Midden-NL\""),
+                    ("email", "\"inkoop@betoncentrale.nl\""),
+                    ("city", "\"Nieuwegein\""))
+            ]
+        };
+
+        var result = await CreateSut(db, restClient, clearOnSync: false)
+            .SyncDashboardDataAsync(365);
+
+        Assert.True(result.Success, result.Message);
+        Assert.Equal(
+            "L12345 BetonCentrale Midden-NL",
+            (await db.Suppliers.SingleAsync()).Name);
+    }
+
+    [Fact]
     public async Task Sync_DoesNotDuplicateStockLocations_WhenTheSameBalanceIsImportedAgain()
     {
         await using var db = CreateDbContext();

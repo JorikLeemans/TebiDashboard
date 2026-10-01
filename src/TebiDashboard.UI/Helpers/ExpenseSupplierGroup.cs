@@ -62,7 +62,8 @@ public static class ExpenseSupplierGroups
             : row.Id;
 
     /// <summary>
-    /// Readable supplier text. The id is shown separately in the table.
+    /// Current supplier name when it is a real name. Otherwise the name copied onto the bill, then the id.
+    /// After a sync the current name is the vendor code plus the company name.
     /// </summary>
     public static string SupplierLabel(ExpenseDto expense)
     {

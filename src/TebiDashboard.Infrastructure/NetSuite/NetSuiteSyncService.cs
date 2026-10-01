@@ -243,7 +243,10 @@ public sealed class NetSuiteSyncService(
         foreach (var row in rows)
         {
             var supplierId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id");
-            var name = NetSuiteSuiteQlRowReader.GetString(row, "companyname", "companyName") ?? "Unknown supplier";
+            // entityId is the vendor code; companyName is the company, same pairing as customers.
+            var name = SupplierDisplayName.From(
+                NetSuiteSuiteQlRowReader.GetString(row, "entityid", "entityId"),
+                NetSuiteSuiteQlRowReader.GetString(row, "companyname", "companyName"));
             // Same city mapping as customers: default billing address-book city.
             var city = NetSuiteSuiteQlRowReader.GetString(row, "city") ?? string.Empty;
             var contactEmail = NetSuiteSuiteQlRowReader.GetString(row, "email") ?? string.Empty;
@@ -258,7 +261,7 @@ public sealed class NetSuiteSyncService(
             {
                 var created = new SupplierRecord
                 {
-                    // Internal id matches vendor bill entity; entityId is the human-readable vendor code in NetSuite.
+                    // Internal id matches vendor bill entity. Name is entityId plus companyName.
                     SupplierId = supplierId,
                     Name = name,
                     City = city,
