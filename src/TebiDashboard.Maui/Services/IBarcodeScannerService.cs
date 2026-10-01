@@ -1,7 +1,7 @@
 namespace TebiDashboard.Maui.Services;
 
 /// <summary>
-/// Abstraction for platform barcode scanning (Android camera / Windows scanner).
+/// Camera barcode scan in the native app (Android and Windows). The phone website uses the browser camera.
 /// </summary>
 public interface IBarcodeScannerService
 {

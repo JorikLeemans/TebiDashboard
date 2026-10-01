@@ -1,10 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
 using Bunit;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using RichardSzalay.MockHttp;
 using TebiDashboard.Shared.Constants;
 using TebiDashboard.Shared.Dtos;
+using TebiDashboard.UI.Components;
 using TebiDashboard.UI.Pages;
 using TebiDashboard.UI.Services;
 
@@ -40,6 +42,40 @@ public class InventoryPageTests
         Assert.Contains("Units sold", cut.Markup);
         Assert.Contains("420", cut.Markup);
         Assert.Contains("8712345000011", cut.Markup);
+        Assert.Contains("Scan barcode", cut.Markup);
+    }
+
+    [Fact]
+    public async Task BarcodeScanner_OpensItem_WhenBarcodeIsKnown()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        mockHttp.When(HttpMethod.Get, "*/api/items/by-barcode/8712345000011*")
+            .Respond(HttpStatusCode.OK, _ => JsonContent.Create(new ItemDetailDto
+            {
+                ItemId = "i1",
+                ItemName = "Betonstraatstenen Antraciet",
+                Barcode = "8712345000011"
+            }));
+
+        var cut = ctx.Render<BarcodeScanner>();
+        Assert.Contains("TebiBarcodeScanner.start()", cut.Markup);
+
+        await cut.InvokeAsync(() => cut.Instance.OnBarcodeScanned("8712345000011"));
+
+        Assert.Contains("/inventory/i1", ctx.Services.GetRequiredService<NavigationManager>().Uri);
+    }
+
+    [Fact]
+    public async Task BarcodeScanner_ShowsError_WhenBarcodeIsUnknown()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        mockHttp.When(HttpMethod.Get, "*/api/items/by-barcode/000*")
+            .Respond(HttpStatusCode.NotFound);
+
+        var cut = ctx.Render<BarcodeScanner>();
+        await cut.InvokeAsync(() => cut.Instance.OnBarcodeScanned("000"));
+
+        cut.WaitForAssertion(() => Assert.Contains("No item found for barcode '000'", cut.Markup));
     }
 
     [Fact]
