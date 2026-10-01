@@ -99,6 +99,8 @@
   border-radius: 8px;
   padding: 1rem;
   margin-bottom: 1rem;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .item-detail__section h2 {

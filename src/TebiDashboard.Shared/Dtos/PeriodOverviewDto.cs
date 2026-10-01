@@ -22,4 +22,9 @@ public sealed class PeriodOverviewDto
     public IReadOnlyList<InventoryItemDto> LowStockItems { get; init; } = [];
 
     public IReadOnlyList<InventoryItemDto> InventoryWithActivity { get; init; } = [];
+
+    /// <summary>
+    /// Selected period and the equal-length periods before it, oldest first.
+    /// </summary>
+    public IReadOnlyList<PeriodTrendPointDto> Trend { get; init; } = [];
 }
