@@ -25,7 +25,9 @@ public static class MauiProgram
             });
 
         builder.Services.AddMauiBlazorWebView();
-        builder.Services.AddSingleton<IBarcodeScannerService, BarcodeScannerService>();
+        builder.Services.AddSingleton<BarcodeScannerService>();
+        builder.Services.AddSingleton<IBarcodeScannerService>(services => services.GetRequiredService<BarcodeScannerService>());
+        builder.Services.AddSingleton<INativeBarcodeScanner>(services => services.GetRequiredService<BarcodeScannerService>());
         builder.Services.AddScoped<IAuthStateService, AuthStateService>();
         builder.Services.AddScoped<IPeriodFilterService, PeriodFilterService>();
 

@@ -418,6 +418,8 @@
 
   protected override async Task OnInitializedAsync()
   {
+    _usersSort.Bind(StateHasChanged);
+
     await AuthState.InitializeAsync();
 
     if (!AuthState.IsAuthenticated)

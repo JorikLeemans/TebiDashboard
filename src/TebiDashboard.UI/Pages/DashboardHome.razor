@@ -614,6 +614,14 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Header clicks happen in a child component, so the page has to redraw the rows itself.
+        Action refresh = StateHasChanged;
+        _salesSort.Bind(refresh);
+        _customersSort.Bind(refresh);
+        _transactionsSort.Bind(refresh);
+        _expensesSort.Bind(refresh);
+        _inventorySort.Bind(refresh);
+
         await AuthState.InitializeAsync();
 
         if (!AuthState.IsAuthenticated)

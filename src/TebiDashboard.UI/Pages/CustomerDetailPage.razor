@@ -388,6 +388,10 @@
 
     protected override async Task OnInitializedAsync()
     {
+        Action refresh = StateHasChanged;
+        _revenueSort.Bind(refresh);
+        _ordersSort.Bind(refresh);
+
         await AuthState.InitializeAsync();
 
         if (!AuthState.IsAuthenticated)
