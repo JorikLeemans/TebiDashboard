@@ -351,21 +351,9 @@
             ? itemName
             : itemId.Length > 0 && itemId.All(char.IsDigit) ? string.Empty : itemId;
 
-    // Supplier text is the master name, then the name on the bill, then the id.
-    private static string ExpensePartyName(ExpenseDto expense)
-    {
-        if (!string.IsNullOrWhiteSpace(expense.VendorName))
-        {
-            return expense.VendorName;
-        }
-
-        if (!string.IsNullOrWhiteSpace(expense.SupplierName))
-        {
-            return expense.SupplierName;
-        }
-
-        return expense.SupplierId ?? string.Empty;
-    }
+    // Same label as the expenses tables: current supplier name (entity id + company), then the bill snapshot.
+    private static string ExpensePartyName(ExpenseDto expense) =>
+        ExpenseSupplierGroups.SupplierLabel(expense);
 
     // Expanded purchase-order lines show the article and remaining qty; status is a hover mark beside this text.
     private static string PurchaseOrderLineLabel(OpenTransactionDto line)
