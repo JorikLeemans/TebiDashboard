@@ -337,6 +337,8 @@ public class DashboardHomeTests
         Assert.Contains("bill-1", expanded);
         Assert.Contains("bill-2", expanded);
         Assert.Contains("30,00", expanded);
+        Assert.Contains("View all expenses", cut.Markup);
+        Assert.Contains("/expenses", cut.Markup);
     }
 
     [Fact]

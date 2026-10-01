@@ -61,6 +61,17 @@ public sealed class DashboardApiClient(HttpClient httpClient, IAuthStateService 
             $"api/customers/{Uri.EscapeDataString(customerId)}?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
             cancellationToken);
 
+    /// <summary>
+    /// Vendor bills in the selected period. The expenses page lists these in full.
+    /// </summary>
+    public async Task<IReadOnlyList<ExpenseDto>> GetExpensesAsync(
+        DateOnly from,
+        DateOnly to,
+        CancellationToken cancellationToken = default)
+        => await GetJsonAsync<IReadOnlyList<ExpenseDto>>(
+            $"api/expenses?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
+            cancellationToken) ?? [];
+
     public async Task<IReadOnlyList<RevenueDto>> GetRevenueAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
         => await GetJsonAsync<IReadOnlyList<RevenueDto>>(
             $"api/revenue?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",

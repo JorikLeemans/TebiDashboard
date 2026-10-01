@@ -1,0 +1,335 @@
+@page "/expenses"
+@layout DashboardLayout
+@using TebiDashboard.Shared.Dtos
+@using TebiDashboard.UI.Helpers
+@inject IPeriodFilterService InjectedPeriodFilter
+@inject DashboardApiClient ApiClient
+@inject IAuthStateService AuthState
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>Expenses — TEBI Dashboard</PageTitle>
+
+<div class="expenses-page">
+    <header class="expenses-page__header">
+        <h1>Expenses</h1>
+        <p class="expenses-page__subtitle">
+            Vendor bills from @PeriodFilter.From.ToString("d") – @PeriodFilter.To.ToString("d")
+        </p>
+    </header>
+
+    @if (_isInitialLoad && _isLoading)
+    {
+        <p class="expenses-page__status">Loading expenses...</p>
+    }
+    else if (_error is not null)
+    {
+        <p class="error" role="alert">@_error</p>
+    }
+    else
+    {
+        <section class="expenses-page__kpi-grid" aria-label="Expense summary">
+            <article class="expenses-page__kpi">
+                <h2>Expenses in period</h2>
+                <p>@EuroFormatting.FormatWhole(PeriodTotal)</p>
+            </article>
+            <article class="expenses-page__kpi">
+                <h2>Bills</h2>
+                <p>@_expenses.Count.ToString("N0")</p>
+            </article>
+        </section>
+
+        @if (_expenses.Count == 0)
+        {
+            <p class="expenses-page__status">No expenses in this period.</p>
+        }
+        else
+        {
+            <section class="expenses-page__section">
+                <h2>By category</h2>
+                <p class="expenses-page__hint">These amounts add up to Expenses in period.</p>
+                <table class="expenses-page__table expenses-page__table--compact" aria-label="Expenses by category">
+                    <thead>
+                        <tr>
+                            <th scope="col">Category</th>
+                            <th scope="col">Bills</th>
+                            <th scope="col">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var category in CategoryTotals)
+                        {
+                            <tr>
+                                <td>@category.Name</td>
+                                <td>@category.BillCount.ToString("N0")</td>
+                                <td>@EuroFormatting.Format(category.Amount)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </section>
+
+            <label class="expenses-page__filter">
+                <span>Category</span>
+                <select value="@_category" @onchange="OnCategoryChanged">
+                    <option value="">All categories</option>
+                    @foreach (var category in CategoryNames)
+                    {
+                        <option value="@category">@category</option>
+                    }
+                </select>
+            </label>
+
+            <section class="expenses-page__section">
+                <h2>Bills by supplier</h2>
+                <p class="expenses-page__hint">Open a supplier to see the bills behind the amount.</p>
+                @if (FilteredExpenses.Count == 0)
+                {
+                    <p class="expenses-page__status">No expenses in this category for the selected period.</p>
+                }
+                else
+                {
+                    <table class="expenses-page__table" aria-label="Expenses by supplier">
+                        <thead>
+                            <tr>
+                                <SortableHeader Column="date" Label="Date" Sort="_sort" />
+                                <SortableHeader Column="supplier" Label="Supplier" Sort="_sort" />
+                                <SortableHeader Column="amount" Label="Amount" Sort="_sort" />
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var supplier in SortedSuppliers)
+                            {
+                                var expanded = IsExpanded(supplier.Key);
+                                <tr class="expenses-page__group-row"
+                                    @onclick="() => Toggle(supplier.Key)"
+                                    tabindex="0"
+                                    aria-expanded="@expanded"
+                                    @onkeydown="(args) => HandleKeyDown(args, supplier.Key)">
+                                    <td>@supplier.Date.ToString("d")</td>
+                                    <td>
+                                        <span class="expenses-page__toggle" aria-hidden="true">@(expanded ? "▼" : "▶")</span>
+                                        @if (string.IsNullOrWhiteSpace(supplier.SupplierId))
+                                        {
+                                            @supplier.SupplierLabel
+                                        }
+                                        else
+                                        {
+                                            <a class="expenses-page__party-link"
+                                               href="@($"/suppliers/{Uri.EscapeDataString(supplier.SupplierId)}")"
+                                               @onclick:stopPropagation="true">
+                                                @supplier.SupplierLabel
+                                            </a>
+                                        }
+                                    </td>
+                                    <td>@EuroFormatting.Format(supplier.TotalAmount)</td>
+                                </tr>
+                                @if (expanded)
+                                {
+                                    @foreach (var line in supplier.Lines)
+                                    {
+                                        <tr class="expenses-page__line-row">
+                                            <td>@line.Date.ToString("d")</td>
+                                            <td>
+                                                <code>@line.Id</code>
+                                                @if (!string.IsNullOrWhiteSpace(CategoryLabel(line)))
+                                                {
+                                                    <text> · @CategoryLabel(line)</text>
+                                                }
+                                            </td>
+                                            <td>@EuroFormatting.Format(line.Amount)</td>
+                                        </tr>
+                                    }
+                                }
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th scope="row" colspan="2">Total</th>
+                                <td>@EuroFormatting.Format(FilteredTotal)</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                }
+            </section>
+        }
+    }
+</div>
+
+@code {
+    [CascadingParameter(Name = "PeriodFilter")]
+    private IPeriodFilterService? CascadedPeriodFilter { get; set; }
+
+    private IPeriodFilterService PeriodFilter => CascadedPeriodFilter ?? InjectedPeriodFilter;
+
+    private readonly PeriodFilterSubscription _periodSubscription = new();
+    private readonly PeriodFilterReload _periodReload = new();
+    private readonly ListSortState _sort = new();
+    private readonly HashSet<string> _expanded = new(StringComparer.OrdinalIgnoreCase);
+
+    private IReadOnlyList<ExpenseDto> _expenses = [];
+    private string _category = string.Empty;
+    private bool _isLoading = true;
+    private bool _isInitialLoad = true;
+    private string? _error;
+
+    private decimal PeriodTotal => _expenses.Sum(expense => expense.Amount);
+
+    private decimal FilteredTotal => FilteredExpenses.Sum(expense => expense.Amount);
+
+    /// <summary>Bills that match the category dropdown. Empty means every bill in the period.</summary>
+    private IReadOnlyList<ExpenseDto> FilteredExpenses =>
+        string.IsNullOrWhiteSpace(_category)
+            ? _expenses
+            : _expenses.Where(expense => string.Equals(CategoryLabel(expense), _category, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    private IReadOnlyList<string> CategoryNames =>
+        _expenses
+            .Select(CategoryLabel)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private IReadOnlyList<CategoryTotal> CategoryTotals =>
+        _expenses
+            .GroupBy(CategoryLabel, StringComparer.OrdinalIgnoreCase)
+            .Select(group => new CategoryTotal(group.Key, group.Count(), group.Sum(expense => expense.Amount)))
+            .OrderByDescending(category => category.Amount)
+            .ThenBy(category => category.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private IReadOnlyList<ExpenseSupplierGroup> SortedSuppliers
+    {
+        get
+        {
+            var groups = ExpenseSupplierGroups.From(FilteredExpenses);
+            return ListSort.Apply(groups, _sort, group => _sort.Column switch
+            {
+                "date" => group.Date,
+                "supplier" => group.SupplierLabel,
+                "amount" => group.TotalAmount,
+                _ => group.Date
+            });
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        _periodSubscription.Bind(CascadedPeriodFilter, InjectedPeriodFilter, OnPeriodChanged);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthState.InitializeAsync();
+
+        if (!AuthState.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        await LoadAsync(_periodReload.BeginReload(), showLoadingSpinner: true);
+    }
+
+    private void OnPeriodChanged()
+    {
+        _ = InvokeAsync(ReloadAsync);
+    }
+
+    private void OnCategoryChanged(ChangeEventArgs args)
+    {
+        _category = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private async Task ReloadAsync()
+    {
+        var generation = _periodReload.BeginReload();
+        await LoadAsync(generation, showLoadingSpinner: false);
+
+        if (!_periodReload.IsCurrent(generation))
+        {
+            return;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync(int generation, bool showLoadingSpinner)
+    {
+        var from = PeriodFilter.From;
+        var to = PeriodFilter.To;
+
+        if (showLoadingSpinner)
+        {
+            _isLoading = true;
+            _error = null;
+        }
+
+        try
+        {
+            var expenses = await ApiClient.GetExpensesAsync(from, to);
+
+            if (!_periodReload.IsCurrent(generation))
+            {
+                return;
+            }
+
+            _expenses = expenses;
+            // A category from the previous period should not hide every row after the dates change.
+            if (!string.IsNullOrWhiteSpace(_category)
+                && CategoryNames.All(name => !string.Equals(name, _category, StringComparison.OrdinalIgnoreCase)))
+            {
+                _category = string.Empty;
+            }
+
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            if (!_periodReload.IsCurrent(generation))
+            {
+                return;
+            }
+
+            _error = $"Failed to load expenses: {ex.Message}";
+        }
+        finally
+        {
+            if (showLoadingSpinner && _periodReload.IsCurrent(generation))
+            {
+                _isLoading = false;
+                _isInitialLoad = false;
+            }
+        }
+    }
+
+    private static string CategoryLabel(ExpenseDto expense) =>
+        string.IsNullOrWhiteSpace(expense.Category) ? "Uncategorised" : expense.Category.Trim();
+
+    private bool IsExpanded(string key) => _expanded.Contains(key);
+
+    private void Toggle(string key)
+    {
+        if (!_expanded.Add(key))
+        {
+            _expanded.Remove(key);
+        }
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs args, string key)
+    {
+        if (args.Key is "Enter" or " ")
+        {
+            Toggle(key);
+        }
+    }
+
+    public void Dispose()
+    {
+        _periodSubscription.Dispose();
+    }
+
+    /// <summary>One category row in the period summary.</summary>
+    private sealed record CategoryTotal(string Name, int BillCount, decimal Amount);
+}
