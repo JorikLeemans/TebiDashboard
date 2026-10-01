@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using TebiDashboard.Shared.Constants;
 using TebiDashboard.Shared.Dtos;
 
 namespace TebiDashboard.Api.Tests;
@@ -27,6 +28,8 @@ public class AuthRegisterEndpointTests : IClassFixture<TebiWebApplicationFactory
         });
 
         Assert.Equal(HttpStatusCode.OK, registerResponse.StatusCode);
+        var registered = await registerResponse.Content.ReadFromJsonAsync<LoginResponseDto>();
+        Assert.Equal(Roles.ReadOnly, registered?.Role);
 
         var loginResponse = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequestDto
         {

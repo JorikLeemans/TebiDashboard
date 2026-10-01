@@ -151,6 +151,34 @@ public sealed class DashboardApiClient(HttpClient httpClient, IAuthStateService 
     }
 
     /// <summary>
+    /// Downloads the selected period as xlsx or pdf. The bearer token stays on this server call.
+    /// </summary>
+    public async Task<DownloadedFile> DownloadPeriodExportAsync(
+        string format,
+        DateOnly from,
+        DateOnly to,
+        CancellationToken cancellationToken = default)
+    {
+        var url = $"api/exports/period?format={Uri.EscapeDataString(format)}&from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}";
+        using var response = await SendAsync(HttpMethod.Get, url, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.Forbidden)
+        {
+            throw new PeriodExportException("You cannot export data.");
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new PeriodExportException("Could not create the export.");
+        }
+
+        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        var fallback = $"tebi-{from:yyyy-MM-dd}-{to:yyyy-MM-dd}.{format}";
+        var fileName = ReadFileName(response, fallback);
+        var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
+        return new DownloadedFile(bytes, contentType, fileName);
+    }
+
+    /// <summary>
     /// Short list of articles selling in the period, for advice on the home page.
     /// </summary>
     public async Task<IReadOnlyList<TopSellingItemDto>> GetPopularItemsAsync(
@@ -186,6 +214,18 @@ public sealed class DashboardApiClient(HttpClient httpClient, IAuthStateService 
         using var request = new HttpRequestMessage(method, url);
         AttachBearer(request);
         return await httpClient.SendAsync(request, cancellationToken);
+    }
+
+    private static string ReadFileName(HttpResponseMessage response, string fallback)
+    {
+        var disposition = response.Content.Headers.ContentDisposition;
+        var name = disposition?.FileNameStar ?? disposition?.FileName;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return fallback;
+        }
+
+        return name.Trim().Trim('"');
     }
 
     private void AttachBearer(HttpRequestMessage request)

@@ -24,6 +24,20 @@ public static class RoleAuthorization
         !string.IsNullOrWhiteSpace(role) && GoalManagementRoles.Contains(role);
 
     /// <summary>
+    /// Roles that may download the period Excel and PDF reports.
+    /// Read-only accounts can view the dashboard but not take a copy of the figures.
+    /// </summary>
+    public const string ExportRoles =
+        Roles.Admin + "," + Roles.Management + "," + Roles.Purchasing + "," +
+        Roles.Inventory + "," + Roles.Sales + "," + Roles.Finance;
+
+    private static readonly IReadOnlySet<string> ExportRoleSet =
+        new HashSet<string>(ExportRoles.Split(','), StringComparer.OrdinalIgnoreCase);
+
+    public static bool CanExport(string? role) =>
+        !string.IsNullOrWhiteSpace(role) && ExportRoleSet.Contains(role);
+
+    /// <summary>
     /// All assignable roles for account management.
     /// </summary>
     public static IReadOnlyList<string> AssignableRoles { get; } =

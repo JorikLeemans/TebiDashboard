@@ -239,6 +239,21 @@ User stories voor de .NET MAUI-portfolio-app.
 
 ---
 
+## US-17 — Export Excel/PDF (Should) — **Done**
+
+**Als** medewerker  
+**wil ik** de geselecteerde periode kunnen downloaden als Excel en PDF  
+**zodat** ik de cijfers kan delen of verder kan rekenen.
+
+**Acceptatiecriteria:**
+- [x] Excel-werkmap met Summary, Revenue, Expenses en Inventory voor de gekozen periode — `PeriodExcelWriter`
+- [x] PDF-rapport met dezelfde KPI's en tabellen — `PeriodPdfWriter`
+- [x] Knoppen naast het periodefilter; ReadOnly mag niet exporteren — `PeriodExportButtons.razor`, `ExportsController`
+
+**API:** `GET /api/exports/period?format=xlsx|pdf&from=&to=`
+
+---
+
 ## Story map (actuele implementatie)
 
 | Story | Status | Blazor page | API |
@@ -255,7 +270,8 @@ User stories voor de .NET MAUI-portfolio-app.
 | US-10 | Done | `ExpensesPage.razor`, `DashboardHome.razor` | `/api/expenses` |
 | US-11 | Done | `BarcodeScanner.razor` | `/api/items/by-barcode/{code}` |
 | US-12 | Done | `Login.razor`, `Register.razor`, `AdminDashboard.razor` | `/api/auth/login` |
-| US-14 | Done | `DashboardHome.razor` | `/api/dashboard/overview` |
+| US-14 | Done | `DashboardHome.razor` | `/api/dashboard/overview` |
+| US-17 | Done | `PeriodExportButtons.razor` | `/api/exports/period` |
 
 ### Extra modules (niet in oorspronkelijk voorstelformulier)
 
@@ -272,6 +288,6 @@ User stories voor de .NET MAUI-portfolio-app.
 |----|-------|--------|
 | US-15 | Trendanalyse over periodes | Done |
 | US-16 | Auto-refresh dashboard | Open |
-| US-17 | Export Excel/PDF | Open |
+| US-17 | Export Excel/PDF | Done |
 | US-18 | Donkere modus | Open |
 
