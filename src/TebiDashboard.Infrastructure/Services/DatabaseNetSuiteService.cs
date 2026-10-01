@@ -4,6 +4,7 @@ using TebiDashboard.Infrastructure.Data;
 using TebiDashboard.Infrastructure.Reporting;
 using TebiDashboard.Shared.Dtos;
 using TebiDashboard.Shared.Filters;
+using TebiDashboard.Shared.Periods;
 
 namespace TebiDashboard.Infrastructure.Services;
 
@@ -305,10 +306,13 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             ? 0m
             : goals.Average(g => g.TargetValue == 0 ? 0m : g.ActualValue / g.TargetValue * 100m);
 
-        var midpoint = filter.From.AddDays((filter.To.DayNumber - filter.From.DayNumber) / 2);
-        var firstHalf = revenueRows.Where(r => r.Date <= midpoint).Sum(r => r.Amount);
-        var secondHalf = revenueRows.Where(r => r.Date > midpoint).Sum(r => r.Amount);
-        var trend = secondHalf >= firstHalf ? "up" : "down";
+        var previousWindow = PeriodTrendWindows.Build(filter.From, filter.To, count: 2)[0];
+        var previousRevenue = await dbContext.RevenueRecords
+            .AsNoTracking()
+            .Where(record => record.Date >= previousWindow.From && record.Date <= previousWindow.To)
+            .SumAsync(record => (decimal?)record.Amount, cancellationToken) ?? 0m;
+        // The card compares this period with the previous window of the same length.
+        var trend = PeriodTrendWindows.TrendWord(totalRevenue, previousRevenue);
 
         return new DashboardSummaryDto
         {
@@ -327,6 +331,7 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
         var summary = await GetDashboardSummaryAsync(filter, cancellationToken);
         var revenue = await GetRevenueAsync(filter, cancellationToken);
         var expenses = await GetExpensesAsync(filter, cancellationToken);
+        var trend = await LoadPeriodTrendAsync(filter, cancellationToken);
         var transactions = await GetTransactionsInPeriodAsync(filter, cancellationToken);
         var lowStock = await GetLowStockItemsAsync(highSalesOnly: false, cancellationToken);
 
@@ -359,8 +364,45 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             Expenses = expenses,
             Transactions = transactions,
             LowStockItems = lowStock,
-            InventoryWithActivity = inventoryWithActivity.Select(item => MapInventoryItem(item)).ToList()
+            InventoryWithActivity = inventoryWithActivity.Select(item => MapInventoryItem(item)).ToList(),
+            Trend = trend
         };
+    }
+
+    /// <summary>
+    /// Revenue and expenses for the selected period and the two equal windows before it.
+    /// </summary>
+    private async Task<IReadOnlyList<PeriodTrendPointDto>> LoadPeriodTrendAsync(
+        DateRangeFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var windows = PeriodTrendWindows.Build(filter.From, filter.To);
+        var earliest = windows[0].From;
+        var latest = windows[^1].To;
+
+        var revenue = await dbContext.RevenueRecords
+            .AsNoTracking()
+            .Where(record => record.Date >= earliest && record.Date <= latest)
+            .Select(record => new { record.Date, record.Amount })
+            .ToListAsync(cancellationToken);
+
+        var expenses = await dbContext.Expenses
+            .AsNoTracking()
+            .Where(expense => expense.Date >= earliest && expense.Date <= latest)
+            .Select(expense => new { expense.Date, expense.Amount })
+            .ToListAsync(cancellationToken);
+
+        return windows.Select(window => new PeriodTrendPointDto
+        {
+            From = window.From,
+            To = window.To,
+            Revenue = revenue
+                .Where(row => row.Date >= window.From && row.Date <= window.To)
+                .Sum(row => row.Amount),
+            Expenses = expenses
+                .Where(row => row.Date >= window.From && row.Date <= window.To)
+                .Sum(row => row.Amount)
+        }).ToList();
     }
 
     private async Task<IReadOnlyList<OpenTransactionDto>> GetTransactionsInPeriodAsync(

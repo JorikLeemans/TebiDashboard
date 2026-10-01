@@ -397,6 +397,58 @@ public class DashboardHomeTests
         Assert.Contains("Failed to load dashboard", cut.Markup);
     }
 
+    [Fact]
+    public void DashboardHome_ShowsPeriodTrend_AgainstEarlierWindows()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        SetupPeriodOverview(mockHttp, new PeriodOverviewDto
+        {
+            PeriodFrom = new DateOnly(2026, 9, 29),
+            PeriodTo = new DateOnly(2026, 10, 1),
+            Summary = new DashboardSummaryDto
+            {
+                Revenue = 67_300m,
+                RevenueTrend = "up",
+                PeriodFrom = new DateOnly(2026, 9, 29),
+                PeriodTo = new DateOnly(2026, 10, 1)
+            },
+            Trend =
+            [
+                new PeriodTrendPointDto
+                {
+                    From = new DateOnly(2026, 9, 23),
+                    To = new DateOnly(2026, 9, 25),
+                    Revenue = 10_000m,
+                    Expenses = 2_000m
+                },
+                new PeriodTrendPointDto
+                {
+                    From = new DateOnly(2026, 9, 26),
+                    To = new DateOnly(2026, 9, 28),
+                    Revenue = 50_000m,
+                    Expenses = 4_000m
+                },
+                new PeriodTrendPointDto
+                {
+                    From = new DateOnly(2026, 9, 29),
+                    To = new DateOnly(2026, 10, 1),
+                    Revenue = 67_300m,
+                    Expenses = 1_500m
+                }
+            ]
+        });
+        SetupGoals(mockHttp);
+
+        var cut = ctx.Render<DashboardHome>();
+        cut.WaitForElement("table[aria-label='Period trend']", TimeSpan.FromSeconds(5));
+
+        Assert.Contains("Trend", cut.Markup);
+        Assert.Contains("29-09-2026 – 01-10-2026", cut.Markup);
+        Assert.Contains("26-09-2026 – 28-09-2026", cut.Markup);
+        Assert.Contains("+35%", cut.Markup);
+        Assert.Contains("+35% vs 26-09-2026 – 28-09-2026", cut.Markup);
+    }
+
     private static void SetupPeriodOverview(
         MockHttpMessageHandler mockHttp,
         PeriodOverviewDto overview,

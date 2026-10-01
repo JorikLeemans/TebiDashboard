@@ -3,6 +3,7 @@ using TebiDashboard.Application.Options;
 using TebiDashboard.Infrastructure.Data;
 using TebiDashboard.Shared.Dtos;
 using TebiDashboard.Shared.Filters;
+using TebiDashboard.Shared.Periods;
 
 namespace TebiDashboard.Infrastructure.Services;
 
@@ -182,12 +183,13 @@ public sealed class MockNetSuiteService : INetSuiteService
             salesVolume = revenue.Count;
         }
 
+        var trend = BuildTrend(filter);
         var summary = new DashboardSummaryDto
         {
             Revenue = revenue.Sum(r => r.Amount),
             SalesVolume = salesVolume,
             GoalPercentage = 87.5m,
-            RevenueTrend = "up",
+            RevenueTrend = TrendWord(trend),
             LowStockAlertCount = 3,
             PeriodFrom = filter.From,
             PeriodTo = filter.To
@@ -212,6 +214,7 @@ public sealed class MockNetSuiteService : INetSuiteService
             .Select(t => t.CustomerId!)
             .ToHashSet();
 
+        var trend = BuildTrend(filter);
         var overview = new PeriodOverviewDto
         {
             PeriodFrom = filter.From,
@@ -221,7 +224,7 @@ public sealed class MockNetSuiteService : INetSuiteService
                 Revenue = revenue.Sum(r => r.Amount),
                 SalesVolume = transactions.Sum(t => t.QuantityOpen),
                 GoalPercentage = 87.5m,
-                RevenueTrend = "up",
+                RevenueTrend = TrendWord(trend),
                 LowStockAlertCount = lowStock.Count,
                 PeriodFrom = filter.From,
                 PeriodTo = filter.To
@@ -231,10 +234,43 @@ public sealed class MockNetSuiteService : INetSuiteService
             Expenses = expenses,
             Transactions = transactions,
             LowStockItems = lowStock,
-            InventoryWithActivity = GetMockInventory().Where(i => activeIds.Contains(i.ItemId)).ToList()
+            InventoryWithActivity = GetMockInventory().Where(i => activeIds.Contains(i.ItemId)).ToList(),
+            Trend = trend
         };
 
         return Task.FromResult(overview);
+    }
+
+    /// <summary>
+    /// Selected period and the two windows before it, summed from the full mock lists.
+    /// </summary>
+    private static IReadOnlyList<PeriodTrendPointDto> BuildTrend(DateRangeFilter filter)
+    {
+        var revenue = GetMockRevenue();
+        var expenses = GetMockExpenses();
+        return PeriodTrendWindows.Build(filter.From, filter.To)
+            .Select(window => new PeriodTrendPointDto
+            {
+                From = window.From,
+                To = window.To,
+                Revenue = revenue
+                    .Where(row => row.Date >= window.From && row.Date <= window.To)
+                    .Sum(row => row.Amount),
+                Expenses = expenses
+                    .Where(row => row.Date >= window.From && row.Date <= window.To)
+                    .Sum(row => row.Amount)
+            })
+            .ToList();
+    }
+
+    private static string TrendWord(IReadOnlyList<PeriodTrendPointDto> points)
+    {
+        if (points.Count < 2)
+        {
+            return "flat";
+        }
+
+        return PeriodTrendWindows.TrendWord(points[^1].Revenue, points[^2].Revenue);
     }
 
     public Task<IReadOnlyList<RevenueDto>> GetRevenueAsync(DateRangeFilter filter, CancellationToken cancellationToken = default)
