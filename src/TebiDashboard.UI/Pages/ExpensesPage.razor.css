@@ -1,0 +1,148 @@
+.expenses-page {
+  padding: 1rem;
+  font-family: Segoe UI, sans-serif;
+}
+
+.expenses-page__header h1 {
+  margin: 0 0 0.25rem;
+}
+
+.expenses-page__subtitle,
+.expenses-page__hint,
+.expenses-page__status {
+  margin: 0 0 1rem;
+  color: #555;
+}
+
+.expenses-page__kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 220px));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.expenses-page__kpi {
+  background: #fff;
+  border: 1px solid #dde3ea;
+  border-left: 4px solid #2a8a4a;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.expenses-page__kpi h2 {
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #556;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.expenses-page__kpi p {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.expenses-page__section {
+  background: #fff;
+  border: 1px solid #dde3ea;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.expenses-page__section h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+}
+
+.expenses-page__filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-width: 20rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: #445;
+}
+
+.expenses-page__filter select {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #dde3ea;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.expenses-page__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.expenses-page__table--compact {
+  width: auto;
+}
+
+.expenses-page__table th,
+.expenses-page__table td,
+.expenses-page__table ::deep th {
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.expenses-page__table th,
+.expenses-page__table ::deep th {
+  font-size: 0.85rem;
+  color: #445;
+  background: #f7faf8;
+}
+
+.expenses-page__table tfoot th,
+.expenses-page__table tfoot td {
+  font-weight: 700;
+  border-bottom: 0;
+}
+
+.expenses-page__group-row {
+  cursor: pointer;
+}
+
+.expenses-page__group-row td {
+  font-weight: 600;
+}
+
+.expenses-page__group-row:hover,
+.expenses-page__group-row:focus {
+  background: #f0f7f2;
+  outline: none;
+}
+
+.expenses-page__toggle {
+  display: inline-block;
+  width: 1rem;
+  color: #2a8a4a;
+}
+
+.expenses-page__line-row td {
+  color: #445;
+  font-weight: 400;
+}
+
+.expenses-page__line-row td:first-child {
+  padding-left: 1.5rem;
+}
+
+.expenses-page__party-link {
+  color: #1a3d2b;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.expenses-page__party-link:hover {
+  text-decoration: underline;
+}
+
+.error {
+  color: #b00020;
+}

@@ -368,6 +368,8 @@
                     <p class="dashboard-preview-note">@DashboardHomePreview.TruncationNote(ExpenseGroups.Count, mostRecent: !_expensesSort.IsActive)</p>
                 }
             }
+            @* Home stays a preview. The expenses page lists every bill in the period. *@
+            <p class="dashboard-section__more"><a href="/expenses">View all expenses →</a></p>
         </section>
 
         <section class="dashboard-section">

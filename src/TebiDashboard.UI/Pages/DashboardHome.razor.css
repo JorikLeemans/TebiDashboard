@@ -176,6 +176,20 @@
   margin: 0;
 }
 
+.dashboard-section__more {
+  margin: 0.65rem 0 0;
+}
+
+.dashboard-section__more a {
+  color: #2a8a4a;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.dashboard-section__more a:hover {
+  text-decoration: underline;
+}
+
 /* Note under a table that is capped at 20 rows. */
 .dashboard-preview-note {
   margin: 0.65rem 0 0;
