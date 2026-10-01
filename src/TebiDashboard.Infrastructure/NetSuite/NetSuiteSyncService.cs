@@ -451,11 +451,21 @@ public sealed class NetSuiteSyncService(
             .AsNoTracking()
             .ToDictionaryAsync(customer => customer.CustomerId, customer => customer.Name, cancellationToken);
 
+        // Historical invoice lines stay in the dashboard even after they fall outside the lookback window.
+        // Lines imported before units were stored still have Quantity 0. Read those dates too, once.
+        var quantityFrom = await EarliestUncapturedInvoiceDateAsync(fromDate, cancellationToken);
+        if (quantityFrom < fromDate)
+        {
+            logger.LogInformation(
+                "Invoice units are missing before {LookbackFrom}. Reading invoices from {QuantityFrom}.",
+                fromDate,
+                quantityFrom);
+        }
+
         var rows = NetSuiteSuiteQlRowDeduplicator.ByFields(
-            await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.Invoices(fromDate), pageSize, cancellationToken),
+            await restClient.QuerySuiteQlAsync(NetSuiteSuiteQlQueries.Invoices(quantityFrom), pageSize, cancellationToken),
             "invoiceid",
             "lineid");
-        // Historical invoice lines stay in the dashboard even after they fall outside the lookback window.
         var existingIds = (await dbContext.RevenueRecords
             .AsNoTracking()
             .Select(record => record.Id)
@@ -463,6 +473,7 @@ public sealed class NetSuiteSyncService(
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var quantityByExistingId = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
         var imported = 0;
+        var sawQuantityColumn = false;
         foreach (var row in rows)
         {
             // Skip instead of storing UTC today when tranDate is missing or still unparseable.
@@ -478,11 +489,24 @@ public sealed class NetSuiteSyncService(
             var invoiceId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "invoiceid", "id");
             var lineId = NetSuiteSuiteQlRowReader.GetString(row, "lineid") ?? "0";
             var revenueId = $"{invoiceId}-{lineId}";
-            var quantity = NetSuiteSuiteQlRowReader.GetDecimal(row, "quantity");
+            // soldquantity is NVL(quantity, 0) * -1. A missing column must not be stored as zero.
+            var hasQuantity = NetSuiteSuiteQlRowReader.HasDecimal(row, "soldquantity", "quantity");
+            if (hasQuantity)
+            {
+                sawQuantityColumn = true;
+            }
+
+            var quantity = hasQuantity
+                ? NetSuiteSuiteQlRowReader.GetDecimal(row, "soldquantity", "quantity")
+                : 0m;
             // Lines imported before quantity was stored still need it filled on the next sync.
             if (!existingIds.Add(revenueId))
             {
-                quantityByExistingId[revenueId] = quantity;
+                if (hasQuantity)
+                {
+                    quantityByExistingId[revenueId] = quantity;
+                }
+
                 continue;
             }
 
@@ -502,12 +526,21 @@ public sealed class NetSuiteSyncService(
                 // Artikelgroep is item class, not subsidiary. Empty name is better than a raw id.
                 ProductGroupId = NetSuiteSuiteQlRowReader.GetString(row, "productgroupid") ?? string.Empty,
                 ProductGroupName = NetSuiteSuiteQlRowReader.GetString(row, "productgroupname", "productGroupName") ?? string.Empty,
-                Quantity = quantity
+                Quantity = quantity,
+                UnitsCaptured = hasQuantity
             });
             imported++;
         }
 
         await ApplyInvoiceQuantitiesAsync(quantityByExistingId, cancellationToken);
+        if (sawQuantityColumn || rows.Count == 0)
+        {
+            await MarkUncapturedInvoiceLinesAsync(quantityFrom, cancellationToken);
+        }
+        else
+        {
+            logger.LogWarning("SuiteQL invoice rows did not include soldquantity. Stored units were left unchanged.");
+        }
 
         // Incremental sync skips existing keys, so older credit-signed amounts stay until flipped here.
         imported += await FlipNegativeRevenueAmountsAsync(cancellationToken);
@@ -517,8 +550,23 @@ public sealed class NetSuiteSyncService(
     }
 
     /// <summary>
+    /// Start of the invoice read. Uses the lookback unless older item lines still have no units.
+    /// </summary>
+    private async Task<DateOnly> EarliestUncapturedInvoiceDateAsync(
+        DateOnly lookbackFrom,
+        CancellationToken cancellationToken)
+    {
+        var earliest = await dbContext.RevenueRecords
+            .AsNoTracking()
+            .Where(record => !record.UnitsCaptured && record.ItemId != string.Empty)
+            .Select(record => (DateOnly?)record.Date)
+            .MinAsync(cancellationToken);
+
+        return earliest is DateOnly gap && gap < lookbackFrom ? gap : lookbackFrom;
+    }
+
+    /// <summary>
     /// Writes units onto invoice lines that were stored before quantity was selected.
-    /// Only lines inside this sync's lookback are updated.
     /// </summary>
     private async Task ApplyInvoiceQuantitiesAsync(
         Dictionary<string, decimal> quantityById,
@@ -536,8 +584,25 @@ public sealed class NetSuiteSyncService(
                 if (quantityById.TryGetValue(record.Id, out var quantity))
                 {
                     record.Quantity = quantity;
+                    record.UnitsCaptured = true;
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// Lines in the queried range that NetSuite no longer returns are marked captured
+    /// so the next sync does not download that history again.
+    /// </summary>
+    private async Task MarkUncapturedInvoiceLinesAsync(DateOnly quantityFrom, CancellationToken cancellationToken)
+    {
+        var leftovers = await dbContext.RevenueRecords
+            .Where(record => !record.UnitsCaptured && record.ItemId != string.Empty && record.Date >= quantityFrom)
+            .ToListAsync(cancellationToken);
+
+        foreach (var record in leftovers)
+        {
+            record.UnitsCaptured = true;
         }
     }
 

@@ -56,6 +56,35 @@ internal static class NetSuiteSuiteQlRowReader
     }
 
     /// <summary>
+    /// True when one of the keys is present as a number or numeric string, including zero.
+    /// A missing column is not the same as a stored zero.
+    /// </summary>
+    public static bool HasDecimal(IReadOnlyDictionary<string, JsonElement> row, params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            if (!row.TryGetValue(key, out var value))
+            {
+                continue;
+            }
+
+            switch (value.ValueKind)
+            {
+                case JsonValueKind.Number:
+                    return true;
+                case JsonValueKind.String when decimal.TryParse(
+                    value.GetString(),
+                    NumberStyles.Number,
+                    CultureInfo.InvariantCulture,
+                    out _):
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Reads a transaction date. Returns <c>false</c> when the value is absent or cannot be parsed.
     /// A present-but-unparseable value is a failure: callers must not substitute UTC today, which
     /// previously made every invoice and open order look like it happened today.

@@ -14,9 +14,14 @@ public sealed class RevenueRecord
     /// <summary>
     /// Units sold on this invoice line. SuiteQL <c>transactionline.quantity</c> is negative
     /// when the line reduces inventory, so the sync stores the positive quantity.
-    /// Rows imported before this column stay at 0 until the next sync sees that invoice.
     /// </summary>
     public decimal Quantity { get; set; }
+
+    /// <summary>
+    /// True after a sync has written <see cref="Quantity"/> from SuiteQL.
+    /// Older rows stay false so the next sync re-reads invoices outside the short lookback.
+    /// </summary>
+    public bool UnitsCaptured { get; set; }
 
     public string CustomerId { get; set; } = string.Empty;
 

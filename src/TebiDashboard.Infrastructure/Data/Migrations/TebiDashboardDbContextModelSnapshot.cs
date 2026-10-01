@@ -236,6 +236,9 @@ namespace TebiDashboard.Infrastructure.Data.Migrations
                     b.Property<decimal>("Quantity")
                         .HasColumnType("numeric");
 
+                    b.Property<bool>("UnitsCaptured")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("CustomerId")
                         .IsRequired()
                         .HasMaxLength(64)

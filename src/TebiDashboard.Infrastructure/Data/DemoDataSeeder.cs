@@ -340,6 +340,7 @@ public static class DemoDataSeeder
             Quantity = amount > 0m
                 ? Math.Max(1m, decimal.Round(amount / 250m, 0, MidpointRounding.AwayFromZero))
                 : 0m,
+            UnitsCaptured = true,
             // Default: one invoice per customer. Grouping lines pass a shared invoice id/number.
             InvoiceId = invoiceId ?? customerId,
             InvoiceNumber = invoiceNumber ?? $"F-{customerId.ToUpperInvariant()}"

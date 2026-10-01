@@ -49,7 +49,7 @@ public sealed class NetSuiteSyncServiceTests
             [
                 // Same key as the stored line, with a different amount that must not overwrite it.
                 InvoiceRow("inv-old", "1", "2024-01-15", "c-old", 99.00m),
-                InvoiceRow("inv-new", "1", "2026-09-01", "c-new", 25.50m)
+                InvoiceRow("inv-new", "1", "2026-09-01", "c-new", 25.50m, soldQuantity: 4m)
             ]
         };
 
@@ -66,6 +66,8 @@ public sealed class NetSuiteSyncServiceTests
 
         var added = await db.RevenueRecords.SingleAsync(row => row.Id == "inv-new-1");
         Assert.Equal(25.50m, added.Amount);
+        Assert.Equal(4m, added.Quantity);
+        Assert.True(added.UnitsCaptured);
         Assert.Equal("c-new", added.CustomerId);
 
         Assert.Equal("Renamed customer", (await db.Customers.SingleAsync(row => row.CustomerId == "c-old")).Name);
@@ -100,6 +102,45 @@ public sealed class NetSuiteSyncServiceTests
         Assert.True(result.Success, result.Message);
         var stored = await db.RevenueRecords.SingleAsync(row => row.Id == "2136821-10");
         Assert.Equal(324.00m, stored.Amount);
+    }
+
+    [Fact]
+    public async Task Sync_FillsUnitsOnExistingInvoiceLines_OutsideTheLookback()
+    {
+        await using var db = CreateDbContext();
+        db.RevenueRecords.Add(new RevenueRecord
+        {
+            Id = "inv-old-1",
+            InvoiceId = "inv-old",
+            InvoiceNumber = "F-100",
+            Date = new DateOnly(2026, 1, 15),
+            Amount = 159_561m,
+            ItemId = "item-1",
+            ItemName = "Opsluitband",
+            Quantity = 0m,
+            UnitsCaptured = false
+        });
+        await db.SaveChangesAsync();
+
+        var restClient = new FakeNetSuiteRestClient
+        {
+            Invoices =
+            [
+                InvoiceRow("inv-old", "1", "2026-01-15", "c-old", 99m, soldQuantity: 80m)
+            ]
+        };
+
+        var result = await CreateSut(db, restClient, clearOnSync: false)
+            .SyncDashboardDataAsync(30);
+
+        Assert.True(result.Success, result.Message);
+        var invoiceSql = Assert.Single(restClient.Queries, sql => sql.Contains("soldquantity", StringComparison.Ordinal));
+        Assert.Contains("2026-01-15", invoiceSql);
+
+        var stored = await db.RevenueRecords.SingleAsync();
+        Assert.Equal(159_561m, stored.Amount);
+        Assert.Equal(80m, stored.Quantity);
+        Assert.True(stored.UnitsCaptured);
     }
 
     [Fact]
@@ -355,8 +396,11 @@ public sealed class NetSuiteSyncServiceTests
         string lineId,
         string tranDate,
         string customerId,
-        decimal amount) =>
-        Row(
+        decimal amount,
+        decimal? soldQuantity = null)
+    {
+        var fields = new List<(string Key, string Json)>
+        {
             ("invoiceid", $"\"{invoiceId}\""),
             ("invoicenumber", $"\"F-{invoiceId}\""),
             ("lineid", $"\"{lineId}\""),
@@ -366,7 +410,16 @@ public sealed class NetSuiteSyncServiceTests
             ("itemname", "\"SKU-1\""),
             ("productgroupid", "\"pg-1\""),
             ("productgroupname", "\"Stenen\""),
-            ("amount", amount.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+            ("amount", amount.ToString(System.Globalization.CultureInfo.InvariantCulture))
+        };
+
+        if (soldQuantity is not null)
+        {
+            fields.Add(("soldquantity", soldQuantity.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        }
+
+        return Row(fields.ToArray());
+    }
 
     private static Dictionary<string, JsonElement> Row(params (string Key, string Json)[] fields)
     {
@@ -405,11 +458,14 @@ public sealed class NetSuiteSyncServiceTests
 
         public List<IReadOnlyDictionary<string, JsonElement>> RecentItemSales { get; init; } = [];
 
+        public List<string> Queries { get; } = [];
+
         public Task<IReadOnlyList<IReadOnlyDictionary<string, JsonElement>>> QuerySuiteQlAsync(
             string sql,
             int pageSize,
             CancellationToken cancellationToken = default)
         {
+            Queries.Add(sql);
             IReadOnlyList<IReadOnlyDictionary<string, JsonElement>> rows = sql switch
             {
                 _ when sql.Contains("itemlocationconfiguration", StringComparison.OrdinalIgnoreCase) => ItemLocationConfigurations,
