@@ -121,11 +121,15 @@ internal static class NetSuiteSuiteQlQueries
     /// both Item and Product group rendered as "16".
     /// NetSuite stores invoice item lines as credits (debit-positive / credit-negative), so
     /// tl.amount is negative when the customer owes us. Negate it for customer-facing omzet.
-    /// transactionline.quantity is likewise negative when the line reduces inventory, so it is negated too.
+    /// transactionline.quantity is negative when the line reduces inventory (invoice, item fulfillment).
+    /// Multiply by -1 so units sold are positive. A distinct alias avoids clashing with the raw column.
     /// Records Browser: transactionline.quantity (float).
     /// https://system.netsuite.com/help/helpcenter/en_US/srbrowser/Browser2021_1/analytics/record/transactionLine.html
-    /// fromDate is the Admin lookback (tranDate &gt;= fromDate). REST SuiteQL pages this result
-    /// (limit/offset, max 1000 rows per page).
+    /// Invoice quantity sign: https://devblog.mirerp.com/posts/transactions-inventory/
+    /// Oracle example uses quantity * -1:
+    /// https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/section_158039627694.html
+    /// fromDate is the Admin lookback, or earlier when stored lines still have no units.
+    /// REST SuiteQL pages this result (limit/offset, max 1000 rows per page).
     /// </summary>
     public static string Invoices(DateOnly fromDate) =>
         $"""
@@ -140,7 +144,7 @@ internal static class NetSuiteSuiteQlQueries
             it.class AS productgroupid,
             BUILTIN.DF(it.class) AS productgroupname,
             -NVL(tl.amount, 0) AS amount,
-            -NVL(tl.quantity, 0) AS quantity
+            NVL(tl.quantity, 0) * -1 AS soldquantity
         FROM transactionline tl
         INNER JOIN invoice i ON i.id = tl.transaction
         LEFT JOIN item it ON it.id = tl.item
