@@ -102,8 +102,29 @@
 }
 
 .item-detail__section h2 {
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.35rem;
   font-size: 1.05rem;
+}
+
+.item-detail__section-hint {
+  margin: 0 0 0.75rem;
+  color: #555;
+}
+
+.item-detail__party-link {
+  color: #1a3d2b;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.item-detail__party-link:hover {
+  text-decoration: underline;
+}
+
+.item-detail__table tfoot th,
+.item-detail__table tfoot td {
+  font-weight: 700;
+  border-bottom: 0;
 }
 
 .item-detail__table {
@@ -111,14 +132,21 @@
   border-collapse: collapse;
 }
 
+/* Invoice columns stay next to their values instead of stretching across the page. */
+.item-detail__table--invoices {
+  width: auto;
+}
+
 .item-detail__table th,
-.item-detail__table td {
-  padding: 0.65rem 0.5rem;
+.item-detail__table td,
+.item-detail__table ::deep th {
+  padding: 0.65rem 0.75rem;
   text-align: left;
   border-bottom: 1px solid #eef2f6;
 }
 
-.item-detail__table th {
+.item-detail__table th,
+.item-detail__table ::deep th {
   font-size: 0.85rem;
   color: #445;
   background: #f7faf8;

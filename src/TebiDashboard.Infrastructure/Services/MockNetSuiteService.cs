@@ -527,6 +527,29 @@ public sealed class MockNetSuiteService : INetSuiteService
             ReorderPoint = 100,
             RecentSalesVolume = 980,
             PeriodSalesAmount = 12_500m,
+            PeriodInvoices =
+            [
+                new ItemInvoiceLineDto
+                {
+                    Date = Today.AddDays(-2),
+                    InvoiceId = "inv-1",
+                    InvoiceNumber = "F-2026-014",
+                    CustomerId = "c1",
+                    CustomerName = "Bouwbedrijf Jansen",
+                    Amount = 8_000m,
+                    UnitsSold = 20m
+                },
+                new ItemInvoiceLineDto
+                {
+                    Date = Today.AddDays(-1),
+                    InvoiceId = "inv-2",
+                    InvoiceNumber = "F-2026-018",
+                    CustomerId = "c2",
+                    CustomerName = "Gemeente Utrecht",
+                    Amount = 4_500m,
+                    UnitsSold = 12m
+                }
+            ],
             IsLowStock = false,
             Locations =
             [

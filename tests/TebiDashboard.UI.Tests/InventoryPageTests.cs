@@ -115,6 +115,27 @@ public class InventoryPageTests
                 ReorderPoint = 100,
                 RecentSalesVolume = 980,
                 PeriodSalesAmount = 12_500m,
+                PeriodInvoices =
+                [
+                    new ItemInvoiceLineDto
+                    {
+                        Date = new DateOnly(2026, 6, 2),
+                        InvoiceNumber = "F-2026-014",
+                        CustomerId = "c1",
+                        CustomerName = "Bouwbedrijf Jansen",
+                        Amount = 8_000m,
+                        UnitsSold = 20m
+                    },
+                    new ItemInvoiceLineDto
+                    {
+                        Date = new DateOnly(2026, 6, 8),
+                        InvoiceNumber = "F-2026-018",
+                        CustomerId = "c2",
+                        CustomerName = "Gemeente Utrecht",
+                        Amount = 4_500m,
+                        UnitsSold = 12m
+                    }
+                ],
                 IsLowStock = false,
                 Locations =
                 [
@@ -142,6 +163,10 @@ public class InventoryPageTests
         Assert.Contains("Betonstraatstenen Antraciet", cut.Markup);
         Assert.Contains("Sold in period", cut.Markup);
         Assert.Contains("12.500", cut.Markup);
+        Assert.Contains("Invoices in period", cut.Markup);
+        Assert.Contains("F-2026-014", cut.Markup);
+        Assert.Contains("Bouwbedrijf Jansen", cut.Markup);
+        Assert.Contains("/customers/c1", cut.Markup);
         Assert.Contains("Stock by location", cut.Markup);
         Assert.Contains("Open transactions", cut.Markup);
         Assert.Contains("Hoofdmagazijn", cut.Markup);
