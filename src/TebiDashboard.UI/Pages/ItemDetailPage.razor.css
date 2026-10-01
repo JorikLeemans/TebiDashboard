@@ -114,9 +114,14 @@
 }
 
 .item-detail__party-link {
-  color: #1a3d2b;
+  color: #2a8a4a;
   font-weight: 600;
   text-decoration: none;
+}
+
+.item-detail__party-link code {
+  margin-right: 0.35rem;
+  color: inherit;
 }
 
 .item-detail__party-link:hover {
@@ -132,11 +137,6 @@
 .item-detail__table {
   width: 100%;
   border-collapse: collapse;
-}
-
-/* Invoice columns stay next to their values instead of stretching across the page. */
-.item-detail__table--invoices {
-  width: auto;
 }
 
 .item-detail__table th,

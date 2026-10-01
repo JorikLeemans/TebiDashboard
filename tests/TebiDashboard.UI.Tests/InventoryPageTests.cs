@@ -180,6 +180,50 @@ public class InventoryPageTests
     }
 
     [Fact]
+    public void ItemDetailPage_GroupsInvoiceLines_AndExpandsThemOnClick()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        mockHttp.When(HttpMethod.Get, "*/api/items/i1*")
+            .Respond(HttpStatusCode.OK, _ => JsonContent.Create(new ItemDetailDto
+            {
+                ItemId = "i1",
+                ItemName = "Betonstraatstenen Antraciet",
+                PeriodSalesAmount = 9_000m,
+                PeriodInvoices =
+                [
+                    new ItemInvoiceLineDto
+                    {
+                        Date = new DateOnly(2026, 6, 2),
+                        InvoiceNumber = "F-2026-014",
+                        CustomerId = "c1",
+                        CustomerName = "Bouwbedrijf Jansen",
+                        Amount = 8_000m,
+                        UnitsSold = 20m
+                    },
+                    new ItemInvoiceLineDto
+                    {
+                        Date = new DateOnly(2026, 6, 2),
+                        InvoiceNumber = "F-2026-014",
+                        CustomerId = "c1",
+                        CustomerName = "Bouwbedrijf Jansen",
+                        Amount = 1_000m,
+                        UnitsSold = 4m
+                    }
+                ]
+            }));
+
+        var cut = ctx.Render<ItemDetailPage>(parameters => parameters.Add(p => p.ItemId, "i1"));
+        cut.WaitForElement("table[aria-label='Invoices in period']", TimeSpan.FromSeconds(5));
+
+        var table = cut.Find("table[aria-label='Invoices in period']");
+        Assert.Single(table.QuerySelectorAll("tbody tr"));
+
+        table.QuerySelector("tbody tr")!.Click();
+
+        Assert.Equal(3, cut.FindAll("table[aria-label='Invoices in period'] tbody tr").Count);
+    }
+
+    [Fact]
     public void ItemDetailPage_HidesNumericLocationIds_AndGroupsOpenOrderLines()
     {
         using var ctx = CreateAuthenticatedContext(out var mockHttp);

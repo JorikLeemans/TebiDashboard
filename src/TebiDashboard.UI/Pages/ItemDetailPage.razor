@@ -64,6 +64,7 @@
             </article>
         </section>
 
+        @* One row per invoice, same as home and the customer page. Click a row to see its lines. *@
         <section class="item-detail__section">
             <h2>Invoices in period</h2>
             <p class="item-detail__section-hint">These invoice lines add up to Sold in period.</p>
@@ -73,7 +74,7 @@
             }
             else
             {
-                <table class="item-detail__table item-detail__table--invoices" aria-label="Invoices in period">
+                <table class="item-detail__table" aria-label="Invoices in period">
                     <thead>
                         <tr>
                             <SortableHeader Column="date" Label="Date" Sort="_invoiceSort" />
@@ -84,25 +85,50 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var line in SortedPeriodInvoices)
+                        @foreach (var invoice in SortedInvoiceGroups)
                         {
-                            <tr>
-                                <td>@line.Date.ToString("d")</td>
-                                <td><code>@(string.IsNullOrWhiteSpace(line.InvoiceNumber) ? line.InvoiceId : line.InvoiceNumber)</code></td>
+                            var expanded = IsInvoiceExpanded(invoice.Key);
+                            var customer = invoice.Lines[0];
+                            <tr class="item-detail__order-row"
+                                @onclick="() => ToggleInvoice(invoice.Key)"
+                                tabindex="0"
+                                aria-expanded="@expanded"
+                                @onkeydown="(args) => HandleInvoiceKeyDown(args, invoice.Key)">
+                                <td>@invoice.Date.ToString("d")</td>
                                 <td>
-                                    @if (!string.IsNullOrWhiteSpace(line.CustomerId))
+                                    <span class="item-detail__order-toggle" aria-hidden="true">@(expanded ? "▼" : "▶")</span>
+                                    <code>@invoice.InvoiceLabel</code>
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(customer.CustomerId))
                                     {
                                         <a class="item-detail__party-link"
-                                           href="/customers/@Uri.EscapeDataString(line.CustomerId)">@PartyName(line.CustomerName, line.CustomerId)</a>
+                                           href="/customers/@Uri.EscapeDataString(customer.CustomerId)"
+                                           @onclick:stopPropagation="true">
+                                            <code>@customer.CustomerId</code>
+                                            @PartyName(customer.CustomerName, customer.CustomerId)
+                                        </a>
                                     }
                                     else
                                     {
-                                        @(string.IsNullOrWhiteSpace(line.CustomerName) ? "—" : line.CustomerName)
+                                        @(string.IsNullOrWhiteSpace(customer.CustomerName) ? "—" : customer.CustomerName)
                                     }
                                 </td>
-                                <td>@line.UnitsSold.ToString("N0")</td>
-                                <td>@EuroFormatting.Format(line.Amount)</td>
+                                <td>@invoice.TotalUnits.ToString("N0")</td>
+                                <td>@EuroFormatting.Format(invoice.TotalAmount)</td>
                             </tr>
+                            @if (expanded)
+                            {
+                                @foreach (var line in invoice.Lines)
+                                {
+                                    <tr class="item-detail__line-row">
+                                        <td>@line.Date.ToString("d")</td>
+                                        <td colspan="2"></td>
+                                        <td>@line.UnitsSold.ToString("N0")</td>
+                                        <td>@EuroFormatting.Format(line.Amount)</td>
+                                    </tr>
+                                }
+                            }
                         }
                     </tbody>
                     <tfoot>
@@ -254,6 +280,7 @@
     private bool _isLoading = true;
     private string? _error;
     private readonly HashSet<string> _expandedOrders = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _expandedInvoices = new(StringComparer.OrdinalIgnoreCase);
     private readonly ListSortState _locationSort = new();
     private readonly ListSortState _invoiceSort = new();
     private readonly ListSortState _transactionSort = new();
@@ -284,18 +311,28 @@
         }
     }
 
-    private IReadOnlyList<ItemInvoiceLineDto> SortedPeriodInvoices =>
-        _item is null
-            ? []
-            : ListSort.Apply(_item.PeriodInvoices, _invoiceSort, line => _invoiceSort.Column switch
+    /// <summary>One row per invoice, newest first unless a column sort is active.</summary>
+    private IReadOnlyList<ItemInvoiceGroup> SortedInvoiceGroups
+    {
+        get
+        {
+            if (_item is null)
             {
-                "date" => line.Date,
-                "invoice" => string.IsNullOrWhiteSpace(line.InvoiceNumber) ? line.InvoiceId : line.InvoiceNumber,
-                "customer" => PartyName(line.CustomerName, line.CustomerId),
-                "units" => line.UnitsSold,
-                "amount" => line.Amount,
-                _ => line.Date
+                return [];
+            }
+
+            var groups = ItemInvoiceGroups.From(_item.PeriodInvoices);
+            return ListSort.Apply(groups, _invoiceSort, invoice => _invoiceSort.Column switch
+            {
+                "date" => invoice.Date,
+                "invoice" => invoice.InvoiceLabel,
+                "customer" => PartyName(invoice.Lines[0].CustomerName, invoice.Lines[0].CustomerId),
+                "units" => invoice.TotalUnits,
+                "amount" => invoice.TotalAmount,
+                _ => invoice.Date
             });
+        }
+    }
 
     private decimal PeriodInvoiceAmount => _item?.PeriodInvoices.Sum(line => line.Amount) ?? 0m;
 
@@ -327,6 +364,24 @@
 
     private static string PartyName(string? name, string? id) =>
         !string.IsNullOrWhiteSpace(name) ? name : id ?? string.Empty;
+
+    private bool IsInvoiceExpanded(string key) => _expandedInvoices.Contains(key);
+
+    private void ToggleInvoice(string key)
+    {
+        if (!_expandedInvoices.Add(key))
+        {
+            _expandedInvoices.Remove(key);
+        }
+    }
+
+    private void HandleInvoiceKeyDown(KeyboardEventArgs args, string key)
+    {
+        if (args.Key is "Enter" or " ")
+        {
+            ToggleInvoice(key);
+        }
+    }
 
     private bool IsOrderExpanded(string key) => _expandedOrders.Contains(key);
 
