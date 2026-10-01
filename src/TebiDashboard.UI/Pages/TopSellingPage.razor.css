@@ -35,6 +35,7 @@
 
 .bestsellers-page__table-wrap {
   overflow-x: auto;
+  max-width: 100%;
   background: #fff;
   border: 1px solid #dde3ea;
   border-radius: 8px;

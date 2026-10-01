@@ -1,3 +1,17 @@
+/* Include padding in widths so 100% fields do not spill past the screen. */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+/* The document stays as wide as the phone. Wide tables scroll inside their own cards. */
+html,
+body {
+    max-width: 100%;
+    overflow-x: clip;
+}
+
 h1:focus {
     outline: none;
 }

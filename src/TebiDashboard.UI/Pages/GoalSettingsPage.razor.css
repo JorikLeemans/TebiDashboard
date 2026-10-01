@@ -82,12 +82,14 @@
 
 .goal-settings__add-item {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   align-items: flex-end;
 }
 
 .goal-settings__table-wrap {
   overflow-x: auto;
+  max-width: 100%;
 }
 
 .goal-settings__table {
