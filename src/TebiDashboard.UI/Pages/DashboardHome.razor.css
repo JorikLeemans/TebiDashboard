@@ -66,6 +66,9 @@
   border-radius: 8px;
   padding: 1rem;
   margin-top: 1rem;
+  /* A wide table scrolls inside this card. The page itself stays on the screen. */
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .dashboard-section h2 {
@@ -93,6 +96,16 @@
   padding: 0.55rem 0;
   border-bottom: 1px solid #eef2f6;
   counter-increment: popular;
+  min-width: 0;
+}
+
+.popular-list__item a {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.popular-list__item span {
+  flex: 0 0 auto;
 }
 
 .popular-list__item::before {
