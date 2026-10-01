@@ -124,12 +124,13 @@ public sealed class DashboardApiClient(HttpClient httpClient, IAuthStateService 
             $"api/items/{Uri.EscapeDataString(itemId)}?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
             cancellationToken);
 
+    /// <summary>Returns null when the barcode is not on an item, so the scanner can show that message.</summary>
     public Task<ItemDetailDto?> GetItemByBarcodeAsync(
         string barcode,
         DateOnly from,
         DateOnly to,
         CancellationToken cancellationToken = default)
-        => GetJsonAsync<ItemDetailDto>(
+        => GetOptionalJsonAsync<ItemDetailDto>(
             $"api/items/by-barcode/{Uri.EscapeDataString(barcode)}?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
             cancellationToken);
 

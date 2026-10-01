@@ -12,10 +12,13 @@
 
 <div class="inventory-page">
     <header class="inventory-page__header">
-        <h1>Inventory</h1>
-        <p class="inventory-page__subtitle">
-            Stock levels, amount sold, and units sold for @PeriodFilter.From.ToString("d") – @PeriodFilter.To.ToString("d")
-        </p>
+        <div>
+            <h1>Inventory</h1>
+            <p class="inventory-page__subtitle">
+                Stock levels, amount sold, and units sold for @PeriodFilter.From.ToString("d") – @PeriodFilter.To.ToString("d")
+            </p>
+        </div>
+        <BarcodeScanner />
     </header>
 
     @if (_isInitialLoad && _isLoading)

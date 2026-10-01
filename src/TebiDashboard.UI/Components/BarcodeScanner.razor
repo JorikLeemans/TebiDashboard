@@ -1,0 +1,128 @@
+@using Microsoft.Extensions.DependencyInjection
+@using Microsoft.JSInterop
+@inject IJSRuntime Js
+@inject IServiceProvider Services
+@inject DashboardApiClient ApiClient
+@inject IPeriodFilterService InjectedPeriodFilter
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
+
+@* HTML onclick, not a Blazor click: iOS only allows the camera from the tap itself. *@
+<div class="barcode-scanner">
+    <button type="button" class="barcode-scanner__button" @attributes="_openCamera">
+        Scan barcode
+    </button>
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <p class="barcode-scanner__error" role="alert">@_error</p>
+    }
+</div>
+
+@code {
+    [CascadingParameter(Name = "PeriodFilter")]
+    private IPeriodFilterService? CascadedPeriodFilter { get; set; }
+
+    private IPeriodFilterService PeriodFilter => CascadedPeriodFilter ?? InjectedPeriodFilter;
+
+    private readonly Dictionary<string, object> _openCamera = new()
+    {
+        ["onclick"] = "TebiBarcodeScanner.start()"
+    };
+
+    private DotNetObjectReference<BarcodeScanner>? _self;
+    private string? _error;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        // The MAUI app registers a native camera. The website leaves this empty and uses the browser.
+        var preferNative = Services.GetService<INativeBarcodeScanner>() is not null;
+        _self = DotNetObjectReference.Create(this);
+        try
+        {
+            await Js.InvokeVoidAsync("TebiBarcodeScanner.bind", _self, preferNative);
+        }
+        catch (Exception)
+        {
+            // The page still renders when the script is missing, for example in unit tests.
+        }
+    }
+
+    /// <summary>Called by the MAUI app after its own camera page reads a barcode.</summary>
+    [JSInvokable]
+    public async Task ScanWithNativeAsync()
+    {
+        var native = Services.GetService<INativeBarcodeScanner>();
+        if (native is null)
+        {
+            return;
+        }
+
+        string? code;
+        try
+        {
+            code = await native.ScanAsync();
+        }
+        catch (Exception)
+        {
+            _error = "Could not open the camera.";
+            StateHasChanged();
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            return;
+        }
+
+        await OnBarcodeScanned(code);
+    }
+
+    /// <summary>Looks the scanned code up and opens the item. An unknown code stays on this page with an error.</summary>
+    [JSInvokable]
+    public async Task OnBarcodeScanned(string? barcode)
+    {
+        var code = barcode?.Trim();
+        if (string.IsNullOrEmpty(code))
+        {
+            return;
+        }
+
+        _error = null;
+        try
+        {
+            var item = await ApiClient.GetItemByBarcodeAsync(code, PeriodFilter.From, PeriodFilter.To);
+            if (item is null)
+            {
+                _error = $"No item found for barcode '{code}'.";
+                StateHasChanged();
+                return;
+            }
+
+            Navigation.NavigateTo($"/inventory/{Uri.EscapeDataString(item.ItemId)}");
+        }
+        catch (Exception ex)
+        {
+            _error = $"Could not look up barcode '{code}': {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await Js.InvokeVoidAsync("TebiBarcodeScanner.stop");
+        }
+        catch (Exception)
+        {
+            // Nothing to close when the camera script was never loaded.
+        }
+
+        _self?.Dispose();
+    }
+}
