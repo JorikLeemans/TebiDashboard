@@ -13,12 +13,15 @@
             </p>
         }
 
-        <button type="button"
-                class="period-filter__toggle"
-                @onclick="ToggleExpanded"
-                aria-expanded="@PeriodFilter.IsExpanded">
-            @(PeriodFilter.IsExpanded ? "Hide" : "Show")
-        </button>
+        <div class="period-filter__actions">
+            <PeriodExportButtons From="PeriodFilter.From" To="PeriodFilter.To" />
+            <button type="button"
+                    class="period-filter__toggle"
+                    @onclick="ToggleExpanded"
+                    aria-expanded="@PeriodFilter.IsExpanded">
+                @(PeriodFilter.IsExpanded ? "Hide" : "Show")
+            </button>
+        </div>
     </div>
 
     @if (PeriodFilter.IsExpanded)

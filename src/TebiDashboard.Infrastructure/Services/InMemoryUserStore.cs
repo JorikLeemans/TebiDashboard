@@ -35,7 +35,8 @@ public sealed class InMemoryUserStore : IUserStore
             return false;
         }
 
-        if (!_users.TryAdd(normalizedEmail, new StoredUser(normalizedEmail, PasswordHasher.Hash(password), Roles.Sales)))
+        // New accounts start as ReadOnly. An administrator assigns a working role afterwards.
+        if (!_users.TryAdd(normalizedEmail, new StoredUser(normalizedEmail, PasswordHasher.Hash(password), Roles.ReadOnly)))
         {
             errorMessage = "An account with this email already exists.";
             return false;

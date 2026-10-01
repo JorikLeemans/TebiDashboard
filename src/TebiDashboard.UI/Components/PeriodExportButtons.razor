@@ -1,0 +1,73 @@
+@using Microsoft.JSInterop
+@inject DashboardApiClient Api
+@inject IJSRuntime Js
+@inject IAuthStateService AuthState
+
+@* Read-only users keep the filter, without a way to download the figures. *@
+@if (AuthState.CanExport())
+{
+    <div class="period-export">
+        <div class="period-export__buttons" aria-label="Export period">
+            <button type="button"
+                    class="period-export__btn"
+                    disabled="@_busy"
+                    @onclick='() => DownloadAsync("xlsx")'>
+                @(_busy && _format == "xlsx" ? "Preparing..." : "Excel")
+            </button>
+            <button type="button"
+                    class="period-export__btn"
+                    disabled="@_busy"
+                    @onclick='() => DownloadAsync("pdf")'>
+                @(_busy && _format == "pdf" ? "Preparing..." : "PDF")
+            </button>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <p class="period-export__error" role="alert">@_error</p>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public DateOnly From { get; set; }
+
+    [Parameter, EditorRequired]
+    public DateOnly To { get; set; }
+
+    private bool _busy;
+    private string? _format;
+    private string? _error;
+
+    private async Task DownloadAsync(string format)
+    {
+        _busy = true;
+        _format = format;
+        _error = null;
+
+        try
+        {
+            var file = await Api.DownloadPeriodExportAsync(format, From, To);
+            // The helper turns the bytes into a browser download. It does not call the API itself.
+            await Js.InvokeVoidAsync(
+                "tebiDownloadFile",
+                file.FileName,
+                file.ContentType,
+                Convert.ToBase64String(file.Content));
+        }
+        catch (PeriodExportException ex)
+        {
+            _error = ex.Message;
+        }
+        catch (Exception)
+        {
+            _error = "Could not create the export.";
+        }
+        finally
+        {
+            _busy = false;
+            _format = null;
+        }
+    }
+}

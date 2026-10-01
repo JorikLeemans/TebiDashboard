@@ -35,11 +35,12 @@ public sealed class EfUserStore(TebiDashboardDbContext dbContext) : IUserStore
             return false;
         }
 
+        // New accounts start as ReadOnly. An administrator assigns a working role afterwards.
         dbContext.Users.Add(new UserEntity
         {
             Email = normalizedEmail,
             Password = PasswordHasher.Hash(password),
-            Role = Roles.Sales
+            Role = Roles.ReadOnly
         });
         dbContext.SaveChanges();
         return true;

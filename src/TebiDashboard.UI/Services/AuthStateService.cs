@@ -26,6 +26,8 @@ public sealed class AuthStateService(IJSRuntime jsRuntime) : IAuthStateService
 
     public bool CanManageGoals() => RoleAuthorization.CanManageGoals(Role);
 
+    public bool CanExport() => RoleAuthorization.CanExport(Role);
+
     public async Task InitializeAsync()
     {
         try

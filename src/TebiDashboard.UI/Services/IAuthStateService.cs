@@ -22,6 +22,12 @@ public interface IAuthStateService
 
     bool CanManageGoals();
 
+    /// <summary>
+    /// Signed-in roles other than ReadOnly may download the period report.
+    /// A default keeps existing test doubles working when they do not override it.
+    /// </summary>
+    bool CanExport() => RoleAuthorization.CanExport(Role);
+
     Task InitializeAsync();
 
     Task SignInAsync(LoginResponseDto response);

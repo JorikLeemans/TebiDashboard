@@ -38,6 +38,13 @@
   color: #334;
 }
 
+.period-filter__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
 .period-filter__toggle {
   border: 1px solid #c5d6cc;
   background: #f7faf8;
@@ -46,7 +53,6 @@
   padding: 0.3rem 0.65rem;
   font-size: 0.85rem;
   cursor: pointer;
-  margin-left: auto;
 }
 
 .period-filter__toggle:hover {
