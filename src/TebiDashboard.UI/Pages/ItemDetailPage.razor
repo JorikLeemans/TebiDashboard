@@ -65,6 +65,58 @@
         </section>
 
         <section class="item-detail__section">
+            <h2>Invoices in period</h2>
+            <p class="item-detail__section-hint">These invoice lines add up to Sold in period.</p>
+            @if (_item.PeriodInvoices.Count == 0)
+            {
+                <p class="item-detail__empty">No invoices for this item in the selected period.</p>
+            }
+            else
+            {
+                <table class="item-detail__table item-detail__table--invoices" aria-label="Invoices in period">
+                    <thead>
+                        <tr>
+                            <SortableHeader Column="date" Label="Date" Sort="_invoiceSort" />
+                            <SortableHeader Column="invoice" Label="Invoice" Sort="_invoiceSort" />
+                            <SortableHeader Column="customer" Label="Customer" Sort="_invoiceSort" />
+                            <SortableHeader Column="units" Label="Units" Sort="_invoiceSort" />
+                            <SortableHeader Column="amount" Label="Amount" Sort="_invoiceSort" />
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var line in SortedPeriodInvoices)
+                        {
+                            <tr>
+                                <td>@line.Date.ToString("d")</td>
+                                <td><code>@(string.IsNullOrWhiteSpace(line.InvoiceNumber) ? line.InvoiceId : line.InvoiceNumber)</code></td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(line.CustomerId))
+                                    {
+                                        <a class="item-detail__party-link"
+                                           href="/customers/@Uri.EscapeDataString(line.CustomerId)">@PartyName(line.CustomerName, line.CustomerId)</a>
+                                    }
+                                    else
+                                    {
+                                        @(string.IsNullOrWhiteSpace(line.CustomerName) ? "—" : line.CustomerName)
+                                    }
+                                </td>
+                                <td>@line.UnitsSold.ToString("N0")</td>
+                                <td>@EuroFormatting.Format(line.Amount)</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th scope="row" colspan="3">Total</th>
+                            <td>@PeriodInvoiceUnits.ToString("N0")</td>
+                            <td>@EuroFormatting.Format(PeriodInvoiceAmount)</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            }
+        </section>
+
+        <section class="item-detail__section">
             <h2>Stock by location</h2>
             @if (_item.Locations.Count == 0)
             {
@@ -203,6 +255,7 @@
     private string? _error;
     private readonly HashSet<string> _expandedOrders = new(StringComparer.OrdinalIgnoreCase);
     private readonly ListSortState _locationSort = new();
+    private readonly ListSortState _invoiceSort = new();
     private readonly ListSortState _transactionSort = new();
 
     // One row per parent order so "2136821-1" and "2136821-2" collapse to 2136821.
@@ -230,6 +283,23 @@
             });
         }
     }
+
+    private IReadOnlyList<ItemInvoiceLineDto> SortedPeriodInvoices =>
+        _item is null
+            ? []
+            : ListSort.Apply(_item.PeriodInvoices, _invoiceSort, line => _invoiceSort.Column switch
+            {
+                "date" => line.Date,
+                "invoice" => string.IsNullOrWhiteSpace(line.InvoiceNumber) ? line.InvoiceId : line.InvoiceNumber,
+                "customer" => PartyName(line.CustomerName, line.CustomerId),
+                "units" => line.UnitsSold,
+                "amount" => line.Amount,
+                _ => line.Date
+            });
+
+    private decimal PeriodInvoiceAmount => _item?.PeriodInvoices.Sum(line => line.Amount) ?? 0m;
+
+    private decimal PeriodInvoiceUnits => _item?.PeriodInvoices.Sum(line => line.UnitsSold) ?? 0m;
 
     private IReadOnlyList<StockLocationDto> SortedLocations =>
         _item is null

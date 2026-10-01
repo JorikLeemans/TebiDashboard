@@ -637,12 +637,7 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
     {
         var locations = await GetItemLocationsAsync(item.ItemId, cancellationToken);
         var transactions = await GetOpenTransactionsAsync(item.ItemId, cancellationToken);
-        var periodSalesAmount = await dbContext.RevenueRecords
-            .AsNoTracking()
-            .Where(record => record.ItemId == item.ItemId
-                && record.Date >= filter.From
-                && record.Date <= filter.To)
-            .SumAsync(record => (decimal?)record.Amount, cancellationToken) ?? 0m;
+        var periodInvoices = await LoadPeriodInvoicesAsync(item.ItemId, filter, cancellationToken);
 
         return new ItemDetailDto
         {
@@ -652,12 +647,65 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             TotalQuantityOnHand = item.QuantityOnHand,
             ReorderPoint = item.ReorderPoint,
             RecentSalesVolume = item.RecentSalesVolume,
-            PeriodSalesAmount = periodSalesAmount,
+            // The item page total is the sum of the lines shown in the invoice table.
+            PeriodSalesAmount = periodInvoices.Sum(line => line.Amount),
+            PeriodInvoices = periodInvoices,
             IsLowStock = item.IsLowStock,
             Locations = locations.ToList(),
             OpenTransactionCount = transactions.Count,
             OpenTransactions = transactions.ToList()
         };
+    }
+
+    /// <summary>
+    /// Invoice lines for this item in the selected period, newest first.
+    /// </summary>
+    private async Task<IReadOnlyList<ItemInvoiceLineDto>> LoadPeriodInvoicesAsync(
+        string itemId,
+        DateRangeFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var rows = await dbContext.RevenueRecords
+            .AsNoTracking()
+            .Where(record => record.ItemId == itemId
+                && record.Date >= filter.From
+                && record.Date <= filter.To)
+            .OrderByDescending(record => record.Date)
+            .ThenBy(record => record.InvoiceNumber)
+            .ToListAsync(cancellationToken);
+
+        var customerIds = rows
+            .Select(record => record.CustomerId)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct()
+            .ToList();
+
+        var customerNames = customerIds.Count == 0
+            ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            : await dbContext.Customers
+                .AsNoTracking()
+                .Where(customer => customerIds.Contains(customer.CustomerId))
+                .ToDictionaryAsync(
+                    customer => customer.CustomerId,
+                    customer => customer.Name,
+                    StringComparer.OrdinalIgnoreCase,
+                    cancellationToken);
+
+        return rows.Select(record => new ItemInvoiceLineDto
+        {
+            Date = record.Date,
+            InvoiceId = record.InvoiceId,
+            InvoiceNumber = string.IsNullOrWhiteSpace(record.InvoiceNumber)
+                ? record.InvoiceId
+                : record.InvoiceNumber,
+            CustomerId = record.CustomerId,
+            CustomerName = customerNames.TryGetValue(record.CustomerId, out var liveName)
+                && !string.IsNullOrWhiteSpace(liveName)
+                ? liveName
+                : record.CustomerName,
+            Amount = record.Amount,
+            UnitsSold = record.Quantity
+        }).ToList();
     }
 
     private async Task<Dictionary<string, string>> LoadCustomerNamesAsync(
