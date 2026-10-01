@@ -25,17 +25,17 @@ User stories voor de .NET MAUI-portfolio-app.
 | US-07 | Verkoop | Populaire artikelen | Must | **Done** |
 | US-08 | Verkoop | Doelen per artikel | Must | **Done** |
 | US-09 | Verkoop | Op schema lopen bij doel | Must | **Done** |
-| US-10 | Financieel | Uitgavenoverzicht | Must | **Partial** |
-| US-11 | Gebruiker | Barcode scannen → artikel | Must | **Partial** |
+| US-10 | Financieel | Uitgavenoverzicht | Must | **Done** |
+| US-11 | Gebruiker | Barcode scannen → artikel | Must | **Done** |
 
 ## Technische enablers (portfolio)
 
 | ID | Story | Prioriteit | Status |
 |----|-------|------------|--------|
-| US-12 | Veilig inloggen | Must | **Partial** |
+| US-12 | Veilig inloggen | Must | **Done** |
 | US-13 | Windows + Android | Must (LU-3) | **Partial** |
 | US-14 | Dashboard home (KPI's) | Must | **Done** |
-| US-15 | Trendanalyse | Should | **Partial** |
+| US-15 | Trendanalyse | Should | **Done** |
 
 ---
 
@@ -166,7 +166,7 @@ User stories voor de .NET MAUI-portfolio-app.
 
 ---
 
-## US-10 — Uitgavenoverzicht (Financieel) — **Partial**
+## US-10 — Uitgavenoverzicht (Financieel) — **Done**
 
 **Als** financieel medewerker  
 **wil ik** gemakkelijk een overzicht kunnen zien van de uitgaven in het bedrijf  
@@ -175,30 +175,30 @@ User stories voor de .NET MAUI-portfolio-app.
 **Acceptatiecriteria:**
 - [x] When uitgavenpagina opent, Then uitgaven per categorie/periode zichtbaar — expenses-tabel op `DashboardHome.razor` + leveranciersdetail
 - [x] Given periode-filter, Then data gefilterd
-- [ ] Dedicated `/expenses`-pagina voor financiële rol (nu verspreid over dashboard en suppliers)
+- [x] Dedicated `/expenses`-pagina voor financiële rol — `ExpensesPage.razor`
 
 **API:** `GET /api/expenses?from=&to=`
 
 ---
 
-## US-11 — Barcode scannen (Terrein) — **Partial**
+## US-11 — Barcode scannen (Terrein) — **Done**
 
 **Als** gebruiker op het terrein  
 **wil ik** een barcode kunnen scannen om een artikel snel op te zoeken in het dashboard  
 **zodat** ik direct voorraad, verkoop/inkoop en open transacties zie.
 
 **Acceptatiecriteria:**
-- [ ] Given Android device, When camera scan, Then barcode herkend — `BarcodeScannerService` is nog stub
-- [ ] Given Windows + USB-scanner, When scan, Then artikel opgezocht
+- [x] Given Android device, When camera scan, Then barcode herkend — telefooncamera op de website en in de Android-app
+- [x] Given Windows + USB-scanner, When scan, Then artikel opgezocht
 - [x] Given geldige barcode, When lookup, Then artikeldetail met US-05/06 data — `GET /api/items/by-barcode/{barcode}` + `ItemDetailPage`
 - [x] Given onbekende barcode, Then duidelijke foutmelding — API 404 + UI error state
 
 **API:** `GET /api/items/by-barcode/{barcode}`  
-**MAUI:** `IBarcodeScannerService` (ZXing.Net.Maui package aanwezig; UI nog te koppelen)
+**MAUI:** `IBarcodeScannerService` opent de camera met ZXing. De website gebruikt de telefooncamera.
 
 ---
 
-## US-12 — Inloggen — **Partial**
+## US-12 — Inloggen — **Done**
 
 **Als** TEBI-medewerker **wil ik** veilig inloggen **zodat** alleen geautoriseerden data zien.
 
@@ -216,7 +216,7 @@ User stories voor de .NET MAUI-portfolio-app.
 **Als** medewerker **wil ik** de app op kantoor (Windows) en terrein (Android) gebruiken.
 
 - [x] Zelfde Blazor UI gedeeld tussen Web en MAUI — `TebiDashboard.UI`
-- [ ] Zelfde functionaliteit getest op MAUI Windows + Android
+- [x] Zelfde functionaliteit getest op MAUI Windows + Android
 - [ ] LU-3: demonstratie op beide platformen (video of live demo)
 
 ---
@@ -232,10 +232,10 @@ User stories voor de .NET MAUI-portfolio-app.
 
 ---
 
-## US-15 — Trendanalyse (Should) — **Partial**
+## US-15 — Trendanalyse (Should) — **Done**
 
 - [x] Dagelijkse revenue-lijngrafiek op goals-pagina — `LineChart` component
-- [ ] Vergelijkende trendanalyse over meerdere periodes (backlog)
+- [x] Vergelijkende trendanalyse over meerdere periodes — drie gelijke vensters op `DashboardHome.razor`
 
 ---
 
@@ -252,9 +252,9 @@ User stories voor de .NET MAUI-portfolio-app.
 | US-07 | Done | `DashboardHome.razor` | `/api/sales-volume/popular` |
 | US-08 | Done | `GoalsPage.razor` (item goals) | `/api/goals` |
 | US-09 | Done | `GoalsPage.razor` (`GoalProgressCard`) | `/api/goals` |
-| US-10 | Partial | `DashboardHome.razor`, `SupplierDetailPage.razor` | `/api/expenses` |
-| US-11 | Partial | `ItemDetailPage.razor` (+ MAUI scanner stub) | `/api/items/by-barcode/{code}` |
-| US-12 | Partial | `Login.razor`, `Register.razor`, `AdminDashboard.razor` | `/api/auth/login` |
+| US-10 | Done | `ExpensesPage.razor`, `DashboardHome.razor` | `/api/expenses` |
+| US-11 | Done | `BarcodeScanner.razor` | `/api/items/by-barcode/{code}` |
+| US-12 | Done | `Login.razor`, `Register.razor`, `AdminDashboard.razor` | `/api/auth/login` |
 | US-14 | Done | `DashboardHome.razor` | `/api/dashboard/overview` |
 
 ### Extra modules (niet in oorspronkelijk voorstelformulier)
@@ -270,7 +270,7 @@ User stories voor de .NET MAUI-portfolio-app.
 
 | ID | Story | Status |
 |----|-------|--------|
-| US-15 | Trendanalyse over periodes | Partial |
+| US-15 | Trendanalyse over periodes | Done |
 | US-16 | Auto-refresh dashboard | Open |
 | US-17 | Export Excel/PDF | Open |
 | US-18 | Donkere modus | Open |

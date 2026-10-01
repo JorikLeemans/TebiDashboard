@@ -20,6 +20,9 @@ public class LoginPageTests
 
         Assert.Contains("Welcome back", cut.Markup);
         Assert.Contains("Sign in to your TEBI Dashboard", cut.Markup);
+        // Seeded accounts stay in the API. The login page must not print those passwords.
+        Assert.DoesNotContain("admin1234", cut.Markup);
+        Assert.DoesNotContain("demo / demo", cut.Markup);
     }
 
     [Fact]
