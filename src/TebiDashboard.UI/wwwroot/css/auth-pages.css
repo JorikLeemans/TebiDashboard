@@ -143,13 +143,6 @@
   cursor: wait;
 }
 
-.login-card__hint {
-  margin: 1rem 0 0;
-  text-align: center;
-  font-size: 0.82rem;
-  color: #6b7c72;
-}
-
 .auth-form__footer {
   margin-top: 1rem;
   text-align: center;
