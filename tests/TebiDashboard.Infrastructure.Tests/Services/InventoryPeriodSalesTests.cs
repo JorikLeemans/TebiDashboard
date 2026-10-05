@@ -71,6 +71,43 @@ public sealed class InventoryPeriodSalesTests
         Assert.Equal(20m, item.UnitsSold);
     }
 
+    [Fact]
+    public async Task PeriodExportInventory_UsesInvoiceTotals_NotTheStoredSyncQuantity()
+    {
+        await using var db = CreateDb();
+        db.InventoryItems.Add(new InventoryItemRecord
+        {
+            ItemId = "100028",
+            ItemName = "100028 Schellevis Oud Hollandse dikformaat 21x7x8cm grijs",
+            Barcode = "1128080009416",
+            QuantityOnHand = 1436m,
+            // Stored lookback quantity. The export used to print this as the sales amount.
+            RecentSalesVolume = -16_270.30m
+        });
+        db.OpenTransactions.Add(new OpenTransactionRecord
+        {
+            TransactionId = "so-1",
+            Type = "Sales Order",
+            ItemId = "100028",
+            ItemName = "100028 Schellevis Oud Hollandse dikformaat 21x7x8cm grijs",
+            TransactionDate = new DateOnly(2026, 3, 1),
+            QuantityOpen = 10m,
+            Status = "Pending Fulfillment"
+        });
+        await db.SaveChangesAsync();
+
+        var overview = await new DatabaseNetSuiteService(db).GetPeriodOverviewAsync(new DateRangeFilter
+        {
+            From = new DateOnly(2026, 1, 1),
+            To = new DateOnly(2026, 10, 5)
+        });
+
+        var item = Assert.Single(overview.InventoryWithActivity);
+        Assert.Equal(0m, item.RecentSalesVolume);
+        Assert.Equal(0m, item.UnitsSold);
+        Assert.Equal(1436m, item.QuantityOnHand);
+    }
+
     private static TebiDashboardDbContext CreateDb()
     {
         var options = new DbContextOptionsBuilder<TebiDashboardDbContext>()
