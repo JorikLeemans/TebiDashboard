@@ -221,13 +221,17 @@ internal static class NetSuiteSuiteQlQueries
         """;
 
     /// <summary>
-    /// Recent sold quantity per item from posted invoice lines (supports low-stock velocity KPI).
+    /// Recent sold quantity per item from posted invoice lines (low-stock velocity).
+    /// transactionline.quantity is negative when the line reduces inventory.
+    /// Multiply by -1, the same sign correction as <see cref="Invoices"/>.
+    /// Oracle's SuiteQL example does this: quantity * -1.
+    /// https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/section_158039627694.html
     /// </summary>
     public static string RecentItemSales(DateOnly fromDate) =>
         $"""
         SELECT
             tl.item AS itemid,
-            NVL(SUM(tl.quantity), 0) AS recentsalesvolume
+            NVL(SUM(NVL(tl.quantity, 0) * -1), 0) AS recentsalesvolume
         FROM transactionline tl
         INNER JOIN invoice i ON i.id = tl.transaction
         WHERE tl.mainline = 'F'
