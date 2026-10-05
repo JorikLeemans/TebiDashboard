@@ -210,6 +210,68 @@ public sealed class NetSuiteSyncServiceTests
     }
 
     [Fact]
+    public async Task Sync_FillsVendorBillNames_FromTheVendorOrTheBillDisplayName()
+    {
+        await using var db = CreateDbContext();
+        db.Expenses.Add(new ExpenseRecord
+        {
+            Id = "bill-old",
+            Date = new DateOnly(2026, 3, 6),
+            Category = "Vendor Bill",
+            Amount = -149.44m,
+            VendorName = string.Empty,
+            SupplierId = "1279"
+        });
+        db.Expenses.Add(new ExpenseRecord
+        {
+            Id = "bill-gone",
+            Date = new DateOnly(2026, 3, 6),
+            Category = "Vendor Bill",
+            Amount = -20m,
+            VendorName = string.Empty,
+            SupplierId = "999"
+        });
+        await db.SaveChangesAsync();
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd");
+        var restClient = new FakeNetSuiteRestClient
+        {
+            Vendors =
+            [
+                Row(
+                    ("id", "\"1279\""),
+                    ("entityId", "\"L000999\""),
+                    ("companyName", "\"INACTIVE BV\""),
+                    ("email", "\"\""),
+                    ("city", "\"\""))
+            ],
+            VendorBills =
+            [
+                Row(
+                    ("id", "\"bill-old\""),
+                    ("trandate", $"\"{today}\""),
+                    ("amount", "-149.44"),
+                    ("supplierid", "\"1279\""),
+                    ("suppliername", "\"L000999 INACTIVE BV\"")),
+                Row(
+                    ("id", "\"bill-gone\""),
+                    ("trandate", $"\"{today}\""),
+                    ("amount", "-20"),
+                    ("supplierid", "\"999\""),
+                    ("suppliername", "\"Gone Vendor BV\""))
+            ]
+        };
+
+        var result = await CreateSut(db, restClient, clearOnSync: false)
+            .SyncDashboardDataAsync(365);
+
+        Assert.True(result.Success, result.Message);
+        Assert.Equal("L000999 INACTIVE BV", (await db.Suppliers.SingleAsync()).Name);
+        Assert.Equal("L000999 INACTIVE BV", (await db.Expenses.SingleAsync(row => row.Id == "bill-old")).VendorName);
+        Assert.Equal("Gone Vendor BV", (await db.Expenses.SingleAsync(row => row.Id == "bill-gone")).VendorName);
+    }
+
+    [Fact]
     public async Task Sync_DoesNotDuplicateStockLocations_WhenTheSameBalanceIsImportedAgain()
     {
         await using var db = CreateDbContext();

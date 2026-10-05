@@ -15,7 +15,8 @@ public sealed class ExpenseDto
 
     /// <summary>
     /// Supplier master name for <see cref="SupplierId"/>.
-    /// The supplier id itself when the master row cannot be resolved, or empty when the expense has no supplier.
+    /// Empty when the expense has no supplier, or when that vendor is not in the supplier table yet.
+    /// The bill label then stays on <see cref="VendorName"/>.
     /// </summary>
     public string SupplierName { get; init; } = string.Empty;
 }

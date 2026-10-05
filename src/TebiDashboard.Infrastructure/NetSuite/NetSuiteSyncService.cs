@@ -655,6 +655,10 @@ public sealed class NetSuiteSyncService(
             .Select(expense => expense.Id)
             .ToListAsync(cancellationToken))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        // Bills imported before the vendor existed have an empty label. Fill those from this query.
+        var unnamedBills = await dbContext.Expenses
+            .Where(expense => expense.VendorName == string.Empty)
+            .ToDictionaryAsync(expense => expense.Id, StringComparer.OrdinalIgnoreCase, cancellationToken);
         var imported = 0;
         foreach (var row in rows)
         {
@@ -668,28 +672,59 @@ public sealed class NetSuiteSyncService(
             }
 
             var expenseId = NetSuiteSuiteQlRowReader.GetRequiredString(row, "id");
+            var supplierId = NetSuiteSuiteQlRowReader.GetString(row, "supplierid");
+            var vendorName = ResolveBillVendorName(supplierId, supplierNames, row);
             // Keep older bills that are no longer in the lookback query.
             if (!existingIds.Add(expenseId))
             {
+                if (unnamedBills.TryGetValue(expenseId, out var stored) && !string.IsNullOrWhiteSpace(vendorName))
+                {
+                    stored.VendorName = vendorName;
+                }
+
                 continue;
             }
 
-            var supplierId = NetSuiteSuiteQlRowReader.GetString(row, "supplierid");
             dbContext.Expenses.Add(new ExpenseRecord
             {
                 Id = expenseId,
                 Date = tranDate,
                 Amount = NetSuiteSuiteQlRowReader.GetDecimal(row, "amount"),
                 Category = "Vendor Bill",
-                VendorName = supplierId is null
-                    ? string.Empty
-                    : supplierNames.GetValueOrDefault(supplierId) ?? string.Empty,
+                VendorName = vendorName,
                 SupplierId = supplierId
             });
             imported++;
         }
 
         return imported;
+    }
+
+    /// <summary>
+    /// Vendor label for a bill. Prefer the supplier master, then BUILTIN.DF(entity) from the bill.
+    /// A display value that is only the internal id is left blank so the dashboard does not repeat it.
+    /// </summary>
+    private static string ResolveBillVendorName(
+        string? supplierId,
+        IReadOnlyDictionary<string, string> supplierNames,
+        IReadOnlyDictionary<string, JsonElement> row)
+    {
+        if (supplierId is not null
+            && supplierNames.TryGetValue(supplierId, out var master)
+            && !string.IsNullOrWhiteSpace(master)
+            && !string.Equals(master, supplierId, StringComparison.OrdinalIgnoreCase))
+        {
+            return master;
+        }
+
+        var display = NetSuiteSuiteQlRowReader.GetString(row, "suppliername");
+        if (string.IsNullOrWhiteSpace(display)
+            || string.Equals(display.Trim(), supplierId, StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Empty;
+        }
+
+        return display.Trim();
     }
 
     private async Task<int> SyncOpenTransactionsAsync(DateOnly fromDate, int pageSize, CancellationToken cancellationToken)
