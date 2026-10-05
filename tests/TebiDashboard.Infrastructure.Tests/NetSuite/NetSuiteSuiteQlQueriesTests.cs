@@ -37,7 +37,8 @@ public sealed class NetSuiteSuiteQlQueriesTests
         Assert.Contains("ea.nKey = vab.addressBookAddress", sql);
         Assert.Contains("ea.city", sql);
         Assert.DoesNotContain("defaultAddress", sql);
-        Assert.Contains("isInactive", sql);
+        // Inactive vendors stay in the result. Their bills still use the internal id.
+        Assert.DoesNotContain("isInactive", sql);
     }
 
     [Fact]
@@ -75,6 +76,7 @@ public sealed class NetSuiteSuiteQlQueriesTests
         var sql = NetSuiteSuiteQlQueries.VendorBills(new DateOnly(2026, 1, 1));
 
         Assert.Contains("foreigntotal", sql);
+        Assert.Contains("BUILTIN.DF(t.entity) AS suppliername", sql);
         Assert.DoesNotContain("LEFT JOIN vendor", sql, StringComparison.OrdinalIgnoreCase);
     }
 

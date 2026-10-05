@@ -211,6 +211,9 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.SupplierId == supplierId, cancellationToken);
 
+        // A vendor bill can arrive before the vendor master, or for a vendor the last sync skipped.
+        // The click from the expenses table should still open those bills.
+        supplier ??= await SupplierFromRelatedRowsAsync(supplierId, cancellationToken);
         if (supplier is null)
         {
             return null;
@@ -893,6 +896,43 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
     }
 
     /// <summary>
+    /// Builds a supplier the expenses table can open when the vendor master row is missing.
+    /// The name is the label stored on the newest bill, or the internal id until the next sync.
+    /// </summary>
+    private async Task<Data.Entities.SupplierRecord?> SupplierFromRelatedRowsAsync(
+        string supplierId,
+        CancellationToken cancellationToken)
+    {
+        var billName = await dbContext.Expenses
+            .AsNoTracking()
+            .Where(expense => expense.SupplierId == supplierId && expense.VendorName != string.Empty)
+            .OrderByDescending(expense => expense.Date)
+            .Select(expense => expense.VendorName)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var hasBill = billName is not null
+            || await dbContext.Expenses.AnyAsync(expense => expense.SupplierId == supplierId, cancellationToken);
+        var hasPurchaseOrder = await dbContext.OpenTransactions.AnyAsync(
+            transaction => transaction.Type == "Purchase Order" && transaction.SupplierId == supplierId,
+            cancellationToken);
+        if (!hasBill && !hasPurchaseOrder)
+        {
+            return null;
+        }
+
+        var name = !string.IsNullOrWhiteSpace(billName)
+            && !string.Equals(billName, supplierId, StringComparison.OrdinalIgnoreCase)
+            ? billName.Trim()
+            : supplierId;
+
+        return new Data.Entities.SupplierRecord
+        {
+            SupplierId = supplierId,
+            Name = name
+        };
+    }
+
+    /// <summary>
     /// Prefer a live inventory name, then the name stored at sync/seed time.
     /// Never return a bare numeric internal id such as "16".
     /// </summary>
@@ -923,11 +963,11 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
         Data.Entities.ExpenseRecord record,
         IReadOnlyDictionary<string, string> supplierNames)
     {
-        // SupplierName is the master-record name. Fall back to the id so the row still
-        // identifies the supplier when the vendor text on the bill is empty.
+        // Master name only. The id stays on SupplierId. Copying it here made the dashboard
+        // print "1279 1279" and the supplier link looked up a name that was just the id.
         var supplierName = string.IsNullOrWhiteSpace(record.SupplierId)
             ? string.Empty
-            : supplierNames.GetValueOrDefault(record.SupplierId, record.SupplierId);
+            : supplierNames.GetValueOrDefault(record.SupplierId) ?? string.Empty;
 
         return new ExpenseDto
         {

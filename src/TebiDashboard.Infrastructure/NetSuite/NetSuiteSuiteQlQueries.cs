@@ -43,6 +43,10 @@ internal static class NetSuiteSuiteQlQueries
     /// Vendor: id, entityId (code), companyName, email, and city from the default billing address book.
     /// The stored name is entityId plus companyName, the same pairing as a company customer.
     /// Same address-book path as customers so the City column stores a town, not the full address.
+    /// Inactive vendors stay included. A vendor bill keeps <c>transaction.entity</c> after the vendor
+    /// is marked inactive, and the supplier page looks that internal id up.
+    /// Records Browser: vendor.isinactive is 'T' or 'F'.
+    /// https://system.netsuite.com/help/helpcenter/en_US/srbrowser/Browser2026_1/schema/record/vendor.html
     /// </summary>
     public static string Vendors() =>
         """
@@ -58,7 +62,6 @@ internal static class NetSuiteSuiteQlQueries
            AND vab.defaultBilling = 'T'
         LEFT JOIN vendorAddressBookEntityAddress ea
             ON ea.nKey = vab.addressBookAddress
-        WHERE v.isInactive = 'F'
         ORDER BY v.companyName
         """;
 
@@ -157,6 +160,9 @@ internal static class NetSuiteSuiteQlQueries
     /// <summary>
     /// Vendor bill expenses: trandate, vendor entity, foreigntotal (transaction.total is not SuiteQL-safe).
     /// The date is formatted as YYYY-MM-DD for the same reason as invoice tranDate.
+    /// BUILTIN.DF(entity) is the vendor label NetSuite shows on the bill. It stays useful when the
+    /// vendor master row is missing. Tim Dietrich: BUILTIN.DF on Transaction.Entity returns that name.
+    /// https://timdietrich.me/blog/netsuite-suiteql-built-in-functions-revisited/
     /// </summary>
     public static string VendorBills(DateOnly fromDate) =>
         $"""
@@ -164,7 +170,8 @@ internal static class NetSuiteSuiteQlQueries
             t.id,
             TO_CHAR(t.trandate, 'YYYY-MM-DD') AS trandate,
             NVL(t.foreigntotal, 0) AS amount,
-            t.entity AS supplierid
+            t.entity AS supplierid,
+            BUILTIN.DF(t.entity) AS suppliername
         FROM transaction t
         WHERE t.type = 'VendBill'
           AND t.trandate >= TO_DATE('{SuiteQlDate(fromDate)}', 'YYYY-MM-DD')

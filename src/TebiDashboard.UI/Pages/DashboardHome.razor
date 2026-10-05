@@ -374,10 +374,8 @@
                                            href="@($"/suppliers/{Uri.EscapeDataString(supplier.SupplierId)}")"
                                            @onclick:stopPropagation="true">
                                             <code>@supplier.SupplierId</code>
-                                            @if (!string.IsNullOrWhiteSpace(supplier.SupplierLabel))
-                                            {
-                                                @supplier.SupplierLabel
-                                            }
+                                            @* Hide the label when it is the same id, so a missing vendor is not "1279 1279". *@
+                                            @PartyName(supplier.SupplierLabel, supplier.SupplierId)
                                         </a>
                                     }
                                 </td>

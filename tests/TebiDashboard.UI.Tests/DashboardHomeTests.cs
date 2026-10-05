@@ -342,6 +342,37 @@ public class DashboardHomeTests
     }
 
     [Fact]
+    public void DashboardHome_ShowsAMissingSupplierIdOnce()
+    {
+        using var ctx = CreateAuthenticatedContext(out var mockHttp);
+        SetupPeriodOverview(mockHttp, new PeriodOverviewDto
+        {
+            Summary = new DashboardSummaryDto { RevenueTrend = "flat" },
+            Expenses =
+            [
+                new ExpenseDto
+                {
+                    Id = "bill-1279",
+                    Date = new DateOnly(2026, 3, 6),
+                    Category = "Vendor Bill",
+                    Amount = -149.44m,
+                    SupplierId = "1279",
+                    SupplierName = "1279",
+                    VendorName = "1279"
+                }
+            ]
+        });
+        SetupGoals(mockHttp);
+
+        var cut = ctx.Render<DashboardHome>();
+        cut.WaitForElement("table[aria-label='Expenses in period']", TimeSpan.FromSeconds(5));
+
+        var link = cut.Find("table[aria-label='Expenses in period'] a.dashboard-table__customer-link");
+        Assert.Equal("1279", link.TextContent.Trim());
+        Assert.Contains("/suppliers/1279", link.GetAttribute("href"));
+    }
+
+    [Fact]
     public void DashboardHome_ShowsOnlyTwentyMostRecentSalesRows()
     {
         using var ctx = CreateAuthenticatedContext(out var mockHttp);
