@@ -61,11 +61,12 @@ public class PeriodExportButtonsTests
         var cut = RenderButtons(ctx);
         cut.FindAll("button")[0].Click();
 
+        // The download is async. Give a loaded test run time to finish the JS call.
         cut.WaitForAssertion(() =>
         {
             var call = ctx.JSInterop.VerifyInvoke("tebiDownloadFile");
             Assert.Equal("tebi-2026-09-01-2026-09-30.xlsx", call.Arguments[0]);
-        });
+        }, timeout: TimeSpan.FromSeconds(5));
     }
 
     [Fact]
@@ -109,7 +110,8 @@ public class PeriodExportButtonsTests
 
         public string? Role => role;
 
-        public event Action? OnChange;
+        // The interface requires this event. These tests never subscribe, so there is no backing field.
+        public event Action? OnChange { add { } remove { } }
 
         public bool CanAccessAdminDashboard() => false;
 

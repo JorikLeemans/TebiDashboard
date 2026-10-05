@@ -89,11 +89,15 @@ public class CustomersPageTests
 
         cut.Find("select").Change("5");
 
-        var rows = cut.FindAll(".customers-table tbody tr");
-        Assert.Equal(5, rows.Count);
-        Assert.Contains("Results per page", cut.Markup);
-        Assert.Contains("Customer 1", cut.Markup);
-        Assert.DoesNotContain("Customer 6", cut.Markup);
+        // The page size change re-renders the table. Wait so a busy test run does not count the old rows.
+        cut.WaitForAssertion(() =>
+        {
+            var rows = cut.FindAll(".customers-table tbody tr");
+            Assert.Equal(5, rows.Count);
+            Assert.Contains("Results per page", cut.Markup);
+            Assert.Contains("Customer 1", cut.Markup);
+            Assert.DoesNotContain("Customer 6", cut.Markup);
+        }, timeout: TimeSpan.FromSeconds(5));
     }
 
     [Fact]
@@ -174,7 +178,8 @@ public class CustomersPageTests
 
     private sealed class FakeAuthStateService(bool isAuthenticated) : IAuthStateService
     {
-        public bool IsAuthenticated { get; } = isAuthenticated;
+        // Read the constructor argument directly so it is stored once.
+        public bool IsAuthenticated => isAuthenticated;
 
         public string? Token => isAuthenticated ? "test-token" : null;
 
@@ -182,7 +187,8 @@ public class CustomersPageTests
 
         public string? Role => isAuthenticated ? "Management" : null;
 
-        public event Action? OnChange;
+        // The interface requires this event. These tests never subscribe, so there is no backing field.
+        public event Action? OnChange { add { } remove { } }
 
         public bool CanAccessAdminDashboard() => isAuthenticated && Role == Roles.Admin;
 

@@ -101,7 +101,8 @@ public class SuppliersPageTests
 
     private sealed class FakeAuthStateService(bool isAuthenticated) : IAuthStateService
     {
-        public bool IsAuthenticated { get; } = isAuthenticated;
+        // Read the constructor argument directly so it is stored once.
+        public bool IsAuthenticated => isAuthenticated;
 
         public string? Token => isAuthenticated ? "test-token" : null;
 
@@ -109,7 +110,8 @@ public class SuppliersPageTests
 
         public string? Role => isAuthenticated ? "Management" : null;
 
-        public event Action? OnChange;
+        // The interface requires this event. These tests never subscribe, so there is no backing field.
+        public event Action? OnChange { add { } remove { } }
 
         public bool CanAccessAdminDashboard() => isAuthenticated && Role == Roles.Admin;
 
