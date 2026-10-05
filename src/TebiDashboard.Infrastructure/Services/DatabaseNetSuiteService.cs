@@ -341,6 +341,8 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .Where(i => activeItemIds.Contains(i.ItemId))
             .OrderBy(i => i.ItemName)
             .ToListAsync(cancellationToken);
+        // Excel and PDF use this list. Sold amount and units must match the inventory page.
+        var salesByItem = await LoadPeriodSalesByItemAsync(filter, cancellationToken);
 
         var customerIdsInPeriod = transactions
             .Where(t => !string.IsNullOrWhiteSpace(t.CustomerId))
@@ -364,7 +366,15 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             Expenses = expenses,
             Transactions = transactions,
             LowStockItems = lowStock,
-            InventoryWithActivity = inventoryWithActivity.Select(item => MapInventoryItem(item)).ToList(),
+            InventoryWithActivity = inventoryWithActivity
+                .Select(item =>
+                {
+                    salesByItem.TryGetValue(item.ItemId, out var sales);
+                    // No invoice lines in this period is € 0 and 0 units.
+                    // The stored sync quantity is a stock movement and must not be printed as sales.
+                    return MapInventoryItem(item, sales?.Amount ?? 0m, sales?.Quantity ?? 0m);
+                })
+                .ToList(),
             Trend = trend
         };
     }
@@ -510,19 +520,7 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .ToListAsync(cancellationToken);
 
         // Period euros and units come from synced invoice lines, not the stored sync lookback.
-        var salesByItem = await dbContext.RevenueRecords
-            .AsNoTracking()
-            .Where(record => record.ItemId != string.Empty
-                && record.Date >= filter.From
-                && record.Date <= filter.To)
-            .GroupBy(record => record.ItemId)
-            .Select(group => new
-            {
-                ItemId = group.Key,
-                Amount = group.Sum(record => record.Amount),
-                Quantity = group.Sum(record => record.Quantity)
-            })
-            .ToDictionaryAsync(row => row.ItemId, row => row, cancellationToken);
+        var salesByItem = await LoadPeriodSalesByItemAsync(filter, cancellationToken);
 
         return rows
             .Select(item =>
@@ -535,6 +533,35 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             })
             .ToList();
     }
+
+    /// <summary>
+    /// Invoice amount and units per item for the selected period.
+    /// Items with no lines are absent, so callers treat a miss as zero.
+    /// </summary>
+    private async Task<Dictionary<string, PeriodItemSales>> LoadPeriodSalesByItemAsync(
+        DateRangeFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var rows = await dbContext.RevenueRecords
+            .AsNoTracking()
+            .Where(record => record.ItemId != string.Empty
+                && record.Date >= filter.From
+                && record.Date <= filter.To)
+            .GroupBy(record => record.ItemId)
+            .Select(group => new
+            {
+                ItemId = group.Key,
+                Amount = group.Sum(record => record.Amount),
+                Quantity = group.Sum(record => record.Quantity)
+            })
+            .ToListAsync(cancellationToken);
+
+        return rows.ToDictionary(
+            row => row.ItemId,
+            row => new PeriodItemSales(row.Amount, row.Quantity));
+    }
+
+    private sealed record PeriodItemSales(decimal Amount, decimal Quantity);
 
     public async Task<TopSellingItemsResultDto> GetTopSellingItemsAsync(
         DateRangeFilter filter,
