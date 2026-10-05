@@ -9,6 +9,8 @@
 
   <ItemGroup>
     <PackageReference Include="bunit" Version="2.7.2" />
+    <!-- bunit 2.7.2 pulls AngleSharp 1.4.0 (GHSA-pgww-w46g-26qg). 1.5.1 is patched. -->
+    <PackageReference Include="AngleSharp" Version="1.5.1" />
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="RichardSzalay.MockHttp" Version="7.0.0" />

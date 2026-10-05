@@ -1,0 +1,6 @@
+<Project>
+  <!-- Definition of Done: the build stays free of compiler warnings. MAUI is left out because CI does not install the Android workload. -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' != 'TebiDashboard.Maui'">
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>

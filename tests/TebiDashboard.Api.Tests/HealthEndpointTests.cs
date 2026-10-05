@@ -111,7 +111,8 @@ public class HealthEndpointTests : IClassFixture<TebiWebApplicationFactory>, IAs
             targets = new[]
             {
                 new { period = "YEAR", itemId = (string?)null, targetValue = 2_050_000m },
-                new { period = "Q3", itemId = "i1", targetValue = 1300m }
+                // Same nullable item id as the year row, so the anonymous array has one type.
+                new { period = "Q3", itemId = (string?)"i1", targetValue = 1300m }
             }
         });
 

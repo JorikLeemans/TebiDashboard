@@ -52,33 +52,33 @@ iOS kan later worden toegevoegd indien Mac-build-omgeving beschikbaar is.
 
 | # | Test | Project | Wat wordt bewezen |
 |---|------|---------|-------------------|
-| 1 | `DashboardService_GetSummary_ReturnsCorrectTotals` | Application.Tests | Businesslogica aggregatie |
-| 2 | `NetSuiteMapper_MapsSalesRecord_ToOmzetDto` | Application.Tests | Mapping NetSuite → DTO |
-| 3 | `GoalCalculator_ComputesPercentageCorrectly` | Application.Tests | Doel-percentage berekening |
+| 1 | `GetSummaryAsync_ReturnsData_FromMockNetSuite` | Application.Tests | KPI-aggregatie via `INetSuiteService` |
+| 2 | `GetDecimal_ParsesNumberAndStringValues` | Infrastructure.Tests | SuiteQL-rij naar een decimaal |
+| 3 | `ComputePercentage_ReturnsCorrectValue_WhenTargetIsPositive` | Application.Tests | Doel-percentage |
 
-> Uitbreiden volgens Definition of Done.
+> De suite is groter dan dit minimum. GitHub Actions draait application, API, infrastructure en UI.
 
 ### UI / device running tests (min. 3)
 
 | # | Test | Framework | Wat wordt bewezen |
 |---|------|-----------|-------------------|
-| 1 | Dashboard home laadt KPI-kaarten | MAUI UITest / Appium | Hoofdscherm zichtbaar |
-| 2 | Filter wijzigen ververst omzetgrafiek | MAUI UITest | Interactie + data-binding |
-| 3 | Navigatie naar Afzet-pagina toont tabel | MAUI UITest | Routing / navigatie |
+| 1 | `DashboardHome_ShowsKpiCards_WhenApiReturnsData` | bUnit | Hoofdscherm toont KPI-kaarten |
+| 2 | `DashboardHome_ShowsPeriodTrend_AgainstEarlierWindows` | bUnit | Trend over eerdere vensters |
+| 3 | `InventoryPage_ShowsItems_WhenApiReturnsData` | bUnit | Voorraadlijst na een API-antwoord |
 
-Alternatief: bUnit voor Blazor-componenttests + 1 device test op Android emulator.
+De device-demo op Windows en Android staat nog open (US-13).
 
 ---
 
 ## Portfolio-leverables checklist
 
 - [ ] Werkende .NET 10 MAUI-app (Windows + Android)
-- [ ] Web API als back-end (portfolio + TEBI-advies)
-- [ ] Min. 3 unit tests groen in CI
-- [ ] Min. 3 UI/device tests gedocumenteerd en uitvoerbaar
-- [ ] [oo-and-patterns.md](./oo-and-patterns.md) ingevuld
-- [ ] [installation.md](./installation.md) ingevuld
-- [ ] [user-stories.md](./user-stories.md) alle Must-have stories Done
+- [x] Web API als back-end (portfolio + TEBI-advies)
+- [x] Min. 3 unit tests groen in CI — workflow `.github/workflows/ci.yml`
+- [x] Min. 3 UI/device tests gedocumenteerd en uitvoerbaar — bUnit in `tests/TebiDashboard.UI.Tests`
+- [x] [oo-and-patterns.md](./oo-and-patterns.md) ingevuld
+- [x] [installation.md](./installation.md) ingevuld
+- [ ] [user-stories.md](./user-stories.md) alle Must-have stories Done — US-13 demo nog open
 - [ ] [definition-of-done.md](./definition-of-done.md) per story afgevinkt
 - [ ] Demonstratie-video of live demo op 2 platformen
 

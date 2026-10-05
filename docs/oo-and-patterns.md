@@ -42,48 +42,50 @@ Each class has one reason to change.
 | Class | Single responsibility |
 |-------|----------------------|
 | `DashboardService` | Aggregate dashboard KPIs |
-| `NetSuiteSalesClient` | HTTP communication with NetSuite |
-| `RevenueMapper` | Map external JSON to `RevenueDto` |
-| `RevenuePage.razor` | Display revenue UI only |
+| `DatabaseNetSuiteService` | Read dashboard figures from the local database |
+| `NetSuiteRestClient` | HTTP calls to NetSuite during sync |
+| `PeriodExcelWriter` | Write the period Excel workbook |
+| `DashboardHome.razor` | Show the dashboard home screen |
 
 ### Open/Closed Principle (OCP)
 
 Extend behaviour without modifying existing code.
 
 **Example:** `INetSuiteService` with implementations:
-- `NetSuiteService` (production)
-- `MockNetSuiteService` (development / tests)
+- `DatabaseNetSuiteService` (PostgreSQL or SQLite)
+- `MockNetSuiteService` (in-memory tests and local demo)
 
-New data sources (e.g. cached snapshots) = new implementation, no change to `DashboardService`.
+New data sources stay a new implementation. `DashboardService` does not change.
 
 ### Liskov Substitution Principle (LSP)
 
 Any `INetSuiteService` implementation can replace another without breaking callers.
 
-**Example:** Unit tests inject `MockNetSuiteService`; production injects `NetSuiteService`.
+**Example:** Automated tests run with `Database:Provider=InMemory`, which registers `MockNetSuiteService`. A normal run registers `DatabaseNetSuiteService`.
 
 ### Interface Segregation Principle (ISP)
 
 Small, focused interfaces instead of one large "god interface".
 
 ```csharp
-// Focused interfaces (English names in code)
-public interface INetSuiteSalesService { Task<IReadOnlyList<RevenueDto>> GetRevenueAsync(...); }
-public interface INetSuiteGoalService { Task<IReadOnlyList<GoalDto>> GetGoalsAsync(...); }
+public interface IDashboardService { /* period overview */ }
+public interface IPeriodReportService { /* Excel and PDF source data */ }
+public interface INetSuiteSyncService { /* import from NetSuite */ }
+public interface IGoalStore { /* saved targets */ }
 ```
 
-Or a facade `INetSuiteService` composed of smaller internal services if the surface stays manageable.
+`INetSuiteService` stays the data facade. Sync, goals, users, and the period report are separate interfaces.
 
 ### Dependency Inversion Principle (DIP)
 
 High-level modules depend on abstractions, not concretions.
 
-**Example:** `DashboardService` depends on `INetSuiteService`, not `NetSuiteHttpClient` directly.  
-Registered in DI container (`Program.cs`):
+**Example:** `DashboardService` depends on `INetSuiteService`, not on `DatabaseNetSuiteService`.  
+Registered in `TebiDashboard.Infrastructure/DependencyInjection.cs`:
 
 ```csharp
-builder.Services.AddScoped<INetSuiteService, MockNetSuiteService>(); // dev
-// builder.Services.AddScoped<INetSuiteService, NetSuiteService>(); // prod
+services.AddScoped<INetSuiteService, MockNetSuiteService>();      // InMemory
+services.AddScoped<INetSuiteService, DatabaseNetSuiteService>();  // PostgreSQL or SQLite
 ```
 
 ---
@@ -108,8 +110,8 @@ builder.Services.AddScoped<INetSuiteService, MockNetSuiteService>(); // dev
 
 ### 4. Mapper pattern
 
-**Where:** `RevenueMapper`, `GoalMapper` in Application or Infrastructure  
-**Why:** SRP — mapping logic separate from HTTP and business rules.
+**Where:** `NetSuiteSuiteQlRowReader` maps SuiteQL rows onto dashboard records  
+**Why:** SRP — row mapping stays out of the HTTP client and the dashboard services.
 
 ### 5. Options pattern
 
@@ -125,8 +127,8 @@ builder.Services.AddScoped<INetSuiteService, MockNetSuiteService>(); // dev
 
 ### 7. Strategy / device abstraction pattern
 
-**Where:** `IBarcodeScannerService` with `AndroidBarcodeScannerService` / `WindowsBarcodeScannerService`  
-**Why:** Voorstelformulier — scan artikel on terrein; hides platform camera/USB differences from UI pages.
+**Where:** `IBarcodeScannerService` in the shared UI, `BarcodeScannerService` in the MAUI project  
+**Why:** The scan page does not know whether the camera is Android or Windows. The MAUI service asks for the camera permission and returns the code. The website leaves the camera empty and uses the browser scanner.
 
 ```csharp
 public interface IBarcodeScannerService
@@ -135,7 +137,7 @@ public interface IBarcodeScannerService
 }
 ```
 
-UI (`BarcodeScanPage.razor`) calls service → API lookup → show `ItemDetailDto`.
+UI (`BarcodeScanner.razor`) calls the service, then the API looks up the item.
 
 ---
 

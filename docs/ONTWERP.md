@@ -152,7 +152,7 @@ Een **dashboard-applicatie als aanvulling** op NetSuite — geen vervanging. Liv
 | Taal broncode | **Engels** | LU-3: identifiers, classes, methods, comments |
 | Codestijl | `.editorconfig` + `dotnet format` | LU-3: consistente stijl |
 | Demo-platformen | **Windows + Android** | LU-3: demonstratie op 2 platformen |
-| Auth | JWT Bearer + rollen | `Admin`, `Management`, `Verkoper`, `Inkoop`, `ReadOnly` |
+| Auth | JWT Bearer + rollen | `Admin`, `Management`, `Purchasing`, `Inventory`, `Sales`, `Finance`, `ReadOnly` |
 | NetSuite | REST / SuiteTalk API | OAuth 1.0 of 2.0 (afhankelijk TEBI-configuratie) |
 | UI-framework | MudBlazor | Gratis, goede Blazor-charts en componenten |
 | Cache | IMemoryCache | Should have: auto-refresh; later Redis mogelijk |
@@ -185,7 +185,10 @@ GET  /inventory/{itemId}/open-transactions
 GET  /items/by-barcode/{barcode}
 GET  /filters/customers|suppliers|product-groups
 POST /auth/login
+GET  /exports/period?format=xlsx|pdf&from=&to=
 ```
+
+`GET /exports/period` downloads the selected period as Excel or PDF. ReadOnly receives 403. An unknown format or a reversed date range returns 400. The generated contract is `/openapi/v1.json` in Development.
 
 ### Voorbeeld-response: `/dashboard/summary`
 

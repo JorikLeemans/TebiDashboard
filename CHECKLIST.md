@@ -3,7 +3,7 @@
 Afvinklijst gekoppeld aan het [adviesrapport](./LU2%20AdviesRapportage.docx) en het [technisch ontwerp](./docs/ONTWERP.md).
 
 > Vink items af door `[ ]` te wijzigen naar `[x]` in een commit of pull request.  
-> **Laatste update:** juni 2026 — afgestemd op `feature/goals-and-charts`.
+> **Laatste update:** oktober 2026 — afgestemd op `main` (US-17 export, JWT, 273 tests).
 
 ---
 
@@ -15,14 +15,14 @@ Afvinklijst gekoppeld aan het [adviesrapport](./LU2%20AdviesRapportage.docx) en 
 - [x] Gebruiksvriendelijke interface — navigatie, period filter, detailpagina's
 - [x] Toegankelijk via browser (Blazor Web) — `TebiDashboard.Web`
 - [ ] Toegankelijk via native app (MAUI Blazor Hybrid) — project aanwezig; workload + demo op device nog open
-- [ ] Veilige gegevensverwerking (auth, HTTPS, rollen) — login + rollen + admin; JWT en API-auth middleware nog open
+- [x] Veilige gegevensverwerking (auth, HTTPS, rollen) — JWT op data-endpoints, rollen inclusief ReadOnly; formele security review blijft open
 
 ## MoSCoW — Should have
 
 - [ ] Automatische data-updates (refresh / polling)
 - [x] Filters en zoekmogelijkheden (periode, klant, artikelgroep) — periode-filter + klant-/leveranciers-/voorraadoverzichten; artikelgroep-filter nog open
 - [x] Responsive design (telefoon, tablet, desktop) — basis responsive layout in Blazor UI
-- [ ] Export naar Excel of PDF
+- [x] Export naar Excel of PDF — `GET /api/exports/period`, knoppen op het periodefilter
 - [x] Rollen en rechtenbeheer in UI — admin-dashboard voor rollen/wachtwoorden; rolgebaseerde menu's beperkt
 
 ## MoSCoW — Could have (backlog)
@@ -56,14 +56,14 @@ Afvinklijst gekoppeld aan het [adviesrapport](./LU2%20AdviesRapportage.docx) en 
 - [x] Git-repository geïnitialiseerd (branch `main`, `.gitignore`)
 - [x] Eerste commit en push naar GitHub
 - [x] Solution-structuur aanmaken (`src/TebiDashboard.slnx`)
-- [x] Unit-, API- en UI-tests (groen) — **63 tests** (21 application + 17 API + 25 UI)
+- [x] Unit-, API- en UI-tests (groen) — **273 tests** (32 application + 41 API + 71 infrastructure + 129 UI)
 - [ ] MAUI workload installeren (zie [maui-setup.md](./docs/maui-setup.md))
 
 ## Fase 2 — Web API
 
 - [x] ASP.NET Core Web API-project opgezet — `TebiDashboard.Api`
 - [ ] NetSuite-integratielaag (pilot met kleine dataset) — demo-DB + seeder; live NetSuite-pilot nog open
-- [ ] Auth + autorisatie per rol — login/register + admin; JWT + endpoint-bescherming nog open
+- [x] Auth + autorisatie per rol — login/register, JWT, admin-dashboard; ReadOnly kan niet exporteren
 - [x] DTO's en mapping getest — API- en application-tests
 - [x] Swagger/OpenAPI documentatie — `/openapi/v1.json` in Development
 - [x] Health check endpoint — `GET /api/health`
@@ -71,7 +71,7 @@ Afvinklijst gekoppeld aan het [adviesrapport](./LU2%20AdviesRapportage.docx) en 
 ## Fase 3 — Dashboard (Must have)
 
 - [x] Gedeelde Blazor UI-bibliotheek (`TebiDashboard.UI`)
-- [ ] MAUI Blazor Hybrid app (Windows als eerste target) — project scaffold; build/demo nog open
+- [ ] MAUI Blazor Hybrid app (Windows + Android) — project met beide targets; functionele check vastgelegd; portfolio-demo nog open
 - [x] Blazor Web App voor browser — `TebiDashboard.Web`
 - [x] KPI-kaarten op dashboard home — omzet, afzet, doel-%, low-stock alerts
 - [x] Omzet-, afzet-, trend- en doel-visualisaties — dashboard + goals charts
@@ -89,13 +89,14 @@ Afvinklijst gekoppeld aan het [adviesrapport](./LU2%20AdviesRapportage.docx) en 
 
 - [ ] Automatische data-refresh
 - [ ] Uitgebreide filters en zoeken (artikelgroep, vrije tekst)
-- [ ] Export Excel/PDF
+- [x] Export Excel/PDF — `PeriodExcelWriter`, `PeriodPdfWriter`, `PeriodExportButtons`
 - [x] Rollenbeheer in UI — admin-dashboard
 
 ## Fase 5 — Testen
 
-- [x] Unit- en integration tests API — 38 tests (application + API)
-- [ ] UI-tests op meerdere apparaten — 25 bUnit-tests; fysieke Android/Windows-demo nog open
+- [x] Unit- en integration tests API — 144 tests (application + API + infrastructure)
+- [ ] UI-tests op meerdere apparaten — 129 bUnit-tests; fysieke Android/Windows-demo nog open
+- [x] Build pipeline — GitHub Actions draait de vier testprojecten (geen MAUI-workload)
 - [ ] Beveiligings- en performancetest
 - [ ] Feedbackronde eindgebruikers (TEBI)
 
@@ -118,8 +119,8 @@ Zie [docs/lu3-assessment.md](./docs/lu3-assessment.md) voor volledige mapping.
 - [x] Broncode volledig in het Engels
 - [x] `.editorconfig` + consistente codestijl
 - [ ] Demonstratie Windows + Android
-- [x] Min. 3 zinnige unit tests (groen) — **38 unit/integration tests**
-- [x] Min. 3 zinnige UI/device running tests — **25 bUnit UI tests** (+ device na MAUI workload)
+- [x] Min. 3 zinnige unit tests (groen) — **144 unit/integration tests**
+- [x] Min. 3 zinnige UI/device running tests — **129 bUnit UI tests** (device-demo nog open)
 - [x] OO-principes & patterns gedocumenteerd ([oo-and-patterns.md](./docs/oo-and-patterns.md))
 - [x] Architectuurstijl gemotiveerd ([ONTWERP.md](./docs/ONTWERP.md) ADR's)
 - [x] Installatie- & gebruikershandleiding ([installation.md](./docs/installation.md))
@@ -128,7 +129,7 @@ Zie [docs/lu3-assessment.md](./docs/lu3-assessment.md) voor volledige mapping.
 
 - [x] User stories opgesteld ([user-stories.md](./docs/user-stories.md))
 - [x] Definition of Done opgesteld ([definition-of-done.md](./docs/definition-of-done.md))
-- [ ] US-01 t/m US-11 geïmplementeerd en Done — zie status in [user-stories.md](./docs/user-stories.md); US-04, US-07 nog open; US-10/11 gedeeltelijk
+- [x] US-01 t/m US-12, US-14, US-15 en US-17 Done — zie [user-stories.md](./docs/user-stories.md); US-13 demo nog open
 - [x] US-12 t/m US-14 (login, platform, dashboard home) — login + dashboard Done; US-13 platform-demo nog open
 
 ---
@@ -140,6 +141,6 @@ Zie [docs/lu3-assessment.md](./docs/lu3-assessment.md) voor volledige mapping.
 | NetSuite-data niet geschikt voor dashboards | Data-mapping workshop (zie `docs/netsuite-data-mapping.md`) | [ ] |
 | API-koppeling werkt niet goed | Pilot met kleine dataset | [~] demo-DB actief; live NetSuite nog niet |
 | Dashboard niet duidelijk voor gebruikers | UX-test met eindgebruikers | [ ] |
-| Onveilige verwerking gevoelige data | Rollen, rechten, beveiligde API-laag | [~] basis auth; JWT/hardening nog open |
+| Onveilige verwerking gevoelige data | Rollen, rechten, beveiligde API-laag | [~] JWT en rollen actief; formele security review nog open |
 | Project te groot door extra wensen | Eerst Must have, daarna Should/Could | [x] |
 

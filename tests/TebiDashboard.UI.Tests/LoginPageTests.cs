@@ -92,7 +92,8 @@ public class LoginPageTests
 
         public string? Role { get; private set; }
 
-        public event Action? OnChange;
+        // The interface requires this event. These tests never subscribe, so there is no backing field.
+        public event Action? OnChange { add { } remove { } }
 
         public bool CanAccessAdminDashboard() => false;
 
