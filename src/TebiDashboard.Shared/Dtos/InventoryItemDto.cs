@@ -11,7 +11,7 @@ public sealed class InventoryItemDto
     public decimal QuantityOnHand { get; init; }
     public decimal? ReorderPoint { get; init; }
     /// <summary>
-    /// Invoice amount for the selected period on the inventory list.
+    /// Invoice amount for the selected period on the inventory list. Zero when the item has no invoices in that period.
     /// Low-stock results still use the quantity stored from the last NetSuite sync.
     /// </summary>
     public decimal RecentSalesVolume { get; init; }

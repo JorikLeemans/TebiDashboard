@@ -122,4 +122,13 @@ public sealed class NetSuiteSuiteQlQueriesTests
         Assert.Contains("ilc.preferredstocklevel", sql, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("BUILTIN.DF(ilc.location) AS locationname", sql);
     }
+
+    [Fact]
+    public void RecentItemSales_TurnsOutboundQuantityIntoUnitsSold()
+    {
+        var sql = NetSuiteSuiteQlQueries.RecentItemSales(new DateOnly(2026, 9, 1));
+
+        Assert.Contains("NVL(SUM(NVL(tl.quantity, 0) * -1), 0) AS recentsalesvolume", sql);
+        Assert.Contains("INNER JOIN invoice", sql, StringComparison.OrdinalIgnoreCase);
+    }
 }

@@ -528,7 +528,10 @@ public sealed class DatabaseNetSuiteService(TebiDashboardDbContext dbContext) : 
             .Select(item =>
             {
                 salesByItem.TryGetValue(item.ItemId, out var sales);
-                return MapInventoryItem(item, sales?.Amount, sales?.Quantity);
+                // No invoice lines in this period is € 0 and 0 units.
+                // A missing match must not fall back to the sync quantity, which is a stock movement
+                // and was shown on this list as a large negative euro amount.
+                return MapInventoryItem(item, sales?.Amount ?? 0m, sales?.Quantity ?? 0m);
             })
             .ToList();
     }
