@@ -24,14 +24,14 @@ Per user story geldt onderstaande Definition of Done (DoD). Een story is **Done*
 ### Documentatie
 
 - [ ] README of installation.md bijgewerkt indien installatiestappen wijzigen
-- [ ] API-wijzigingen reflected in Swagger / ONTWERP.md indien van toepassing
+- [ ] API-wijzigingen reflected in `/openapi/v1.json` en ONTWERP.md indien van toepassing
 - [ ] CHECKLIST.md bijgewerkt
 
 ### Review & integratie
 
 - [ ] Code reviewed (zelf of peer/docent)
 - [ ] Gemerged naar `main` via pull request (geen direct push op main)
-- [ ] Build pipeline groen (indien CI actief)
+- [ ] Build pipeline groen. CI is actief: `.github/workflows/ci.yml` draait de vier testprojecten en bouwt MAUI niet
 
 ---
 
@@ -47,7 +47,7 @@ Naast algemene DoD:
 
 ### API / NetSuite stories
 
-- [ ] Endpoint gedocumenteerd in Swagger
+- [ ] Endpoint gedocumenteerd in OpenAPI (`/openapi/v1.json`)
 - [ ] Geen secrets in source control
 - [ ] Foutafhandeling retourneert zinvolle HTTP-statuscodes
 

@@ -1,186 +1,118 @@
 # NetSuite data-mapping
 
-Overzicht van welke NetSuite-gegevens nodig zijn voor het TEBI Dashboard en hoe deze worden gemapt naar applicatie-DTO's.
+Welke SuiteQL-gegevens de sync ophaalt, en in welke dashboard-DTO ze terechtkomen.
 
-> **Status:** Concept — te valideren met TEBI / NetSuite-beheerder  
-> **Actie:** Workshop plannen om veldnamen en saved searches te bevestigen
+> **Status:** november 2026. De queries staan in `NetSuiteSuiteQlQueries`. Een workshop met TEBI over btw, doelen en rollen per verkoper is nog open.
+> Veldnamen volgen de Records Browser en de SuiteQL-query's in de code.
 
----
-
-## Benodigde databronnen (Fase 1 inventarisatie)
-
-| Domein | NetSuite-bron (indicatief) | Dashboard-gebruik |
-|--------|---------------------------|-------------------|
-| Omzet | Transaction (Sales Order / Invoice) | Omzetgrafiek, KPI |
-| Afzet | Transaction Line / Item Fulfillment | Afzet per artikel |
-| Klanten | Customer record | Filter dropdown |
-| Leveranciers | Vendor record | Filter dropdown |
-| Artikelen | Item record + Item Group | Filter + afzet-detail |
-| **Barcode** | Item `upccode` / custom barcode field | US-11 scan lookup |
-| **Voorraad** | Inventory Balance / Location | Locaties, lage voorraad |
-| **Open transacties** | Sales Order / Transfer Order (open) | US-06 terrein |
-| **Uitgaven** | Vendor Bill / Expense | US-10 financieel |
-| Doelstellingen | Custom record / Budget | Doel vs. actueel |
+De sync schrijft PostgreSQL. De pagina's lezen die tabellen via `DatabaseNetSuiteService`. Tests met `Database:Provider=InMemory` gebruiken `MockNetSuiteService`.
 
 ---
 
-## Mapping-tabel
+## Bronnen
 
-### Omzet → `OmzetDto`
-
-| DTO-veld | Type | NetSuite-veld (indicatief) | Opmerking |
-|----------|------|---------------------------|-----------|
-| `Id` | string | Internal ID | Unieke key |
-| `Datum` | DateTime | `trandate` | Transactiedatum |
-| `Bedrag` | decimal | `amount` / `total` | Inclusief/exclusief BTW afstemmen |
-| `KlantId` | string | `entity` (Customer) | FK naar klant |
-| `KlantNaam` | string | Customer `companyname` | Display |
-| `ArtikelgroepId` | string? | Item `class` / custom field | Optioneel filter |
-
-### Afzet → `AfzetDto`
-
-| DTO-veld | Type | NetSuite-veld (indicatief) | Opmerking |
-|----------|------|---------------------------|-----------|
-| `Id` | string | Line internal ID | |
-| `Datum` | DateTime | `trandate` | |
-| `ArtikelId` | string | Item internal ID | |
-| `ArtikelNaam` | string | Item `displayname` | |
-| `Artikelgroep` | string | Item class / pricing group | |
-| `Aantal` | decimal | `quantity` | Eenheid bevestigen |
-| `Omzet` | decimal | Line `amount` | Voor top-N |
-
-### Doel → `DoelDto`
-
-| DTO-veld | Type | NetSuite-veld (indicatief) | Opmerking |
-|----------|------|---------------------------|-----------|
-| `Jaar` | int | Custom field | |
-| `Periode` | string | Maand / kwartaal | |
-| `Type` | string | Omzet / Afzet | |
-| `DoelWaarde` | decimal | Budget / custom record | |
-| `ActueleWaarde` | decimal | Berekend uit transacties | Niet uit NetSuite direct |
-| `Percentage` | decimal | Berekend | Actueel / Doel × 100 |
-
-### Filter-lijsten
-
-| DTO | NetSuite-record | Weergaveveld |
-|-----|----------------|--------------|
-| `KlantFilterDto` | Customer | `companyname` |
-| `LeverancierFilterDto` | Vendor | `companyname` |
-| `ArtikelgroepFilterDto` | Classification / Item Group | `name` |
-
-### Voorraad → `InventoryItemDto` / `StockLocationDto`
-
-| DTO-veld | Type | NetSuite-veld (indicatief) | Opmerking |
-|----------|------|---------------------------|-----------|
-| `ItemId` | string | Item internal ID | |
-| `ItemName` | string | `displayname` | |
-| `Barcode` | string | `upccode` / custom | US-11 lookup key |
-| `QuantityOnHand` | decimal | Inventory balance | Per locatie of totaal |
-| `LocationId` | string | Location internal ID | US-05 meerdere locaties |
-| `LocationName` | string | Location `name` | Terrein/lmagazijn |
-| `ReorderPoint` | decimal? | Item reorder point | Lage voorraad-drempel |
-
-### Open transactie → `OpenTransactionDto`
-
-| DTO-veld | Type | NetSuite-veld (indicatief) | Opmerking |
-|----------|------|---------------------------|-----------|
-| `TransactionId` | string | Internal ID | |
-| `Type` | string | Sales Order / Transfer / etc. | |
-| `ItemId` | string | Line item | |
-| `QuantityOpen` | decimal | Open quantity | US-06 |
-| `Status` | string | Order status | |
-
-### Uitgaven → `ExpenseDto`
-
-| DTO-veld | Type | NetSuite-veld (indicatief) | Opmerking |
-|----------|------|---------------------------|-----------|
-| `Id` | string | Internal ID | |
-| `Date` | DateTime | `trandate` | |
-| `Category` | string | Expense category / account | |
-| `Amount` | decimal | `amount` | US-10 |
-| `VendorName` | string? | Vendor | Optioneel |
-
-### Barcode lookup → `ItemDetailDto`
-
-Combineert item + inventory locations + open transaction count (US-11 scan result).
-
-| DTO-veld | Bron |
-|----------|------|
-| `Item` | Item record via barcode |
-| `Locations` | `StockLocationDto[]` |
-| `OpenTransactionCount` | Aggregate open transactions |
-| `RecentSales` | Optional summary |
+| Domein | SuiteQL | Dashboard |
+|--------|---------|-----------|
+| Klanten | `customer` + default billing address book | `/customers` |
+| Leveranciers | `vendor`, inclusief inactieve vendors | `/suppliers` |
+| Artikelen | `item` (`InvtPart`, `Assembly`), `upcCode` | Voorraad en barcode |
+| Voorraad | `inventorybalance`, `itemlocationconfiguration` | Locaties en reorder point |
+| Omzet | `invoice` + `transactionline` | Omzet, bestsellers, sold in period |
+| Uitgaven | `transaction` type `VendBill` | Uitgaven |
+| Open orders | `salesorder` en `purchaseorder` + `transactionline` | Open transacties |
+| Doelen | Niet uit NetSuite | Opgeslagen in de dashboard-database |
 
 ---
 
-## Saved Searches (voorstel)
+## Omzet → `RevenueDto`
 
-NetSuite-data wordt idealiter opgehaald via **Saved Searches** of **SuiteQL**:
+Eén factuurregel. `tl.amount` is negatief op een normale verkoopregel, dus de query draait het teken om. `transactionline.quantity` is negatief als de voorraad daalt. De query vermenigvuldigt met `-1`, zoals in het Oracle-voorbeeld `quantity * -1`.
 
-### SS_TEBI_Omzet_Per_Periode
+| DTO | SuiteQL |
+|-----|---------|
+| `InvoiceId` | `invoice.id` |
+| `InvoiceNumber` | `invoice.tranId` |
+| `Id` | Factuurregel `transactionline.id` |
+| `Date` | `invoice.tranDate` |
+| `CustomerId` | `invoice.entity` |
+| `CustomerName` | Naam uit de customer-sync, niet uit de factuurquery |
+| `ItemId` / `ItemName` | `transactionline.item` en `BUILTIN.DF(item)` |
+| `ProductGroupId` / `ProductGroupName` | `item.class` en `BUILTIN.DF(class)` |
+| `Amount` | `-NVL(transactionline.amount, 0)` |
 
-- Type: Transaction
-- Filters: Type = Invoice, Date range
-- Columns: Date, Customer, Amount, Class
-- Gebruik: Omzet-dashboard
+## Afzet en sold in period → `InventoryItemDto`
 
-### SS_TEBI_Afzet_Per_Artikel
+| DTO | Bron |
+|-----|------|
+| `ItemId` | `item.id` |
+| `ItemName` | `item.itemId` (SKU), anders `displayName` |
+| `Barcode` | `item.upcCode` |
+| `QuantityOnHand` | Som van `inventorybalance.quantityonhand` |
+| `RecentSalesVolume` | Op de voorraadlijst: factuurbedrag in de gekozen periode. Op low-stock: de hoeveelheid uit de laatste sync |
+| `UnitsSold` | Som van de positieve factuurhoeveelheid in de periode. 0 als er geen factuurregels zijn |
+| `IsLowStock` | On-hand op of onder het reorder point |
 
-- Type: Transaction Line
-- Filters: Item type, Date range
-- Columns: Item, Quantity, Amount, Class
-- Gebruik: Afzet-dashboard
+Locaties staan op `StockLocationDto`: `inventorybalance` voor de hoeveelheid, `itemlocationconfiguration.reorderpoint` en `preferredstocklevel` voor de drempels. `BUILTIN.DF(location)` is de locatienaam.
 
-### SS_TEBI_Doelen
+## Doel → `GoalDto`
 
-- Type: Custom Record (naam TBD met TEBI)
-- Columns: Year, Period, Target Value, Type
-- Gebruik: Doelen-pagina
+Doelen komen uit de dashboard-database (`IGoalStore`), niet uit een NetSuite-budget. `ActualValue` en `Percentage` rekent `DashboardService` uit de omzet in die periode. Admin en Management schrijven targets via `PUT /api/goals`.
 
-### SS_TEBI_Voorraad_Locaties
+| DTO | Betekenis |
+|-----|-----------|
+| `Year`, `Period` | Kalenderjaar en periode |
+| `Type` | `Revenue` of een artikeldoel |
+| `ItemId`, `ItemName` | Leeg bij een bedrijfsdoel |
+| `TargetValue` | Ingevoerde doelwaarde |
+| `ActualValue`, `Percentage`, `Status` | Berekend (`on-track`, `ahead`, `off-track`) |
 
-- Type: Inventory Balance
-- Columns: Item, Location, Quantity On Hand, Reorder Point
-- Gebruik: US-03, US-05
+## Klant en leverancier
 
-### SS_TEBI_Open_Transacties
+| DTO | SuiteQL |
+|-----|---------|
+| `CustomerDto.Name` | `entityId` plus `glommedName` als `isPerson = T`, anders plus `companyName` |
+| `CustomerDto.City` | Stad van het default billing address book |
+| `CustomerDto.Category` | `BUILTIN.DF(customer.category)` |
+| `SupplierDto.Name` | `entityId` plus `companyName` |
+| `SupplierDto.City` | Stad van het vendor billing address book |
 
-- Type: Transaction (open Sales/Transfer Orders)
-- Filters: Status = open/pending
-- Columns: Item, Quantity, Type, Date
-- Gebruik: US-06
+Inactieve vendors blijven in de query. Een vendor bill houdt `transaction.entity` ook als de vendor inactief is. `BUILTIN.DF(transaction.entity)` vult het label op de bill als de vendorrij ontbreekt.
 
-### SS_TEBI_Uitgaven
+## Open transactie → `OpenTransactionDto`
 
-- Type: Vendor Bill / Expense Report
-- Columns: Date, Category, Amount, Vendor
-- Gebruik: US-10
+| DTO | SuiteQL |
+|-----|---------|
+| `TransactionId` | `transactionline.transaction` |
+| `Type` | `Sales Order` of `Purchase Order` |
+| `ItemId`, `ItemName` | Regel-item en `BUILTIN.DF` |
+| `CustomerId` of `SupplierId` | `salesorder.entity` of `purchaseorder.entity` |
+| `QuantityOpen` | `quantity - quantityshiprecv`, alleen als er nog iets open staat |
+| `Amount` | `transactionline.amount` |
+| `Status` | Orderstatus. Gesloten en geannuleerde sales orders vallen uit de query |
+
+## Uitgaven → `ExpenseDto`
+
+| DTO | SuiteQL |
+|-----|---------|
+| `Id` | `transaction.id` |
+| `Date` | `trandate` |
+| `Amount` | `NVL(foreigntotal, 0)`. `transaction.total` is niet bruikbaar in SuiteQL |
+| `SupplierId` | `transaction.entity` |
+| `VendorName` | Leveranciersnaam uit de sync, anders `BUILTIN.DF(entity)` |
+| `SupplierName` | Naam uit de supplier-tabel. Leeg als die rij ontbreekt. Het interne id wordt hier niet in gekopieerd |
+| `Category` | Op een gesynchroniseerde bill: `Vendor Bill` |
+
+## Barcode → `ItemDetailDto`
+
+`GET /api/items/by-barcode/{barcode}` zoekt `upcCode`. Het antwoord bevat het artikel, de locaties, de open transacties en de factuurregels van de gevraagde periode (`PeriodInvoices`, `PeriodSalesAmount`).
 
 ---
 
-## Openstaande vragen voor TEBI
+## Nog open met TEBI
 
-- [ ] Welke NetSuite-versie en API-toegang (REST vs SuiteTalk)?
-- [ ] Is omzet inclusief of exclusief BTW?
-- [ ] Waar staan doelstellingen opgeslagen (custom record, budget module)?
-- [ ] Welke artikelgroep-definitie gebruikt TEBI (class, pricing group, custom)?
-- [ ] Welke rollen mogen welke data zien (verkoper = eigen klanten)?
-- [ ] Sandbox-credentials beschikbaar voor ontwikkeling?
-- [ ] Welk veld bevat de **barcode** per artikel (UPC vs custom)?
-- [ ] Hoe worden **terreinlocaties** in NetSuite bijgehouden?
-- [ ] Welke transactietypes tellen als "openstaand" op het terrein?
+- [ ] Is het factuurbedrag inclusief of exclusief btw voor de KPI?
+- [ ] Blijven doelen in het dashboard, of moeten ze uit NetSuite komen?
+- [ ] Ziet een verkoper alleen de eigen klanten?
+- [ ] Welke orderstatussen op het terrein tellen als openstaand, naast de huidige sales- en purchase orders?
 
----
-
-## Mock-data (ontwikkeling)
-
-Tot NetSuite-toegang beschikbaar is, gebruikt de Infrastructure-laag een `MockNetSuiteService` met voorbeelddata. **Productie gebruikt live NetSuite** (voorstelformulier).
-
-```
-Infrastructure/
-  Services/
-    NetSuiteService.cs       → productie
-    MockNetSuiteService.cs   → ontwikkeling
-```
-
-Switch via configuratie: `"NetSuite:UseMock": true`
+Barcode, locaties, inactieve vendors en het teken van factuurhoeveelheden zijn in de sync verwerkt.

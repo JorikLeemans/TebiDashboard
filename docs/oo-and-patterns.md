@@ -115,7 +115,7 @@ services.AddScoped<INetSuiteService, DatabaseNetSuiteService>();  // PostgreSQL 
 
 ### 5. Options pattern
 
-**Where:** `NetSuiteOptions`, `ApiOptions` bound from `appsettings.json`  
+**Where:** `NetSuiteOptions` and `DatabaseOptions` bound from `appsettings.json`  
 **Why:** Type-safe configuration; secrets via User Secrets / environment.
 
 ### 6. MVVM-like separation (Blazor)

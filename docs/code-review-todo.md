@@ -77,9 +77,14 @@ severity. Check off items as they are addressed.
   (or similar) is clickable — not the entire row.
   - Open-transaction rows on item detail currently navigate on the whole row.
 
-- [ ] **Get clear what recent sales actually means** in this dashboard (period,
+- [x] **Get clear what recent sales actually means** in this dashboard (period,
   quantity vs amount, and which NetSuite source). Users should not have to guess
   the KPI.
+  - Inventory and bestsellers label this **Sold in period**: invoice amount for
+    the selected period, and units from invoice quantities. Zero when that item
+    has no invoices in the period.
+  - Low-stock still uses the quantity stored by the last sync, not the period filter.
+  - Item detail lists the invoice lines that add up to Sold in period.
 
 - [x] **Take another look at customer names.** Combine `entityId` (K######) with
   `glommedName` when `isPerson = T` and with `companyName` when `isPerson = F`.
@@ -95,12 +100,15 @@ severity. Check off items as they are addressed.
 - [ ] **Extra ways of showing data** (charts, grouping, exports, alternate
   layouts). Not a high priority.
 
-- [ ] **Check what "down" means on the Revenue board** on the dashboard home
-  page. It looks like plain text with no function — confirm whether it should
-  sort, filter, navigate, or be removed.
+- [x] **Check what "down" means on the Revenue board** on the dashboard home
+  page. The card shows the percent change versus the previous window
+  (`PeriodTrendWindows.DescribeChange`), for example `-12%` or `+8%`.
 
-- [ ] **Check vendor names on the dashboard.** Some name/vendor fields are
-  empty even though the row has data and an amount.
+- [x] **Check vendor names on the dashboard.** A bill without a supplier master
+  row showed the internal id twice, and the supplier page said it could not be
+  found. The id is shown once. The company name comes from the supplier row, or
+  from the bill label after sync. The link opens the stored bills when the
+  master row is still missing. Inactive vendors are included in the vendor sync.
 
 - [ ] **When going live, filter test cases out of the results** so the
   dashboard only shows real, useful data (no demo/test customers, vendors, or

@@ -1,9 +1,8 @@
 # Technisch ontwerp — TEBI Dashboard
 
-**Versie:** 1.0  
-**Datum:** juni 2026  
-**Bron:** [LU2 AdviesRapportage.docx](../LU2%20AdviesRapportage.docx), [Voorstelformulier](../Jorik%20Leemans%20Voorstelformulier%20.NET%20MAUI%20app.docx)  
-**Projectlocatie:** `F:\School\Full-Stack .NET MAUI`
+**Versie:** 1.1  
+**Datum:** november 2026  
+**Bron:** [LU2 AdviesRapportage.docx](../LU2%20AdviesRapportage.docx), [Voorstelformulier](../Jorik%20Leemans%20Voorstelformulier%20.NET%20MAUI%20app.docx)
 
 ---
 
@@ -45,7 +44,7 @@ Een **dashboard-applicatie als aanvulling** op NetSuite — geen vervanging. Liv
 
 **Besluit:** Front-end voor native clients via .NET MAUI met BlazorWebView (Blazor Hybrid).
 
-**Reden:** Sluit aan op het advies (Blazor + .NET) en levert één C#/Razor-codebase voor Windows, Android en iOS.
+**Reden:** Sluit aan op het advies (Blazor + .NET) en levert één C#/Razor-codebase voor Windows en Android.
 
 ### ADR-002: Gedeelde UI-bibliotheek
 
@@ -79,7 +78,7 @@ Een **dashboard-applicatie als aanvulling** op NetSuite — geen vervanging. Liv
 
 ### ADR-007: Live NetSuite-data (geen mock in productie)
 
-**Besluit:** Productie gebruikt echte NetSuite API; `MockNetSuiteService` alleen voor lokale ontwikkeling en tests.
+**Besluit:** Productie leest PostgreSQL. Een admin-sync vult die database vanuit NetSuite. `MockNetSuiteService` geldt alleen bij `Database:Provider=InMemory`.
 
 **Reden:** Voorstelformulier — realistische bedrijfsvraag; live dashboard is het doel.
 
@@ -89,9 +88,9 @@ Een **dashboard-applicatie als aanvulling** op NetSuite — geen vervanging. Liv
 
 ### 3.1 Dashboard Home
 
-- KPI-kaarten: totale omzet, afzet, doel-behalen (%)
-- Snelle periode-selectie (vandaag, week, maand, kwartaal, jaar)
-- Samenvatting trend (stijgend/dalend t.o.v. vorige periode)
+- KPI-kaarten: totale omzet, afzet, doel-behalen (%), lage voorraad
+- Periode: laatste 2 dagen, 7 dagen, 30 dagen, deze maand, dit jaar, of een eigen datumbereik
+- Trend ten opzichte van het vorige even lange venster
 
 ### 3.2 Omzet
 
@@ -117,12 +116,12 @@ Een **dashboard-applicatie als aanvulling** op NetSuite — geen vervanging. Liv
 
 ### 3.6 Filters (gedeeld)
 
-| Filter | Type | Bron |
+| Filter | Waar | Bron |
 |--------|------|------|
-| Periode | Datumrange | Gebruikersinvoer |
-| Klant | Dropdown / zoek | NetSuite |
-| Leverancier | Dropdown / zoek | NetSuite |
-| Artikelgroep | Dropdown | NetSuite |
+| Periode | Filterbalk op de dashboardpagina's | Gebruikersinvoer |
+| Artikelgroep | Bestsellers | `item.class` na de sync |
+| Klant | Pagina's `/customers` | Gesynchroniseerde customer-records |
+| Leverancier | Pagina's `/suppliers` | Gesynchroniseerde vendor-records |
 
 ### 3.7 Voorraad (voorstelformulier)
 
@@ -153,12 +152,12 @@ Een **dashboard-applicatie als aanvulling** op NetSuite — geen vervanging. Liv
 | Codestijl | `.editorconfig` + `dotnet format` | LU-3: consistente stijl |
 | Demo-platformen | **Windows + Android** | LU-3: demonstratie op 2 platformen |
 | Auth | JWT Bearer + rollen | `Admin`, `Management`, `Purchasing`, `Inventory`, `Sales`, `Finance`, `ReadOnly` |
-| NetSuite | REST / SuiteTalk API | OAuth 1.0 of 2.0 (afhankelijk TEBI-configuratie) |
-| UI-framework | MudBlazor | Gratis, goede Blazor-charts en componenten |
-| Cache | IMemoryCache | Should have: auto-refresh; later Redis mogelijk |
-| Opslag (optioneel) | SQLite / SQL Server | Geaggregeerde snapshots voor snellere dashboards |
-| Tests | xUnit; min. 3 unit + 3 UI/device | LU-3 portfolio; zie [lu3-assessment.md](./lu3-assessment.md) |
-| Secrets | User Secrets (dev) / Key Vault (prod) | Geen credentials in source control |
+| NetSuite | SuiteQL via OAuth 2.0 (certificate JWT) | Sync schrijft PostgreSQL; pagina's lezen de database |
+| UI | Blazor-componenten, eigen CSS | Geen component-library; grafieken zijn eigen componenten |
+| Cache | `IMemoryCache` | Alleen het NetSuite access-token |
+| Opslag | PostgreSQL | Zelfde engine lokaal (Docker) en op Railway. SQLite is een legacy provider. Tests gebruiken `Database:Provider=InMemory` |
+| Tests | xUnit en bUnit | CI draait Application, API, Infrastructure en UI. MAUI zit niet in de pipeline |
+| Secrets | User Secrets (dev) / omgevingsvariabelen (prod) | Geen credentials in source control |
 
 ---
 
@@ -170,35 +169,53 @@ Basis-URL: `https://{host}/api`
 
 ```
 GET  /health
-GET  /dashboard/summary
-GET  /revenue?from=&to=&customerId=
-GET  /sales-volume/top?from=&to=&limit=
+POST /auth/login
+POST /auth/register
+GET  /dashboard/summary?from=&to=
+GET  /dashboard/period-overview?from=&to=
+GET  /revenue?from=&to=
+GET  /sales-volume/top?from=&to=&limit=&productGroupId=
 GET  /sales-volume/popular?from=&to=
-GET  /trends?from=&to=&interval=
 GET  /goals?year=&period=
-GET  /goals/by-item?period=
-GET  /goals/progress?goalId=
+PUT  /goals
 GET  /expenses?from=&to=
-GET  /inventory/low-stock?highSales=true
+GET  /inventory/items?from=&to=
+GET  /inventory/low-stock?highSales=
 GET  /inventory/{itemId}/locations
 GET  /inventory/{itemId}/open-transactions
+GET  /items/{itemId}
 GET  /items/by-barcode/{barcode}
-GET  /filters/customers|suppliers|product-groups
-POST /auth/login
+GET  /customers
+GET  /customers/overview?from=&to=
+GET  /customers/{customerId}
+GET  /suppliers
+GET  /suppliers/overview?from=&to=
+GET  /suppliers/{supplierId}
 GET  /exports/period?format=xlsx|pdf&from=&to=
+GET  /admin/users
+PUT  /admin/users/{email}/role
+PUT  /admin/users/{email}/password
+DELETE /admin/users/{email}
+GET  /netsuite/setup
+GET  /netsuite/connection-test
+POST /netsuite/sync
+GET  /netsuite/sync/status
+POST /admin/demo-data/reseed
 ```
 
-`GET /exports/period` downloads the selected period as Excel or PDF. ReadOnly receives 403. An unknown format or a reversed date range returns 400. The generated contract is `/openapi/v1.json` in Development.
+`GET /dashboard/period-overview` is wat de homepagina laadt. `PUT /goals` is beperkt tot Admin en Management. `GET /exports/period` geeft ReadOnly een 403. Een onbekend exportformaat of een omgekeerde periode geeft 400. Het gegenereerde contract in Development is `/openapi/v1.json`. Er is geen Swagger-UI.
 
 ### Voorbeeld-response: `/dashboard/summary`
 
 ```json
 {
-  "omzet": 1250000.00,
-  "afzet": 8420,
-  "doelPercentage": 87.5,
-  "periode": { "from": "2026-01-01", "to": "2026-06-30" },
-  "trendOmzet": "stijgend"
+  "revenue": 1250000.00,
+  "salesVolume": 8420,
+  "goalPercentage": 87.5,
+  "revenueTrend": "up",
+  "lowStockAlertCount": 4,
+  "periodFrom": "2026-01-01",
+  "periodTo": "2026-06-30"
 }
 ```
 
@@ -207,12 +224,13 @@ GET  /exports/period?format=xlsx|pdf&from=&to=
 ## 6. Beveiliging
 
 1. **HTTPS** verplicht in productie
-2. **JWT** op alle data-endpoints (behalve `/health` en `/auth/login`)
-3. **Autorisatie** per rol — bijv. `ReadOnly` mag alleen lezen, geen export
-4. **CORS** alleen voor bekende Web-app origins
-5. **Rate limiting** op API
-6. **NetSuite-credentials** alleen in Infrastructure-laag, nooit in clients
-7. **Logging** zonder gevoelige bedrijfsdata in plain text
+2. **JWT** op alle data-endpoints (behalve `/health`, `/auth/login` en `/auth/register`)
+3. **Autorisatie** per rol — `ReadOnly` mag lezen en niet exporteren; nieuwe accounts starten als ReadOnly
+4. **CORS** alleen voor de origins in `Cors:AllowedOrigins`
+5. **NetSuite-credentials** alleen in Infrastructure, nooit in clients
+6. **Logging** zonder gevoelige bedrijfsdata in plain text
+
+Rate limiting staat nog niet op de API.
 
 ---
 

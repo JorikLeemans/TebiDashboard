@@ -47,10 +47,10 @@ User stories voor de .NET MAUI-portfolio-app.
 
 **Acceptatiecriteria:**
 - [x] Given ingelogde directeur, When omzetpagina opent, Then grafiek en totalen zichtbaar — `DashboardHome.razor`: revenue KPI, bar chart, omzet-tabel
-- [x] Given periode-filter, When filter wijzigt, Then omzetdata ververst via API — `PeriodFilterBar` + `GET /api/dashboard/overview`
+- [x] Given periode-filter, When filter wijzigt, Then omzetdata ververst via API — `PeriodFilterBar` + `GET /api/dashboard/period-overview`
 - [x] Given API-fout, Then foutmelding zonder crash — error state op dashboard
 
-**API:** `GET /api/revenue?from=&to=` · `GET /api/dashboard/overview`
+**API:** `GET /api/dashboard/period-overview` · `GET /api/revenue?from=&to=`
 
 ---
 
@@ -203,7 +203,7 @@ User stories voor de .NET MAUI-portfolio-app.
 **Als** TEBI-medewerker **wil ik** veilig inloggen **zodat** alleen geautoriseerden data zien.
 
 - [x] Login en registratie — `Login.razor`, `Register.razor`, `POST /api/auth/login`
-- [x] Rollen in gebruik — Admin, Finance, Sales, Inventory, Management (`Roles.cs`)
+- [x] Rollen in gebruik — Admin, Management, Purchasing, Inventory, Sales, Finance, ReadOnly (`Roles.cs`). Een nieuwe registratie start als ReadOnly
 - [x] JWT-auth — login returns a signed JWT; data endpoints require it
 - [x] Admin kan rollen beheren — `AdminDashboard.razor`
 
@@ -228,7 +228,7 @@ User stories voor de .NET MAUI-portfolio-app.
 - [x] KPI: omzet, afzet, doel-%, low-stock alerts — `DashboardHome.razor`
 - [x] Revenue chart en sales/expenses in periode
 
-**API:** `GET /api/dashboard/overview`
+**API:** `GET /api/dashboard/period-overview`
 
 ---
 
@@ -258,7 +258,7 @@ User stories voor de .NET MAUI-portfolio-app.
 
 | Story | Status | Blazor page | API |
 |-------|--------|-------------|-----|
-| US-01 | Done | `DashboardHome.razor` | `/api/dashboard/overview`, `/api/revenue` |
+| US-01 | Done | `DashboardHome.razor` | `/api/dashboard/period-overview`, `/api/revenue` |
 | US-02 | Done | `GoalsPage.razor` | `/api/goals` |
 | US-03 | Done | `DashboardHome.razor`, `InventoryPage.razor` | `/api/inventory/low-stock` |
 | US-04 | Done | `TopSellingPage.razor` | `/api/sales-volume/top` |
@@ -270,7 +270,7 @@ User stories voor de .NET MAUI-portfolio-app.
 | US-10 | Done | `ExpensesPage.razor`, `DashboardHome.razor` | `/api/expenses` |
 | US-11 | Done | `BarcodeScanner.razor` | `/api/items/by-barcode/{code}` |
 | US-12 | Done | `Login.razor`, `Register.razor`, `AdminDashboard.razor` | `/api/auth/login` |
-| US-14 | Done | `DashboardHome.razor` | `/api/dashboard/overview` |
+| US-14 | Done | `DashboardHome.razor` | `/api/dashboard/period-overview` |
 | US-17 | Done | `PeriodExportButtons.razor` | `/api/exports/period` |
 
 ### Extra modules (niet in oorspronkelijk voorstelformulier)
