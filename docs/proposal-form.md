@@ -72,10 +72,10 @@ Zie [architectuur.md](./architectuur.md) en [netsuite-data-mapping.md](./netsuit
 
 Op het TEBI-terrein heeft elk artikel een **unieke barcode**. Huidige workflow gebruikt al scan-apparatuur; de MAUI-app moet dit ondersteunen:
 
-| Feature | Platform | Implementatie (gepland) |
+| Feature | Platform | Implementatie |
 |---------|----------|-------------------------|
-| Barcode scannen | Android (primair) | MAUI `ZXing.Net.Maui` of native camera API |
-| Barcode scannen | Windows | USB-scanner (keyboard wedge) + optioneel camera |
+| Barcode scannen | Android (primair) | MAUI `ZXing.Net.Maui`; de website gebruikt de telefooncamera |
+| Barcode scannen | Windows | USB-scanner (keyboard wedge) en de camera via `IBarcodeScannerService` |
 | Artikel opzoeken | Beide | Scan → API `GET /api/items/by-barcode/{code}` |
 
 Na scan: toon **voorraad**, **verkoop/inkoop** en **openstaande transacties** voor dat artikel.

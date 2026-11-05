@@ -62,7 +62,7 @@ docker compose down -v
 | `sales@tebi.nl` | `sales1234` | Sales |
 | `inventory@tebi.nl` | `inventory1` | Inventory |
 
-The built-in `demo` / `demo` login still works for quick demos (not stored in the database).
+The built-in `demo` / `demo` login signs in as Management. It works in Development, and in other environments only when `Auth:AllowDemoLogin` is `true`. Production leaves that flag off, so Railway uses the seeded accounts below.
 
 ## Docker Compose (full stack in containers)
 
@@ -121,14 +121,14 @@ ApiBaseUrl=https://your-api-url/
 
 ## Reload demo dashboard data
 
-Log in as admin and call:
+Log in as admin. The endpoint checks the JWT admin claim:
 
 ```
 POST /api/admin/demo-data/reseed
-Headers: X-Tebi-Username: admin@tebi.nl, X-Tebi-Role: Admin
+Authorization: Bearer <token from POST /api/auth/login>
 ```
 
-This clears revenue, goals, inventory, expenses and reloads the seed datasets. **Registered users are kept.**
+This clears revenue, goals, inventory, customers, suppliers, expenses, and open orders, then reloads the seed. **Registered users are kept.**
 
 ## Cloud hosting options
 
@@ -221,7 +221,7 @@ Deploy **3 onderdelen** op Railway: PostgreSQL, API en Web UI. De MAUI-app blijf
 | Account | Wachtwoord | Rol |
 |---------|------------|-----|
 | `admin@tebi.nl` | `admin1234` | Admin |
-| `demo` | `demo` | Management (hardcoded, geen DB) |
+| `demo` | `demo` | Management, only if `Auth__AllowDemoLogin` is `true` |
 
 ### Kosten & tips
 
@@ -269,11 +269,6 @@ Migrations run automatically on API startup when `ApplyMigrationsOnStartup` is `
 
 ## Demo seed contents
 
-The seed includes:
+The seeder keeps registered users and fills a demo company when the dashboard tables are empty: customers, suppliers, inventory with yard locations, goals for the current and previous year, invoice lines, vendor bills, and open sales and purchase orders. Later runs add missing spread rows without wiping that data.
 
-- 15 revenue records across 5 customers and 3 product groups
-- 8 goals (quarterly + item-level)
-- 10 inventory items (4 low-stock alerts)
-- Stock locations, open transactions, and 8 expense records
-
-Use this as a baseline and extend via SQL, admin tools, or future import endpoints.
+`POST /api/admin/demo-data/reseed` clears those dashboard tables and loads them again. Registered users stay.

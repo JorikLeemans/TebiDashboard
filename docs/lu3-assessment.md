@@ -91,5 +91,5 @@ De device-demo op Windows en Android staat nog open (US-13).
 | Blazor + .NET Web API | ✅ Zelfde stack, uitgebreid met MAUI |
 | NetSuite dashboard | ✅ User stories + functionele scope |
 | Web-based | ✅ Blazor Web naast MAUI |
-| MoSCoW Must have | ✅ User stories US-01 t/m US-08 |
-| MoSCoW Should/Could | Backlog na portfolio-MVP |
+| MoSCoW Must have | US-01 t/m US-12 en US-14 Done. US-13 (device-demo) nog open |
+| MoSCoW Should/Could | US-15 en US-17 Done. US-16 auto-refresh en US-18 donkere modus nog open |

@@ -51,42 +51,32 @@ cd TebiDashboard
 
 ### Web API (`src/TebiDashboard.Api`)
 
-1. Copy User Secrets template (development):
+1. User secrets are optional until you connect NetSuite:
 
 ```bash
 cd src/TebiDashboard.Api
 dotnet user-secrets init
-dotnet user-secrets set "NetSuite:UseMock" "true"
 ```
 
-2. For real NetSuite (later):
+2. Local demo data does not need NetSuite. The API reads PostgreSQL. `Database:Provider=InMemory` uses `MockNetSuiteService` and is for tests.
 
-```json
-{
-  "NetSuite": {
-    "UseMock": false,
-    "AccountId": "YOUR_ACCOUNT",
-    "ConsumerKey": "...",
-    "ConsumerSecret": "...",
-    "TokenId": "...",
-    "TokenSecret": "..."
-  }
-}
+3. For a real NetSuite sync, set OAuth 2.0 machine-to-machine values (certificate JWT). Do not commit the private key.
+
+```bash
+dotnet user-secrets set "NetSuite:Enabled" "true"
+dotnet user-secrets set "NetSuite:AccountId" "YOUR_ACCOUNT"
+dotnet user-secrets set "NetSuite:ClientId" "YOUR_CLIENT_ID"
+dotnet user-secrets set "NetSuite:CertificateId" "YOUR_CERTIFICATE_ID"
+dotnet user-secrets set "NetSuite:PrivateKeyPem" "-----BEGIN PRIVATE KEY-----..."
 ```
+
+On Railway the same keys are environment variables (`NetSuite__Enabled`, `NetSuite__PrivateKeyPem`, and so on). An admin then runs the sync from the Administration page.
 
 > Never commit secrets. Use User Secrets locally or environment variables in production.
 
 ### MAUI app (`src/TebiDashboard.Maui`)
 
-Set API base URL in `appsettings.json` or `MauiProgram.cs`:
-
-```json
-{
-  "ApiBaseUrl": "https://localhost:7001"
-}
-```
-
-For Android emulator, use `https://10.0.2.2:7001` to reach host machine localhost.
+`MauiProgram.cs` points Windows at `https://localhost:7119/` and the Android emulator at `https://10.0.2.2:7119/`.
 
 ---
 
@@ -113,7 +103,7 @@ cd src/TebiDashboard.Api
 dotnet run
 ```
 
-Swagger UI: `https://localhost:7119/swagger`
+OpenAPI document (Development only): `https://localhost:7119/openapi/v1.json`
 
 ### 2. Start MAUI app — Windows
 
@@ -137,7 +127,9 @@ dotnet run -f net10.0-android
 
 Or: Visual Studio → target **Android Emulators**.
 
-### 4. Blazor Web (optional)
+### 4. Blazor Web
+
+`.\start.cmd` already starts this. To run it on its own:
 
 ```bash
 cd src/TebiDashboard.Web
@@ -145,52 +137,44 @@ dotnet run
 ```
 
 Browser: `https://localhost:7274`
-Or: Visual Studio → target **Android Emulators**.
-
-### 4. Blazor Web (optional)
-
-```bash
-cd src/TebiDashboard.Web
-dotnet run
-```
-
-Browser: URL shown in console (e.g. `https://localhost:5001`).
 
 ---
 
-### Barcode scannen (Android)
+## Barcode
 
-1. Open app → **Scan** tab
-2. Richt camera op artikelbarcode op terrein
-3. App toont artikel, voorraadlocaties en open transacties
+### Android and the website
 
-### Barcode scannen (Windows)
+The scan page uses the phone camera. A known barcode opens the item, its locations, and its open transactions (`GET /api/items/by-barcode/{barcode}`).
 
-1. Open artikel-zoeken
-2. Scan met USB-barcode scanner (keyboard wedge) of typ barcode handmatig
-3. Zelfde detailweergave als Android
+### Windows
+
+Focus the scan field and use a USB barcode scanner (keyboard wedge), or type the code. The MAUI app can also open the camera through `IBarcodeScannerService`.
 
 ---
 
+## Tests
+
+Run the four projects that CI runs. The full solution build needs the MAUI workload.
+
 ```bash
-# All unit tests
 dotnet test tests/TebiDashboard.Application.Tests
 dotnet test tests/TebiDashboard.Api.Tests
-
-# UI / device tests (when configured)
-dotnet test tests/TebiDashboard.Maui.Tests
+dotnet test tests/TebiDashboard.Infrastructure.Tests
+dotnet test tests/TebiDashboard.UI.Tests
 ```
 
 ---
 
 ## Usage (end user)
 
-1. **Launch** the app on Windows or Android.
-2. **Log in** with your TEBI credentials (or demo account in development).
-3. **Dashboard home** shows KPI cards: revenue, sales volume, goal progress.
-4. **Navigate** via menu: Revenue, Sales Volume, Trends, Goals.
-5. **Apply filters** (period, customer, product group) — all pages update accordingly.
-6. **Pull to refresh** (Android) or refresh button (Windows) when auto-refresh is enabled.
+1. **Launch** the Blazor site, or the MAUI app on Windows or Android.
+2. **Log in** with a TEBI account. In Development, `demo` / `demo` signs in as Management. A new registration starts as ReadOnly.
+3. **Dashboard home** shows revenue, sales volume, goal progress, and low-stock alerts for the selected period.
+4. **Navigate** via Home, Goals, Customers, Suppliers, Expenses, Inventory, and Bestsellers. Administrators also see Administration.
+5. **Change the period** in the filter bar. Bestsellers can also filter by product group.
+6. **Export** the period as Excel or PDF. ReadOnly cannot export.
+
+Automatic refresh is not built yet (US-16). Reload the page to pick up a new sync.
 
 ---
 
@@ -207,42 +191,30 @@ cd src/TebiDashboard.Maui
 dotnet publish -f net10.0-android -c Release
 ```
 
+APK location: `bin/Release/net10.0-android/publish/`
+
+---
+
+## Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
 | `running scripts is disabled` | Use `.\start.cmd` instead of `.\start.ps1`, or run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once |
-APK location: `bin/Release/net10.0-android/publish/`
-
----
-
-## Troubleshooting
-
-| Problem | Solution |
-|---------|----------|
 | `Docker is required for local PostgreSQL` | Install and start [Docker Desktop](https://www.docker.com/products/docker-desktop/), then run `.\start.cmd` again |
 | API cannot connect to database | Run `docker compose ps` — PostgreSQL should be healthy on port 5432 |
-| MAUI workload missing | `dotnet workload install maui` |
-| Android cannot reach API | Use `10.0.2.2` instead of `localhost` |
-APK location: `bin/Release/net10.0-android/publish/`
-
----
-
-## Troubleshooting
-
-| Problem | Solution |
-|---------|----------|
-| `Docker is required for local PostgreSQL` | Install and start [Docker Desktop](https://www.docker.com/products/docker-desktop/), then run `.\start.cmd` again |
-| API cannot connect to database | Run `docker compose ps` — PostgreSQL should be healthy on port 5432 |
-| MAUI workload missing | `dotnet workload install maui` |
-| Android cannot reach API | Use `10.0.2.2` instead of `localhost` |
+| MAUI workload missing (`NETSDK1147`) | `dotnet workload install maui`. CI does not build the MAUI project |
+| Android cannot reach API | The emulator uses `https://10.0.2.2:7119/`, which `MauiProgram.cs` already sets |
 | HTTPS certificate error | `dotnet dev-certs https --trust` |
-| Empty dashboard | Ensure API running; check `NetSuite:UseMock` = true for demo data |
+| Empty dashboard | Confirm the API is running and `Database:SeedDemoData` is true, or sign in as admin and run a NetSuite sync |
 
 ---
 
 ## Portfolio demonstration checklist
 
-- [ ] API running with mock data
-- [ ] Windows app shows dashboard with KPIs
-- [ ] Android app shows same data after login
-- [ ] At least one filter demonstrated live
-- [ ] Unit test results shown (`dotnet test`)
+- [ ] API running against PostgreSQL (or InMemory for a test)
+- [ ] Windows app shows the dashboard with KPIs
+- [ ] Android app shows the same data after login
+- [ ] At least one period filter demonstrated live
+- [ ] Test results shown for the four test projects
 
-See [lu3-assessment.md](./lu3-assessment.md) for full portfolio requirements.
+See [lu3-assessment.md](./lu3-assessment.md) for the portfolio requirements.

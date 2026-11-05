@@ -40,3 +40,4 @@ dotnet build -f net10.0-windows10.0.19041.0
 - Run **Web API**: `dotnet run --project src/TebiDashboard.Api`
 - Run **Blazor Web**: `dotnet run --project src/TebiDashboard.Web`
 - UI tests: `dotnet test tests/TebiDashboard.UI.Tests`
+- GitHub Actions does not install the MAUI workload. It tests Application, API, Infrastructure, and UI only.

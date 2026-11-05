@@ -1,6 +1,6 @@
 # Architectuur — TEBI Dashboard
 
-Visueel overzicht van de solution-structuur, lagen en datastroom.
+Visueel overzicht van de solution-structuur, lagen en datastroom. Bijgewerkt november 2026.
 
 ---
 
@@ -10,7 +10,7 @@ Visueel overzicht van de solution-structuur, lagen en datastroom.
 flowchart TB
     subgraph clients [Clients]
         Maui["TebiDashboard.Maui\n.NET MAUI Blazor Hybrid"]
-        Web["TebiDashboard.Web\nBlazor Web App"]
+        Web["TebiDashboard.Web\nBlazor Interactive Server"]
     end
 
     subgraph shared [Gedeelde laag]
@@ -21,22 +21,26 @@ flowchart TB
     subgraph backend [Back-end]
         Api["TebiDashboard.Api\nASP.NET Core Web API"]
         App["TebiDashboard.Application\nServices en use cases"]
-        Infra["TebiDashboard.Infrastructure\nNetSuite, cache, opslag"]
+        Infra["TebiDashboard.Infrastructure\nSync, EF Core, PostgreSQL"]
     end
 
-    NetSuite["Oracle NetSuite\nREST API"]
+    Db["PostgreSQL"]
+    NetSuite["Oracle NetSuite\nSuiteQL"]
 
     Maui --> UI
     Web --> UI
     UI --> Api
     Api --> App
     App --> Infra
+    Infra --> Db
     Infra --> NetSuite
     Maui --> Shared
     Web --> Shared
     Api --> Shared
     App --> Shared
 ```
+
+Een pagina leest PostgreSQL. NetSuite wordt aangeroepen tijdens een admin-sync, niet bij elke filterwijziging.
 
 ---
 
@@ -45,47 +49,49 @@ flowchart TB
 ### TebiDashboard.Maui
 
 - .NET MAUI host met `BlazorWebView`
-- Platform-specifieke configuratie (Windows, Android, iOS)
-- API-base-URL via app settings
-- **Geen** businesslogica of NetSuite-koppeling
+- Targets: Windows en Android. Geen iOS-target
+- API-basis-URL in `MauiProgram.cs` (`https://localhost:7119/` en `https://10.0.2.2:7119/`)
+- Camera-scan via `BarcodeScannerService` en ZXing
+- **Geen** businesslogica of NetSuite-credentials
 
 ### TebiDashboard.Web
 
-- Blazor Web App (Server of WebAssembly — keuze bij implementatie)
-- Zelfde UI-componenten als MAUI via gedeelde library
-- Browser-toegang (Must have: web-based)
+- Blazor Web App, Interactive Server
+- Zelfde UI-componenten als MAUI via de gedeelde library
+- Browser-toegang, lokaal en op Railway
 
 ### TebiDashboard.UI
 
-- Razor-components: dashboards, grafieken, filters, layout
-- HttpClient-services voor API-aanroepen
-- MudBlazor (of vergelijkbaar) voor UI-componenten
+- Razor-pagina's: dashboard, doelen, klanten, leveranciers, uitgaven, voorraad, bestsellers
+- `DashboardApiClient` voor de API-aanroepen
+- Eigen CSS en grafiekcomponenten
 
 ### TebiDashboard.Shared
 
-- DTO's: `OmzetDto`, `AfzetDto`, `DoelDto`, `DashboardSummaryDto`
-- Filter-modellen en API-contract interfaces
+- DTO's: `RevenueDto`, `GoalDto`, `DashboardSummaryDto`, `ExpenseDto`, `InventoryItemDto`
+- Filters, rollen en periode-helpers
 - Geen framework-afhankelijkheden
 
 ### TebiDashboard.Api
 
 - REST-controllers
-- JWT-authenticatie en autorisatie
-- Middleware: CORS, rate limiting, exception handling
-- Swagger/OpenAPI
+- JWT-authenticatie en rolgebaseerde autorisatie
+- CORS voor de geconfigureerde web-origins
+- OpenAPI op `/openapi/v1.json` in Development
 
 ### TebiDashboard.Application
 
-- Use cases: `GetOmzetQuery`, `GetDashboardSummaryQuery`
-- Interfaces: `INetSuiteService`, `IDashboardService`
-- Validatie en mapping-logica
+- `DashboardService` aggregeert KPI's via `INetSuiteService`
+- Verder: `IPeriodReportService`, `INetSuiteSyncService`, `IGoalStore`
+- Geen NetSuite-HTTP in deze laag
 
 ### TebiDashboard.Infrastructure
 
-- `NetSuiteHttpClient` — OAuth-signed requests naar NetSuite
-- `IMemoryCache` implementatie
-- Optioneel: EF Core + SQLite/SQL Server voor snapshots
-- User Secrets / configuratie voor credentials
+- `NetSuiteRestClient` en `NetSuiteOAuth2TokenProvider` voor de sync
+- `NetSuiteSyncService` schrijft SuiteQL-resultaten naar EF Core
+- `DatabaseNetSuiteService` leest die tabellen voor de pagina's
+- `MockNetSuiteService` alleen bij `Database:Provider=InMemory`
+- PostgreSQL in ontwikkeling en op Railway. SQLite blijft als legacy provider
 
 ---
 
@@ -98,21 +104,22 @@ sequenceDiagram
     participant API as Web_API
     participant App as Application
     participant Infra as Infrastructure
-    participant NS as NetSuite
+    participant Db as PostgreSQL
 
-    User->>UI: Selecteer filters
-    UI->>API: GET /api/omzet?from=...&to=...
-    API->>API: Valideer JWT + rol
-    API->>App: GetOmzetQuery
-    App->>Infra: INetSuiteService.GetSalesAsync
-    Infra->>NS: REST call (OAuth)
-    NS-->>Infra: JSON response
-    Infra->>Infra: Map naar DTO + cache
-    Infra-->>App: List OmzetDto
-    App-->>API: Result
+    User->>UI: Kies een periode
+    UI->>API: GET /api/dashboard/period-overview?from=...&to=...
+    API->>API: Valideer JWT
+    API->>App: GetPeriodOverviewAsync
+    App->>Infra: INetSuiteService
+    Infra->>Db: Lees gesynchroniseerde tabellen
+    Db-->>Infra: Rijen
+    Infra-->>App: DTO's
+    App-->>API: PeriodOverviewDto
     API-->>UI: JSON
-    UI-->>User: Grafiek + tabel
+    UI-->>User: KPI's, grafiek en tabellen
 ```
+
+De sync is een aparte stroom: een admin start `POST /api/netsuite/sync`. Infrastructure haalt SuiteQL op en schrijft de database. Daarna zien de pagina's de nieuwe rijen.
 
 ---
 
@@ -143,37 +150,44 @@ TebiDashboard.Web
   → TebiDashboard.Shared
 ```
 
+Solution-bestand: `src/TebiDashboard.slnx`. `src/TebiDashboard.slnf` sluit MAUI uit.
+
 ---
 
-## Deployment (gepland)
+## Deployment
 
 ```mermaid
 flowchart LR
     subgraph users [Gebruikers]
         Browser[Browser]
         WinApp[Windows MAUI]
-        Mobile[Android/iOS MAUI]
+        Mobile[Android MAUI]
     end
 
-    subgraph hosting [Hosting]
-        WebHost[Blazor Web App]
+    subgraph hosting [Railway]
+        WebHost[Blazor Web]
         ApiHost[Web API]
+        DbHost[PostgreSQL]
     end
 
-    NS[NetSuite Cloud]
+    NS[NetSuite]
 
     Browser --> WebHost
     WinApp --> ApiHost
     Mobile --> ApiHost
     WebHost --> ApiHost
+    ApiHost --> DbHost
     ApiHost --> NS
 ```
 
-| Component | Hosting optie |
-|-----------|----------------|
-| Web API | Azure App Service / IIS / Docker |
-| Blazor Web | Azure Static Web Apps / App Service |
-| MAUI | MSIX (Windows), APK/AAB (Android), App Store (iOS) |
+| Component | Hosting |
+|-----------|---------|
+| Web API | Railway, `Dockerfile.api` |
+| Blazor Web | Railway, `Dockerfile.web` |
+| Database | PostgreSQL op Railway, lokaal via Docker |
+| MAUI | Nog lokaal. MSIX en APK zijn niet gepubliceerd |
+
+Zie [hosting.md](./hosting.md).
 
 ---
 
@@ -181,8 +195,11 @@ flowchart LR
 
 | Datum | Beslissing | Reden |
 |-------|------------|-------|
-| 2026-06 | MAUI + Blazor Hybrid i.p.v. alleen web | Schoolopdracht + native mobile |
-| 2026-06 | MudBlazor voor UI | Gratis, goede chart-ondersteuning |
-| 2026-06 | Clean Architecture | Modulair, testbaar (adviesrapport) |
+| 2026-06 | MAUI + Blazor Hybrid naast web | Schoolopdracht + native mobile |
+| 2026-06 | Clean Architecture | Modulair en testbaar |
+| 2026-11 | Eigen UI, geen MudBlazor | De pagina's zijn eigen Razor en CSS |
+| 2026-11 | Sync naar PostgreSQL, pagina's lezen de database | Een filterwijziging doet geen NetSuite-call |
+| 2026-11 | OAuth 2.0 met certificaat-JWT | Machine-to-machine voor SuiteQL |
+| 2026-11 | Geen iOS-target | Demo is Windows + Android |
 
-Zie ook ADR's in [ONTWERP.md](./ONTWERP.md).
+Zie ook de ADR's in [ONTWERP.md](./ONTWERP.md).
